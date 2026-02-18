@@ -70,11 +70,11 @@ export default function OrderDetailPanel({ order, onClose, onAddNote }) {
 
       {/* Panel */}
       <motion.div
-        initial={{ x: "100%" }}
+        initial={{ x: "-100%" }}
         animate={{ x: 0 }}
-        exit={{ x: "100%" }}
+        exit={{ x: "-100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 overflow-y-auto"
+        className="fixed top-0 left-0 h-full w-full max-w-md bg-white shadow-2xl z-50 overflow-y-auto"
         dir="rtl"
       >
         {/* Header */}

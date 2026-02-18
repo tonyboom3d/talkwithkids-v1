@@ -68,9 +68,9 @@ export default function TasksPanel({ onClose, linkedOrderId, linkedCustomerName 
 
   return (
     <motion.div
-      initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+      initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
       transition={{ type: "spring", damping: 28, stiffness: 280 }}
-      className="fixed top-0 right-0 h-full w-full max-w-sm bg-white shadow-2xl z-50 flex flex-col"
+      className="fixed top-0 left-0 h-full w-full max-w-sm bg-white shadow-2xl z-50 flex flex-col"
       dir="rtl"
     >
       {/* Header */}
