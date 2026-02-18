@@ -28,25 +28,25 @@ export default function Layout({ children, currentPageName }) {
         ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
       `}</style>
 
-      <div className="flex min-h-screen bg-[#f8f8f8]">
+      <div className="flex min-h-screen bg-[#f8f8f8] flex-row-reverse">
         {/* Sidebar */}
         <motion.aside
           animate={{ width: collapsed ? 64 : 220 }}
           transition={{ duration: 0.25, ease: "easeInOut" }}
-          className="bg-white border-l border-slate-200 flex flex-col shrink-0 relative z-20"
+          className="bg-white border-r border-slate-200 flex flex-col shrink-0 relative z-20"
           style={{ minHeight: "100vh" }}
         >
           {/* Logo / Toggle */}
           <div className="h-14 flex items-center justify-between px-4 border-b border-slate-100">
-            {!collapsed && (
-              <span className="text-sm font-bold text-slate-800 truncate">לוח בקרה</span>
-            )}
             <button
               onClick={() => setCollapsed(!collapsed)}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors text-slate-500"
             >
               {collapsed ? <Menu className="w-4 h-4" /> : <X className="w-4 h-4" />}
             </button>
+            {!collapsed && (
+              <span className="text-sm font-bold text-slate-800 truncate">לוח בקרה</span>
+            )}
           </div>
 
           {/* Nav Items */}
@@ -63,10 +63,10 @@ export default function Layout({ children, currentPageName }) {
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     }
-                    ${collapsed ? "justify-center" : "justify-start flex-row-reverse"}`}
+                    ${collapsed ? "justify-center" : "justify-end"}`}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
                   {!collapsed && <span className="truncate">{label}</span>}
+                  <Icon className="w-4 h-4 shrink-0" />
                 </Link>
               );
             })}
@@ -77,10 +77,10 @@ export default function Layout({ children, currentPageName }) {
             <button
               title={collapsed ? "התנתקות" : undefined}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors
-                ${collapsed ? "justify-center" : "justify-start flex-row-reverse"}`}
+                ${collapsed ? "justify-center" : "justify-end"}`}
             >
-              <LogOut className="w-4 h-4 shrink-0" />
               {!collapsed && <span>התנתקות</span>}
+              <LogOut className="w-4 h-4 shrink-0" />
             </button>
           </div>
         </motion.aside>
