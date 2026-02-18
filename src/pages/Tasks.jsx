@@ -1,263 +1,172 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  CheckSquare, Plus, X, Tag, User, ShoppingBag,
-  CheckCircle2, Circle, ChevronDown, StickyNote
-} from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { DEMO_ORDERS, DEMO_CUSTOMERS } from "../components/dashboard/DemoDataProvider";
-import moment from "moment";
+import { Plus, CheckSquare, Circle, Loader2, Tag, Link2, X, Trash2 } from "lucide-react";
 
-const TAG_OPTIONS = [
-  { label: "דחוף", color: "bg-red-100 text-red-700" },
-  { label: "ממתין לתשלום", color: "bg-amber-100 text-amber-700" },
-  { label: "מעקב", color: "bg-blue-100 text-blue-700" },
-  { label: "לקוח חדש", color: "bg-violet-100 text-violet-700" },
-  { label: "סגור", color: "bg-emerald-100 text-emerald-700" },
-];
-
-const INIT_TASKS = [
-  {
-    id: "t1", text: "לעקוב אחר תשלום של מיכל לוי", done: false,
-    tags: ["ממתין לתשלום", "מעקב"],
-    linkedOrder: DEMO_ORDERS[1],
-    linkedCustomer: null,
-    date: new Date().toISOString(),
-  },
-  {
-    id: "t2", text: "לשלוח הצעת מחיר לרונית דוד", done: false,
-    tags: ["דחוף"],
-    linkedOrder: null,
-    linkedCustomer: DEMO_CUSTOMERS[3],
-    date: new Date().toISOString(),
-  },
-];
-
-function TagBadge({ label }) {
-  const found = TAG_OPTIONS.find(t => t.label === label);
-  return (
-    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${found?.color || "bg-slate-100 text-slate-500"}`}>
-      {label}
-    </span>
-  );
-}
+const STATUS_LABELS = { open: "פתוח", in_progress: "בטיפול", done: "הושלם" };
+const STATUS_COLORS = {
+  open: "bg-slate-100 text-slate-600",
+  in_progress: "bg-blue-100 text-blue-700",
+  done: "bg-emerald-100 text-emerald-700",
+};
+const TAG_COLORS = ["bg-violet-100 text-violet-700", "bg-pink-100 text-pink-700", "bg-amber-100 text-amber-700", "bg-sky-100 text-sky-700"];
 
 export default function Tasks() {
-  const [tasks, setTasks] = useState(INIT_TASKS);
+  const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
-  const [newText, setNewText] = useState("");
-  const [newTags, setNewTags] = useState([]);
-  const [linkedOrder, setLinkedOrder] = useState("");
-  const [linkedCustomer, setLinkedCustomer] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [newTitle, setNewTitle] = useState("");
+  const [newTag, setNewTag] = useState("");
+  const [tags, setTags] = useState([]);
+  const [filterStatus, setFilterStatus] = useState("all");
 
-  const addTask = () => {
-    if (!newText.trim()) return;
-    const order = DEMO_ORDERS.find(o => o.id === linkedOrder) || null;
-    const customer = DEMO_CUSTOMERS.find(c => c.id === linkedCustomer) || null;
-    setTasks(prev => [{
-      id: `t-${Date.now()}`,
-      text: newText,
-      done: false,
-      tags: newTags,
-      linkedOrder: order,
-      linkedCustomer: customer,
-      date: new Date().toISOString(),
-    }, ...prev]);
-    setNewText(""); setNewTags([]); setLinkedOrder(""); setLinkedCustomer(""); setShowForm(false);
-  };
-
-  const toggleDone = (id) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
-  };
-
-  const deleteTask = (id) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
-  };
-
-  const toggleTag = (tag) => {
-    setNewTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
-  };
-
-  const filtered = tasks.filter(t => {
-    if (filter === "active") return !t.done;
-    if (filter === "done") return t.done;
-    return true;
+  const { data: tasks = [], isLoading } = useQuery({
+    queryKey: ["tasks"],
+    queryFn: () => base44.entities.Task.list("-created_date", 100),
   });
 
+  const createTask = useMutation({
+    mutationFn: (data) => base44.entities.Task.create(data),
+    onSuccess: () => { qc.invalidateQueries(["tasks"]); setNewTitle(""); setTags([]); setShowForm(false); },
+  });
+
+  const updateTask = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Task.update(id, data),
+    onSuccess: () => qc.invalidateQueries(["tasks"]),
+  });
+
+  const deleteTask = useMutation({
+    mutationFn: (id) => base44.entities.Task.delete(id),
+    onSuccess: () => qc.invalidateQueries(["tasks"]),
+  });
+
+  const handleCreate = () => {
+    if (!newTitle.trim()) return;
+    createTask.mutate({ title: newTitle, tags, status: "open" });
+  };
+
+  const addTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim())) {
+      setTags([...tags, newTag.trim()]);
+      setNewTag("");
+    }
+  };
+
+  const cycleStatus = (task) => {
+    const next = { open: "in_progress", in_progress: "done", done: "open" };
+    updateTask.mutate({ id: task.id, data: { status: next[task.status] } });
+  };
+
+  const filtered = filterStatus === "all" ? tasks : tasks.filter(t => t.status === filterStatus);
+  const openCount = tasks.filter(t => t.status === "open").length;
+  const doneCount = tasks.filter(t => t.status === "done").length;
+
   return (
-    <div className="min-h-screen bg-[#fafafa] p-6" dir="rtl">
-      <div className="max-w-2xl mx-auto space-y-5">
+    <div className="min-h-screen bg-[#f8f8f8] p-6" dir="rtl">
+      <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between">
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">משימות</h1>
-            <p className="text-sm text-slate-400 mt-0.5">ניהול המשימות שלך</p>
+            <h1 className="text-xl font-bold text-slate-900">המשימות שלי</h1>
+            <p className="text-sm text-slate-400 mt-0.5">{openCount} פתוחות • {doneCount} הושלמו</p>
           </div>
-          <Button onClick={() => setShowForm(v => !v)} className="gap-2 bg-slate-900 hover:bg-slate-800 text-white h-9 text-sm rounded-xl">
+          <Button onClick={() => setShowForm(!showForm)} className="bg-slate-900 hover:bg-slate-800 text-white gap-2 h-9">
             <Plus className="w-4 h-4" />
             משימה חדשה
           </Button>
         </motion.div>
 
-        {/* Add Form */}
+        {/* New Task Form */}
         <AnimatePresence>
           {showForm && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 space-y-4">
-                <Textarea
-                  placeholder="תיאור המשימה..."
-                  value={newText}
-                  onChange={e => setNewText(e.target.value)}
-                  className="min-h-[70px] text-sm border-slate-200 resize-none"
-                  dir="rtl"
-                  autoFocus
-                />
-
-                {/* Tags */}
-                <div>
-                  <p className="text-xs text-slate-500 mb-2 flex items-center gap-1"><Tag className="w-3.5 h-3.5" /> תגיות</p>
-                  <div className="flex flex-wrap gap-2">
-                    {TAG_OPTIONS.map(t => (
-                      <button
-                        key={t.label}
-                        onClick={() => toggleTag(t.label)}
-                        className={`text-[11px] px-2.5 py-1 rounded-full border transition-all ${
-                          newTags.includes(t.label) ? `${t.color} border-transparent` : "bg-white border-slate-200 text-slate-500"
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+              className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 space-y-3">
+              <Input value={newTitle} onChange={e => setNewTitle(e.target.value)}
+                placeholder="כותרת המשימה..." className="h-10 text-sm text-right" dir="rtl" autoFocus
+                onKeyDown={e => e.key === "Enter" && handleCreate()} />
+              <div className="flex gap-2">
+                <Input value={newTag} onChange={e => setNewTag(e.target.value)}
+                  placeholder="הוסף תגית ולחץ Enter..." className="h-9 text-sm text-right flex-1" dir="rtl"
+                  onKeyDown={e => e.key === "Enter" && addTag()} />
+                <button onClick={addTag} className="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200">
+                  <Tag className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
+              {tags.length > 0 && (
+                <div className="flex gap-1.5 flex-wrap">
+                  {tags.map((t, i) => (
+                    <Badge key={t} className={`text-xs border-0 cursor-pointer ${TAG_COLORS[i % TAG_COLORS.length]}`}
+                      onClick={() => setTags(tags.filter(x => x !== t))}>
+                      {t} ×
+                    </Badge>
+                  ))}
                 </div>
-
-                {/* Link Order */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1.5 flex items-center gap-1"><ShoppingBag className="w-3.5 h-3.5" /> שייך הזמנה</p>
-                    <select
-                      value={linkedOrder}
-                      onChange={e => setLinkedOrder(e.target.value)}
-                      className="w-full h-9 text-sm border border-slate-200 rounded-lg px-3 bg-white text-slate-700 focus:outline-none"
-                      dir="rtl"
-                    >
-                      <option value="">ללא</option>
-                      {DEMO_ORDERS.map(o => (
-                        <option key={o.id} value={o.id}>{o.id} – {o.customer.firstName} {o.customer.lastName}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1.5 flex items-center gap-1"><User className="w-3.5 h-3.5" /> שייך לקוח</p>
-                    <select
-                      value={linkedCustomer}
-                      onChange={e => setLinkedCustomer(e.target.value)}
-                      className="w-full h-9 text-sm border border-slate-200 rounded-lg px-3 bg-white text-slate-700 focus:outline-none"
-                      dir="rtl"
-                    >
-                      <option value="">ללא</option>
-                      {DEMO_CUSTOMERS.map(c => (
-                        <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 justify-end">
-                  <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setShowForm(false)}>ביטול</Button>
-                  <Button size="sm" className="text-xs h-8 bg-slate-800 hover:bg-slate-700 text-white" onClick={addTask}>שמור משימה</Button>
-                </div>
+              )}
+              <div className="flex gap-2">
+                <Button size="sm" className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white"
+                  onClick={handleCreate} disabled={createTask.isPending}>
+                  {createTask.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "שמור"}
+                </Button>
+                <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setShowForm(false)}>ביטול</Button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Filter */}
+        {/* Filters */}
         <div className="flex gap-2">
-          {[{ v: "all", l: "הכל" }, { v: "active", l: "פעילות" }, { v: "done", l: "הושלמו" }].map(f => (
-            <button
-              key={f.v}
-              onClick={() => setFilter(f.v)}
-              className={`text-xs px-3 py-1.5 rounded-lg transition-all ${filter === f.v ? "bg-slate-900 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}
-            >
-              {f.l}
+          {[["all", "הכל"], ["open", "פתוחות"], ["in_progress", "בטיפול"], ["done", "הושלמו"]].map(([val, label]) => (
+            <button key={val} onClick={() => setFilterStatus(val)}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors border
+                ${filterStatus === val ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}>
+              {label}
             </button>
           ))}
-          <span className="text-xs text-slate-400 flex items-center mr-auto">{filtered.length} משימות</span>
         </div>
 
-        {/* Tasks List */}
-        <div className="space-y-3">
-          <AnimatePresence>
-            {filtered.map(task => (
-              <motion.div
-                key={task.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className={`bg-white rounded-2xl border shadow-sm p-4 space-y-3 transition-opacity ${task.done ? "opacity-60 border-slate-100" : "border-slate-200/60"}`}
-              >
-                <div className="flex items-start gap-3">
-                  <button onClick={() => deleteTask(task.id)} className="text-slate-300 hover:text-red-400 transition-colors mt-0.5 shrink-0">
-                    <X className="w-4 h-4" />
-                  </button>
-                  <p className={`flex-1 text-sm text-right leading-relaxed ${task.done ? "line-through text-slate-400" : "text-slate-700"}`}>
-                    {task.text}
-                  </p>
-                  <button onClick={() => toggleDone(task.id)} className="shrink-0 mt-0.5">
-                    {task.done
-                      ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                      : <Circle className="w-5 h-5 text-slate-300 hover:text-slate-500 transition-colors" />
-                    }
-                  </button>
+        {/* Tasks */}
+        <div className="space-y-2">
+          {isLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 text-sm">אין משימות להצגה</div>
+          ) : filtered.map((task, i) => (
+            <motion.div key={task.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+              className={`bg-white rounded-xl border border-slate-200/60 shadow-sm p-4 flex items-start gap-3 ${task.status === "done" ? "opacity-60" : ""}`}>
+              <button onClick={() => cycleStatus(task)} className="mt-0.5 shrink-0">
+                {task.status === "done"
+                  ? <CheckSquare className="w-5 h-5 text-emerald-500" />
+                  : <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400" />}
+              </button>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium text-slate-700 ${task.status === "done" ? "line-through" : ""}`}>
+                  {task.title}
+                </p>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <Badge className={`text-[10px] border-0 ${STATUS_COLORS[task.status]}`}>
+                    {STATUS_LABELS[task.status]}
+                  </Badge>
+                  {task.tags?.map((t, i) => (
+                    <Badge key={t} className={`text-[10px] border-0 ${TAG_COLORS[i % TAG_COLORS.length]}`}>{t}</Badge>
+                  ))}
+                  {task.linked_order_id && (
+                    <span className="text-[10px] text-blue-500 flex items-center gap-1">
+                      <Link2 className="w-3 h-3" />{task.linked_order_id}
+                    </span>
+                  )}
+                  {task.linked_customer_name && (
+                    <span className="text-[10px] text-slate-400">{task.linked_customer_name}</span>
+                  )}
                 </div>
-
-                {/* Tags */}
-                {task.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pr-8">
-                    {task.tags.map(tag => <TagBadge key={tag} label={tag} />)}
-                  </div>
-                )}
-
-                {/* Links */}
-                {(task.linkedOrder || task.linkedCustomer) && (
-                  <div className="flex flex-wrap gap-2 pr-8">
-                    {task.linkedOrder && (
-                      <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1">
-                        <ShoppingBag className="w-3 h-3 text-slate-400" />
-                        <span className="text-[11px] text-slate-600">{task.linkedOrder.id}</span>
-                      </div>
-                    )}
-                    {task.linkedCustomer && (
-                      <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1">
-                        <User className="w-3 h-3 text-slate-400" />
-                        <span className="text-[11px] text-slate-600">{task.linkedCustomer.firstName} {task.linkedCustomer.lastName}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="text-[11px] text-slate-400 text-left pr-8">
-                  {moment(task.date).format("DD/MM/YY HH:mm")}
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {filtered.length === 0 && (
-            <div className="text-center py-12 text-slate-400">
-              <StickyNote className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">אין משימות להצגה</p>
-            </div>
-          )}
+              </div>
+              <button onClick={() => deleteTask.mutate(task.id)} className="text-slate-300 hover:text-red-400 transition-colors shrink-0 mt-0.5">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </motion.div>
+          ))}
         </div>
       </div>
     </div>
