@@ -41,26 +41,26 @@ export default function OrdersTable({ orders, isLoading, onSelectOrder }) {
       className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden"
     >
       {/* Header */}
-      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="relative flex-1 max-w-xs">
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap" dir="rtl">
+        <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2 shrink-0">
+          <CreditCard className="w-4 h-4 text-slate-400" />
+          הזמנות אחרונות
+        </h3>
+        <div className="flex items-center gap-3 flex-1 min-w-0 justify-end">
+          <Badge variant="outline" className="text-slate-500 border-slate-200 text-xs shrink-0">
+            {filtered.length} הזמנות
+          </Badge>
+          <div className="relative max-w-xs w-full">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
               placeholder="חיפוש לפי שם, טלפון, מס׳ הזמנה..."
               value={search}
               onChange={e => handleSearch(e.target.value)}
-              className="pr-9 h-9 text-sm border-slate-200"
+              className="pr-9 h-9 text-sm border-slate-200 text-right"
               dir="rtl"
             />
           </div>
-          <Badge variant="outline" className="text-slate-500 border-slate-200 text-xs shrink-0">
-            {filtered.length} הזמנות
-          </Badge>
         </div>
-        <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2 shrink-0">
-          <CreditCard className="w-4 h-4 text-slate-400" />
-          הזמנות אחרונות
-        </h3>
       </div>
 
       {isLoading ? (
@@ -133,7 +133,7 @@ export default function OrdersTable({ orders, isLoading, onSelectOrder }) {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between">
+            <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between" dir="rtl">
               <Button
                 variant="ghost"
                 size="sm"

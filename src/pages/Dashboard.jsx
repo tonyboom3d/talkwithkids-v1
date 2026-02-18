@@ -125,20 +125,20 @@ export default function Dashboard() {
           transition={{ duration: 0.4 }}
           className="flex items-center justify-between"
         >
+          <div className="text-right">
+            <h1 className="text-xl font-bold text-slate-900">ניהול הזמנות</h1>
+            <p className="text-sm text-slate-400 mt-0.5">יצירת קישורי תשלום ומעקב הזמנות</p>
+          </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-2">
-              <Label htmlFor="demo-toggle" className="text-xs text-slate-500 cursor-pointer">מצב דמו</Label>
+              <TestTube className={`w-4 h-4 transition-colors ${isDemo ? 'text-violet-500' : 'text-slate-300'}`} />
               <Switch
                 id="demo-toggle"
                 checked={isDemo}
                 onCheckedChange={setIsDemo}
               />
-              <TestTube className={`w-4 h-4 transition-colors ${isDemo ? 'text-violet-500' : 'text-slate-300'}`} />
+              <Label htmlFor="demo-toggle" className="text-xs text-slate-500 cursor-pointer">מצב דמו</Label>
             </div>
-          </div>
-          <div className="text-right">
-            <h1 className="text-xl font-bold text-slate-900">ניהול הזמנות</h1>
-            <p className="text-sm text-slate-400 mt-0.5">יצירת קישורי תשלום ומעקב הזמנות</p>
           </div>
         </motion.div>
 
