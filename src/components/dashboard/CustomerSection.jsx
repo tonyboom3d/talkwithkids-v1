@@ -214,12 +214,12 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData 
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-500">אימייל</Label>
-                  <Input value={customerData.email} onChange={e => handleFieldChange("email", e.target.value)} className="h-10 text-sm border-slate-200" dir="ltr" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-500">טלפון</Label>
-                  <Input value={customerData.phone} onChange={e => handleFieldChange("phone", e.target.value)} className="h-10 text-sm border-slate-200" dir="ltr" />
+                    <Label className="text-xs text-slate-500 block text-right">אימייל</Label>
+                    <Input value={customerData.email} onChange={e => handleFieldChange("email", e.target.value)} className="h-10 text-sm border-slate-200 text-right" dir="rtl" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-slate-500 block text-right">טלפון</Label>
+                    <Input value={customerData.phone} onChange={e => handleFieldChange("phone", e.target.value)} className="h-10 text-sm border-slate-200 text-right" dir="rtl" />
                 </div>
                 <div className="flex gap-2 justify-end">
                   <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} className="text-xs h-8">ביטול</Button>
@@ -253,26 +253,26 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData 
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-500">אימייל</Label>
+              <Label className="text-xs text-slate-500 block text-right">אימייל</Label>
               <Input
                 value={customerData.email}
                 onChange={e => setCustomerData(prev => ({ ...prev, email: e.target.value }))}
                 placeholder="example@email.com"
-                className="h-10 text-sm border-slate-200 focus:border-slate-400"
-                dir="ltr"
+                className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
+                dir="rtl"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-500 flex items-center gap-1">
-                טלפון
+              <Label className="text-xs text-slate-500 flex items-center gap-1 justify-end">
                 <span className="text-red-400">*</span>
+                טלפון
               </Label>
               <Input
                 value={customerData.phone}
                 onChange={e => setCustomerData(prev => ({ ...prev, phone: e.target.value }))}
                 placeholder="050-0000000"
-                className="h-10 text-sm border-slate-200 focus:border-slate-400"
-                dir="ltr"
+                className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
+                dir="rtl"
               />
             </div>
           </motion.div>
