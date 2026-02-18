@@ -84,6 +84,11 @@ export default function Layout({ children, currentPageName }) {
             </button>
           </div>
         </motion.aside>
+
+        {/* Main Content */}
+        <main className="flex-1 min-w-0">
+          {children}
+        </main>
       </div>
     </div>
   );
