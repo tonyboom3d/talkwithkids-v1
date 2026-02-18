@@ -28,7 +28,7 @@ export default function Layout({ children, currentPageName }) {
         ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
       `}</style>
 
-      <div className="flex min-h-screen bg-[#f8f8f8]">
+      <div className="flex min-h-screen bg-[#f8f8f8] flex-row-reverse">
         {/* Sidebar */}
         <motion.aside
           animate={{ width: collapsed ? 64 : 220 }}
