@@ -33,7 +33,7 @@ export default function Layout({ children, currentPageName }) {
         <motion.aside
           animate={{ width: collapsed ? 64 : 220 }}
           transition={{ duration: 0.25, ease: "easeInOut" }}
-          className="bg-white border-l border-slate-200 flex flex-col shrink-0 relative z-20 order-last"
+          className="bg-white border-l border-slate-200 flex flex-col shrink-0 relative z-20"
           style={{ minHeight: "100vh" }}
         >
           {/* Logo / Toggle */}
