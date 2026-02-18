@@ -1,16 +1,24 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { TrendingUp, ShoppingBag, CreditCard, Percent } from "lucide-react";
 import moment from "moment";
+import DateRangePicker from "../components/dashboard/DateRangePicker";
 
 const MY_NAME = "שרה מ.";
 const COLORS = ["#6366f1", "#f59e0b", "#10b981", "#3b82f6", "#ec4899"];
 
 export default function Statistics() {
+  const [dateRange, setDateRange] = useState({ from: null, to: null });
+
   const myOrders = useMemo(() =>
-    DEMO_ORDERS.filter(o => o.timeline.some(t => t.by === MY_NAME && t.type === "created")), []);
+    DEMO_ORDERS.filter(o => {
+      if (!o.timeline.some(t => t.by === MY_NAME && t.type === "created")) return false;
+      const date = moment(o.date);
+      return (!dateRange.from || date.isSameOrAfter(moment(dateRange.from).startOf("day"))) &&
+             (!dateRange.to || date.isSameOrBefore(moment(dateRange.to).endOf("day")));
+    }), [dateRange]);
 
   const totalRevenue = myOrders.filter(o => o.paymentStatus === "paid").reduce((s, o) => s + o.total, 0);
   const paidCount = myOrders.filter(o => o.paymentStatus === "paid").length;
@@ -44,9 +52,12 @@ export default function Statistics() {
   return (
     <div className="min-h-screen bg-[#f8f8f8] p-6" dir="rtl">
       <div className="max-w-6xl mx-auto space-y-6">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-xl font-bold text-slate-900">סטטיסטיקות</h1>
-          <p className="text-sm text-slate-400 mt-0.5">סקירת ביצועי המכירות שלך</p>
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">סטטיסטיקות</h1>
+            <p className="text-sm text-slate-400 mt-0.5">סקירת ביצועי המכירות שלך</p>
+          </div>
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
         </motion.div>
 
         {/* KPIs */}
