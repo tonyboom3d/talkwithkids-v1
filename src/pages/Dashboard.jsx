@@ -5,7 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, Loader2, TestTube, CreditCard, MessageSquare } from "lucide-react";
+import { Send, Loader2, TestTube, CreditCard, MessageSquare, CheckSquare } from "lucide-react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import { toast } from "sonner";
 
 import CustomerSection from "../components/dashboard/CustomerSection";
@@ -117,7 +119,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#fafafa]" dir="rtl">
-      <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+      <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -12 }}
