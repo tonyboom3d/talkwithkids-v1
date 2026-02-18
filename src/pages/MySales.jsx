@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Download, Search, TrendingUp, ShoppingBag, CreditCard, Users } from "lucide-react";
 import moment from "moment";
+import DateRangePicker from "../components/dashboard/DateRangePicker";
 
 const MY_NAME = "שרה מ.";
 
@@ -34,6 +35,7 @@ function exportToCSV(orders) {
 
 export default function MySales() {
   const [search, setSearch] = useState("");
+  const [dateRange, setDateRange] = useState({ from: null, to: null });
 
   const myOrders = useMemo(() =>
     DEMO_ORDERS.filter(o =>
@@ -41,19 +43,23 @@ export default function MySales() {
     ), []);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return myOrders;
-    const q = search.toLowerCase();
-    return myOrders.filter(o =>
-      o.id.toLowerCase().includes(q) ||
-      `${o.customer.firstName} ${o.customer.lastName}`.includes(q) ||
-      o.customer.phone?.includes(q)
-    );
-  }, [myOrders, search]);
+    return myOrders.filter(o => {
+      const q = search.toLowerCase();
+      const matchSearch = !search.trim() ||
+        o.id.toLowerCase().includes(q) ||
+        `${o.customer.firstName} ${o.customer.lastName}`.includes(q) ||
+        o.customer.phone?.includes(q);
+      const date = moment(o.date);
+      const matchDate = (!dateRange.from || date.isSameOrAfter(moment(dateRange.from).startOf("day"))) &&
+                        (!dateRange.to || date.isSameOrBefore(moment(dateRange.to).endOf("day")));
+      return matchSearch && matchDate;
+    });
+  }, [myOrders, search, dateRange]);
 
-  const totalRevenue = myOrders.filter(o => o.paymentStatus === "paid").reduce((s, o) => s + o.total, 0);
-  const paidCount = myOrders.filter(o => o.paymentStatus === "paid").length;
-  const unpaidCount = myOrders.filter(o => o.paymentStatus === "unpaid").length;
-  const avgOrder = myOrders.length ? Math.round(totalRevenue / (paidCount || 1)) : 0;
+  const totalRevenue = filtered.filter(o => o.paymentStatus === "paid").reduce((s, o) => s + o.total, 0);
+  const paidCount = filtered.filter(o => o.paymentStatus === "paid").length;
+  const unpaidCount = filtered.filter(o => o.paymentStatus === "unpaid").length;
+  const avgOrder = filtered.length ? Math.round(totalRevenue / (paidCount || 1)) : 0;
 
   return (
     <div className="min-h-screen bg-[#f8f8f8] p-6" dir="rtl">
@@ -64,10 +70,13 @@ export default function MySales() {
             <h1 className="text-xl font-bold text-slate-900">המכירות שלי</h1>
             <p className="text-sm text-slate-400 mt-0.5">כל ההזמנות שנוצרו על ידך</p>
           </div>
-          <Button onClick={() => exportToCSV(filtered)} className="bg-slate-900 hover:bg-slate-800 text-white gap-2 h-9">
-            <Download className="w-4 h-4" />
-            ייצוא לאקסל
-          </Button>
+          <div className="flex items-center gap-2">
+            <DateRangePicker value={dateRange} onChange={setDateRange} />
+            <Button onClick={() => exportToCSV(filtered)} className="bg-slate-900 hover:bg-slate-800 text-white gap-2 h-9">
+              <Download className="w-4 h-4" />
+              ייצוא לאקסל
+            </Button>
+          </div>
         </motion.div>
 
         {/* Stats */}
