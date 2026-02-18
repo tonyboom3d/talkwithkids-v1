@@ -28,8 +28,13 @@ export default function Layout({ children, currentPageName }) {
         ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
       `}</style>
 
-      <div className="flex min-h-screen bg-[#f8f8f8] flex-row-reverse">
-        {/* Sidebar */}
+      <div className="flex min-h-screen bg-[#f8f8f8]">
+        {/* Main Content */}
+        <main className="flex-1 min-w-0">
+          {children}
+        </main>
+
+        {/* Sidebar - Right side */}
         <motion.aside
           animate={{ width: collapsed ? 64 : 220 }}
           transition={{ duration: 0.25, ease: "easeInOut" }}
@@ -84,11 +89,6 @@ export default function Layout({ children, currentPageName }) {
             </button>
           </div>
         </motion.aside>
-
-        {/* Main Content */}
-        <main className="flex-1 min-w-0">
-          {children}
-        </main>
       </div>
     </div>
   );
