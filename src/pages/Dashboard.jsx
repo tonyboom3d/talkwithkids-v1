@@ -6,14 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Send, Loader2, TestTube, CreditCard, MessageSquare, CheckSquare } from "lucide-react";
-import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
 import { toast } from "sonner";
 
 import CustomerSection from "../components/dashboard/CustomerSection";
 import ProductSelector from "../components/dashboard/ProductSelector";
 import OrdersTable from "../components/dashboard/OrdersTable";
 import OrderDetailPanel from "../components/dashboard/OrderDetailPanel";
+import TasksPanel from "../components/tasks/TasksPanel";
 import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
 
 export default function Dashboard() {
@@ -27,6 +26,7 @@ export default function Dashboard() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderCounter, setOrderCounter] = useState(1005);
+  const [showTasks, setShowTasks] = useState(false);
 
   // Load orders
   useEffect(() => {
@@ -119,7 +119,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#fafafa]" dir="rtl">
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -12 }}
@@ -127,19 +127,18 @@ export default function Dashboard() {
           transition={{ duration: 0.4 }}
           className="flex items-center justify-between"
         >
-          <div className="flex items-center gap-3">
-            <Link to={createPageUrl("Tasks")}>
-              <button className="flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors">
-                <CheckSquare className="w-4 h-4 text-slate-500" />
-                משימות שלי
-              </button>
-            </Link>
-          </div>
           <div className="text-right">
             <h1 className="text-xl font-bold text-slate-900">ניהול הזמנות</h1>
             <p className="text-sm text-slate-400 mt-0.5">יצירת קישורי תשלום ומעקב הזמנות</p>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowTasks(true)}
+              className="flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              <CheckSquare className="w-4 h-4 text-slate-400" />
+              משימות
+            </button>
             <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-2" dir="ltr">
               <TestTube className={`w-4 h-4 transition-colors ${isDemo ? 'text-violet-500' : 'text-slate-300'}`} />
               <Switch
@@ -269,6 +268,17 @@ export default function Dashboard() {
             onClose={() => setSelectedOrder(null)}
             onAddNote={handleAddNote}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Tasks Panel */}
+      <AnimatePresence>
+        {showTasks && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowTasks(false)} className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-40" />
+            <TasksPanel onClose={() => setShowTasks(false)} />
+          </>
         )}
       </AnimatePresence>
     </div>
