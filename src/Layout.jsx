@@ -18,7 +18,7 @@ export default function Layout({ children, currentPageName }) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div style={{ fontFamily: "'Assistant', 'Helvetica Neue', sans-serif" }} dir="rtl">
+    <div style={{ fontFamily: "'Assistant', 'Helvetica Neue', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@200;300;400;500;600;700;800&display=swap');
         * { font-family: 'Assistant', 'Helvetica Neue', sans-serif !important; }
@@ -29,11 +29,6 @@ export default function Layout({ children, currentPageName }) {
       `}</style>
 
       <div className="flex min-h-screen bg-[#f8f8f8]">
-        {/* Main Content */}
-        <main className="flex-1 min-w-0">
-          {children}
-        </main>
-
         {/* Sidebar - Right side */}
         <motion.aside
           animate={{ width: collapsed ? 64 : 220 }}
