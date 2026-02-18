@@ -91,10 +91,10 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData 
           <User className="w-[18px] h-[18px] text-slate-400" />
           <Label className="text-sm font-medium text-slate-700">פרטי לקוח</Label>
         </div>
-        <div className="flex items-center gap-3">
-          <span className={`text-xs transition-colors ${!isExisting ? 'text-slate-800 font-medium' : 'text-slate-400'}`}>לקוח חדש</span>
-          <Switch checked={isExisting} onCheckedChange={handleToggle} />
+        <div className="flex items-center gap-3" dir="ltr">
           <span className={`text-xs transition-colors ${isExisting ? 'text-slate-800 font-medium' : 'text-slate-400'}`}>לקוח קיים</span>
+          <Switch checked={isExisting} onCheckedChange={handleToggle} />
+          <span className={`text-xs transition-colors ${!isExisting ? 'text-slate-800 font-medium' : 'text-slate-400'}`}>לקוח חדש</span>
         </div>
       </div>
 
