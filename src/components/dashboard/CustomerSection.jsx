@@ -25,6 +25,9 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData 
   const [isEditing, setIsEditing] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
+  // fullName helper
+  const fullName = `${customerData.firstName || ""}${customerData.lastName ? " " + customerData.lastName : ""}`.trim();
+
   // Simulate search with demo data
   useEffect(() => {
     if (!searchQuery.trim() || !isExisting) {
