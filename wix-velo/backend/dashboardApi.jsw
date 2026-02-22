@@ -1,0 +1,304 @@
+import wixData from 'wix-data';
+import { searchContactsByQuery } from 'backend/helpers/contactHelper';
+import { createOrderCoupon } from 'backend/helpers/couponHelper';
+import { createDashboardCheckout } from 'backend/helpers/checkoutHelper';
+import { createMemberForOrder } from 'backend/helpers/memberHelper';
+import { assignPricingPlansToMember } from 'backend/helpers/pricingPlanHelper';
+import { products } from 'wix-stores.v2';
+
+const LOG_PREFIX = '[VELO-BE]';
+
+// ─── Employee Permissions ───
+
+export async function getEmployeePermissions(memberId) {
+  const result = await wixData.query('AuthorizedEmployees')
+    .eq('memberRef', memberId)
+    .find({ suppressAuth: true });
+
+  if (result.items.length === 0) {
+    return null;
+  }
+
+  const emp = result.items[0];
+  return {
+    _id: emp._id,
+    displayName: emp.displayName,
+    canViewOtherRecords: !!emp.canViewOtherRecords,
+    commissionRate: emp.commissionRate || 0,
+  };
+}
+
+// ─── Order Records (CMS) ───
+
+export async function getOrderRecords(employeeId, canViewOthers) {
+  let query = wixData.query('DashboardOrders');
+  if (!canViewOthers) {
+    query = query.eq('createdByRef', employeeId);
+  }
+  const results = await query
+    .descending('_createdDate')
+    .limit(100)
+    .find({ suppressAuth: true });
+
+  return results.items;
+}
+
+export async function getOrderDetails(recordId) {
+  const item = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
+  return item;
+}
+
+// ─── Create Order ───
+
+async function generateOrderNumber() {
+  const latest = await wixData.query('DashboardOrders')
+    .descending('_createdDate')
+    .limit(1)
+    .find({ suppressAuth: true });
+
+  if (latest.items.length === 0) return 'TWK-1001';
+
+  const lastNum = latest.items[0].orderNumber;
+  if (lastNum) {
+    const num = parseInt(lastNum.replace('TWK-', ''), 10);
+    return `TWK-${num + 1}`;
+  }
+  return `TWK-${Date.now().toString().slice(-4)}`;
+}
+
+export async function createOrderRecord(orderData, employeeId) {
+  console.log(`${LOG_PREFIX} Creating order for employee: ${employeeId}`);
+
+  let couponResult = null;
+  if (orderData.coupon) {
+    couponResult = await createOrderCoupon(orderData.coupon.type, orderData.coupon.value);
+    console.log(`${LOG_PREFIX} Coupon created: ${couponResult.code}`);
+  }
+
+  let contactId = orderData.customer.contactId;
+  if (!contactId && orderData.customer.phone) {
+    const existing = await searchContactsByQuery(orderData.customer.phone);
+    if (existing.length > 0) {
+      contactId = existing[0].id;
+    }
+  }
+
+  const orderNumber = await generateOrderNumber();
+  const dynamicLinkId = null; // Will be set after insert from _id
+
+  const record = {
+    orderNumber,
+    status: 'sent',
+    createdByRef: employeeId,
+    paymentMethod: orderData.paymentTag || '',
+    products: JSON.stringify(orderData.products),
+    totalPrice: orderData.totalPrice,
+    couponId: couponResult?.couponId || '',
+    couponDetails: couponResult ? JSON.stringify({ type: orderData.coupon.type, value: orderData.coupon.value, code: couponResult.code }) : '',
+    notes: orderData.notes || '',
+    orderChangeNotes: orderData.orderChanges || '',
+    changeChain: JSON.stringify([
+      { action: 'created', by: employeeId, date: new Date().toISOString(), detail: 'הזמנה נוצרה' }
+    ]),
+    payerContactId: contactId || '',
+    customerName: orderData.customer.firstName + (orderData.customer.lastName ? ' ' + orderData.customer.lastName : ''),
+    customerPhone: orderData.customer.phone || '',
+    customerEmail: orderData.customer.email || '',
+    errors: '',
+    completedOrderData: '',
+  };
+
+  const inserted = await wixData.insert('DashboardOrders', record, { suppressAuth: true });
+  console.log(`${LOG_PREFIX} Order record inserted: ${inserted._id}`);
+
+  const dynamicId = inserted._id.substring(0, 16);
+  await wixData.update('DashboardOrders', {
+    ...inserted,
+    dynamicLinkId: dynamicId,
+  }, { suppressAuth: true });
+
+  let checkoutResult = null;
+  try {
+    checkoutResult = await createDashboardCheckout({
+      products: orderData.products,
+      contactId,
+      orderChangeNotes: orderData.orderChanges || '',
+      couponCode: couponResult?.code || null,
+      isPaid: orderData.paymentStatus === 'paid',
+    });
+
+    const currentRecord = await wixData.get('DashboardOrders', inserted._id, { suppressAuth: true });
+    await wixData.update('DashboardOrders', {
+      ...currentRecord,
+      checkoutId: checkoutResult.checkoutId,
+      checkoutLink: checkoutResult.checkoutUrl,
+      dynamicLinkId: dynamicId,
+    }, { suppressAuth: true });
+
+    console.log(`${LOG_PREFIX} Checkout created: ${checkoutResult.checkoutId}`);
+  } catch (err) {
+    console.error(`${LOG_PREFIX} Checkout creation failed:`, err);
+    const currentRecord = await wixData.get('DashboardOrders', inserted._id, { suppressAuth: true });
+    await wixData.update('DashboardOrders', {
+      ...currentRecord,
+      errors: JSON.stringify({ checkout: err.message }),
+      status: 'error',
+    }, { suppressAuth: true });
+  }
+
+  return {
+    recordId: inserted._id,
+    orderNumber,
+    checkoutLink: checkoutResult?.checkoutUrl || '',
+    dynamicLinkId: dynamicId,
+  };
+}
+
+// ─── Add Note ───
+
+export async function addOrderNote(recordId, noteText, employeeName) {
+  const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
+
+  const chain = JSON.parse(record.changeChain || '[]');
+  chain.push({
+    action: 'note',
+    by: employeeName,
+    date: new Date().toISOString(),
+    detail: noteText,
+  });
+
+  await wixData.update('DashboardOrders', {
+    ...record,
+    changeChain: JSON.stringify(chain),
+  }, { suppressAuth: true });
+}
+
+// ─── Cancel Link ───
+
+export async function cancelOrderLink(recordId, employeeName) {
+  const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
+
+  const chain = JSON.parse(record.changeChain || '[]');
+  chain.push({
+    action: 'cancelled',
+    by: employeeName,
+    date: new Date().toISOString(),
+    detail: 'קישור תשלום בוטל',
+  });
+
+  await wixData.update('DashboardOrders', {
+    ...record,
+    status: 'cancelled',
+    changeChain: JSON.stringify(chain),
+  }, { suppressAuth: true });
+}
+
+// ─── Post-Purchase (called from events.js) ───
+
+export async function handleOrderCompleted(ecomOrder) {
+  const checkoutId = ecomOrder.checkoutId;
+  if (!checkoutId) {
+    console.error(`${LOG_PREFIX} onOrderApproved: missing checkoutId`);
+    return;
+  }
+
+  console.log(`${LOG_PREFIX} Handling completed order for checkoutId: ${checkoutId}`);
+
+  const results = await wixData.query('DashboardOrders')
+    .eq('checkoutId', checkoutId)
+    .find({ suppressAuth: true });
+
+  if (results.items.length === 0) {
+    console.log(`${LOG_PREFIX} No dashboard record found for checkoutId: ${checkoutId}`);
+    return;
+  }
+
+  const record = results.items[0];
+
+  // Backup before update
+  const backup = { ...record };
+
+  const chain = JSON.parse(record.changeChain || '[]');
+  chain.push({
+    action: 'paid',
+    by: 'מערכת',
+    date: new Date().toISOString(),
+    detail: 'הזמנה שולמה בהצלחה',
+  });
+
+  const updatedRecord = {
+    ...record,
+    status: 'paid',
+    completedOrderData: JSON.stringify(ecomOrder),
+    changeChain: JSON.stringify(chain),
+  };
+
+  await wixData.update('DashboardOrders', updatedRecord, { suppressAuth: true });
+  console.log(`${LOG_PREFIX} Order status updated to paid: ${record._id}`);
+
+  // Create member
+  const email = record.customerEmail || ecomOrder.buyerInfo?.email;
+  const phone = record.customerPhone;
+
+  if (email && phone) {
+    try {
+      const memberResult = await createMemberForOrder(email, phone, record.customerName);
+
+      if (memberResult.memberId) {
+        const freshRecord = await wixData.get('DashboardOrders', record._id, { suppressAuth: true });
+        await wixData.update('DashboardOrders', {
+          ...freshRecord,
+          payerMemberRef: memberResult.memberId,
+        }, { suppressAuth: true });
+
+        console.log(`${LOG_PREFIX} Member created: ${memberResult.memberId}`);
+
+        // Assign pricing plans
+        const orderProducts = JSON.parse(record.products || '[]');
+        await assignPricingPlansToMember(memberResult.memberId, orderProducts);
+      }
+    } catch (err) {
+      console.error(`${LOG_PREFIX} Member creation error:`, err.message);
+      const freshRecord = await wixData.get('DashboardOrders', record._id, { suppressAuth: true });
+      await wixData.update('DashboardOrders', {
+        ...freshRecord,
+        errors: JSON.stringify({ member: err.message }),
+      }, { suppressAuth: true });
+    }
+  }
+
+  // Shipping routing
+  const hasOrderChanges = record.orderChangeNotes && record.orderChangeNotes.trim() !== '';
+  await wixData.insert('ShippingRouting', {
+    orderRef: record._id,
+    routedTo: hasOrderChanges ? 'chen' : 'tapuz',
+    changeNote: record.orderChangeNotes || '',
+    handledDate: null,
+  }, { suppressAuth: true });
+
+  console.log(`${LOG_PREFIX} Shipping routed to: ${hasOrderChanges ? 'chen' : 'tapuz'}`);
+}
+
+// ─── Products & Pricing Plans ───
+
+export async function getStoreProducts() {
+  const result = await products.queryProducts().find();
+  return result.items.map(p => ({
+    id: p._id,
+    name: p.name,
+    image: p.media?.mainMedia?.image?.url || p.media?.mainMedia?.url || '',
+  }));
+}
+
+export async function getPricingPlans() {
+  const result = await wixData.query('PaidPlans/Plans')
+    .find({ suppressAuth: true });
+  return result.items.map(p => ({
+    id: p._id,
+    name: p.name,
+  }));
+}
+
+// ─── Contact Search (exposed to page code) ───
+
+export { searchContactsByQuery } from 'backend/helpers/contactHelper';

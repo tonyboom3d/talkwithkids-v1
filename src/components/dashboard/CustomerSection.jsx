@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserPlus, Search, AlertTriangle, Pencil, Phone, Mail, User, CreditCard } from "lucide-react";
+import { LoadingSpinner } from "./LoadingSkeleton";
+import { DEMO_CUSTOMERS } from "./DemoDataProvider";
+import { usePostMessage } from "@/hooks/usePostMessage";
 
 function PaymentStatusField({ paymentStatus, setPaymentStatus }) {
   return (
@@ -34,8 +37,6 @@ function PaymentStatusField({ paymentStatus, setPaymentStatus }) {
     </div>
   );
 }
-import { LoadingSpinner } from "./LoadingSkeleton";
-import { DEMO_CUSTOMERS } from "./DemoDataProvider";
 
 const fadeIn = {
   initial: { opacity: 0, y: 8 },
@@ -44,19 +45,16 @@ const fadeIn = {
   transition: { duration: 0.25, ease: "easeOut" }
 };
 
-export default function CustomerSection({ isDemo, customerData, setCustomerData, paymentStatus, setPaymentStatus }) {
+export default function CustomerSection({ isDemo, customerData, setCustomerData, paymentStatus, setPaymentStatus, selectedContact, setSelectedContact }) {
   const [isExisting, setIsExisting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
-  // fullName helper
-  const fullName = `${customerData.firstName || ""}${customerData.lastName ? " " + customerData.lastName : ""}`.trim();
+  const { request } = usePostMessage();
 
-  // Simulate search with demo data
   useEffect(() => {
     if (!searchQuery.trim() || !isExisting) {
       setSearchResults([]);
@@ -66,26 +64,37 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
 
     setIsSearching(true);
     setShowResults(true);
-    const timer = setTimeout(() => {
-      if (isDemo) {
+
+    if (isDemo) {
+      const timer = setTimeout(() => {
         const filtered = DEMO_CUSTOMERS.filter(c =>
           `${c.firstName} ${c.lastName}`.includes(searchQuery) ||
           c.phone.includes(searchQuery) ||
           c.email.includes(searchQuery)
         );
         setSearchResults(filtered);
-      } else {
-        // In production, this would call Velo
+        setIsSearching(false);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const result = await request('SEARCH_CONTACTS', { query: searchQuery });
+        setSearchResults(result.contacts || []);
+      } catch (err) {
+        console.error('[UI] Contact search failed:', err);
         setSearchResults([]);
+      } finally {
+        setIsSearching(false);
       }
-      setIsSearching(false);
-    }, 800);
+    }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, isExisting, isDemo]);
+  }, [searchQuery, isExisting, isDemo, request]);
 
   const handleSelectCustomer = (customer) => {
-    setSelectedCustomer(customer);
+    setSelectedContact(customer);
     setCustomerData({
       firstName: customer.firstName,
       lastName: customer.lastName,
@@ -99,7 +108,7 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
 
   const handleToggle = (checked) => {
     setIsExisting(checked);
-    setSelectedCustomer(null);
+    setSelectedContact(null);
     setIsEditing(false);
     setSearchQuery("");
     if (!checked) {
@@ -109,14 +118,10 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
 
   const handleFieldChange = (field, value) => {
     setCustomerData(prev => ({ ...prev, [field]: value }));
-    if (selectedCustomer) {
-      setSelectedCustomer(prev => ({ ...prev, [field]: value }));
-    }
   };
 
   return (
     <motion.div {...fadeIn} className="space-y-5">
-      {/* Toggle */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <User className="w-[18px] h-[18px] text-slate-400" />
@@ -132,8 +137,7 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
       <AnimatePresence mode="wait">
         {isExisting ? (
           <motion.div key="existing" {...fadeIn} className="space-y-4">
-            {/* Search Field */}
-            {!selectedCustomer && (
+            {!selectedContact && (
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
@@ -144,7 +148,6 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
                   dir="rtl"
                 />
 
-                {/* Search Results Dropdown */}
                 <AnimatePresence>
                   {showResults && (
                     <motion.div
@@ -170,7 +173,7 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-medium text-slate-700">{c.firstName} {c.lastName}</div>
-                                <div className="text-xs text-slate-400 truncate">{c.phone || c.email || "—"}</div>
+                                <div className="text-xs text-slate-400 truncate">{c.phone || c.email || "\u2014"}</div>
                               </div>
                             </button>
                           ))}
@@ -182,8 +185,7 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
               </div>
             )}
 
-            {/* Selected Customer Card */}
-            {selectedCustomer && !isEditing && (
+            {selectedContact && !isEditing && (
               <motion.div {...fadeIn} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                 <div className="flex items-start justify-between mb-3">
                   <Button
@@ -196,19 +198,19 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
                     ערוך
                   </Button>
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-slate-800">{selectedCustomer.firstName} {selectedCustomer.lastName}</div>
+                    <div className="text-sm font-semibold text-slate-800">{customerData.firstName} {customerData.lastName}</div>
                   </div>
                 </div>
                 <div className="space-y-1.5 text-right">
-                  {selectedCustomer.email && (
+                  {customerData.email && (
                     <div className="flex items-center gap-2 justify-end text-xs text-slate-500">
-                      <span>{selectedCustomer.email}</span>
+                      <span>{customerData.email}</span>
                       <Mail className="w-3.5 h-3.5" />
                     </div>
                   )}
-                  {selectedCustomer.phone ? (
+                  {customerData.phone ? (
                     <div className="flex items-center gap-2 justify-end text-xs text-slate-500">
-                      <span>{selectedCustomer.phone}</span>
+                      <span>{customerData.phone}</span>
                       <Phone className="w-3.5 h-3.5" />
                     </div>
                   ) : (
@@ -222,17 +224,16 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
                 </div>
                 <div className="mt-3 pt-3 border-t border-slate-200/60">
                   <button
-                    onClick={() => { setSelectedCustomer(null); setSearchQuery(""); }}
+                    onClick={() => { setSelectedContact(null); setSearchQuery(""); }}
                     className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    בחר לקוח אחר ←
+                    בחר לקוח אחר \u2190
                   </button>
                 </div>
               </motion.div>
             )}
 
-            {/* Edit Mode for Existing Customer */}
-            {selectedCustomer && isEditing && (
+            {selectedContact && isEditing && (
               <motion.div {...fadeIn} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -260,7 +261,6 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
           </motion.div>
         ) : (
           <motion.div key="new" {...fadeIn} className="space-y-3">
-            {/* Row 1: Full name + Email */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs text-slate-500 block text-right">אימייל</Label>
@@ -283,7 +283,6 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
                 />
               </div>
             </div>
-            {/* Row 2: Phone + Payment Status */}
             <div className="grid grid-cols-2 gap-3">
               <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
               <div className="space-y-1.5">

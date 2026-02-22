@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ShoppingBag, Search, X, Plus, Minus, Package, ChevronDown } from "lucide-react";
 import { LoadingSpinner } from "./LoadingSkeleton";
 import { DEMO_PRODUCTS } from "./DemoDataProvider";
+import { usePostMessage } from "@/hooks/usePostMessage";
 
 export default function ProductSelector({ isDemo, selectedProducts, setSelectedProducts }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,17 +14,31 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef(null);
+  const { request } = usePostMessage();
 
   useEffect(() => {
     setIsLoading(true);
-    const timer = setTimeout(() => {
-      if (isDemo) {
+
+    if (isDemo) {
+      const timer = setTimeout(() => {
         setProducts(DEMO_PRODUCTS);
+        setIsLoading(false);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+
+    (async () => {
+      try {
+        const result = await request('GET_PRODUCTS');
+        setProducts(result.products || []);
+      } catch (err) {
+        console.error('[UI] Failed to load products:', err);
+        setProducts([]);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [isDemo]);
+    })();
+  }, [isDemo, request]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -90,7 +104,6 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
         </Label>
       </div>
 
-      {/* Dropdown Trigger */}
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
@@ -114,7 +127,6 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
               transition={{ duration: 0.15 }}
               className="absolute z-30 top-full mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden"
             >
-              {/* Search */}
               <div className="p-3 border-b border-slate-100">
                 <div className="relative">
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -129,7 +141,6 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                 </div>
               </div>
 
-              {/* Products List */}
               <div className="max-h-64 overflow-y-auto">
                 {isLoading ? (
                   <LoadingSpinner text="טוען מוצרים..." />
@@ -144,27 +155,24 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                     return (
                       <button
                         key={product.id}
-                        onClick={() => product.inStock && addProduct(product)}
-                        disabled={!product.inStock}
+                        onClick={() => addProduct(product)}
                         className={`w-full px-4 py-3 flex items-center gap-3 transition-colors text-right border-b border-slate-50 last:border-0 ${
-                          !product.inStock ? 'opacity-50 cursor-not-allowed bg-slate-50' :
                           isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'
                         }`}
                       >
                         <div className="flex items-center gap-3 shrink-0">
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-10 h-10 rounded-lg object-cover border border-slate-100"
-                          />
+                          {product.image && (
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-10 h-10 rounded-lg object-cover border border-slate-100"
+                            />
+                          )}
                           <span className="text-sm text-slate-700">{product.name}</span>
                         </div>
                         <div className="flex items-center gap-2 mr-auto shrink-0">
                           {isSelected && (
                             <Badge className="bg-blue-100 text-blue-700 text-[10px] border-0 shrink-0">נבחר</Badge>
-                          )}
-                          {!product.inStock && (
-                            <Badge variant="outline" className="text-red-500 border-red-200 text-[10px] shrink-0">אזל מהמלאי</Badge>
                           )}
                         </div>
                       </button>
@@ -177,7 +185,6 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
         </AnimatePresence>
       </div>
 
-      {/* Selected Products */}
       <AnimatePresence>
         {selectedProducts.length > 0 && (
           <motion.div
@@ -222,19 +229,15 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                   <div className="flex-1 min-w-0 text-right">
                     <span className="text-sm text-slate-700">{product.name}</span>
                   </div>
-                  <img src={product.image} alt="" className="w-9 h-9 rounded-lg object-cover border border-slate-100 shrink-0" />
+                  {product.image && (
+                    <img src={product.image} alt="" className="w-9 h-9 rounded-lg object-cover border border-slate-100 shrink-0" />
+                  )}
                 </div>
               </motion.div>
             ))}
 
-            {/* Total */}
-            <div className={`flex items-center justify-between pt-2 border-t border-slate-200/60`}>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-bold text-slate-800">₪{total.toLocaleString()}</span>
-                {total > 0 && total.toString().length < 4 && (
-                  <span className="text-xs text-red-500">סכום ההזמנה חייב להיות לפחות 4 ספרות</span>
-                )}
-              </div>
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
+              <span className="text-base font-bold text-slate-800">₪{total.toLocaleString()}</span>
               <span className="text-sm text-slate-500">סה״כ</span>
             </div>
           </motion.div>

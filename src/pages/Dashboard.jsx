@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, TestTube, MessageSquare, Tag, Percent, DollarSign, Ticket } from "lucide-react";
+import { Send, Loader2, MessageSquare, Tag, Percent, DollarSign, Ticket } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
@@ -12,11 +11,18 @@ import CustomerSection from "../components/dashboard/CustomerSection";
 import ProductSelector from "../components/dashboard/ProductSelector";
 import OrdersTable from "../components/dashboard/OrdersTable";
 import OrderDetailPanel from "../components/dashboard/OrderDetailPanel";
-import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
+import { useAuth } from "@/lib/IframeAuthContext";
+import { usePostMessage, usePostMessageListener } from "@/hooks/usePostMessage";
+import { DEMO_ORDERS, DEMO_PRODUCTS, DEMO_CUSTOMERS } from "../components/dashboard/DemoDataProvider";
 
 export default function Dashboard() {
-  const [isDemo, setIsDemo] = useState(true);
+  const { user, canViewOthers } = useAuth();
+  const { send, request } = usePostMessage();
+
+  const isDemo = !user;
+
   const [customerData, setCustomerData] = useState({ firstName: "", lastName: "", email: "", phone: "" });
+  const [selectedContact, setSelectedContact] = useState(null);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [paymentStatus, setPaymentStatus] = useState("unpaid");
   const [notes, setNotes] = useState("");
@@ -25,33 +31,43 @@ export default function Dashboard() {
   const [orders, setOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [orderCounter, setOrderCounter] = useState(1005);
   const [paymentTag, setPaymentTag] = useState("");
   const [couponEnabled, setCouponEnabled] = useState(false);
   const [couponType, setCouponType] = useState("percent");
   const [couponValue, setCouponValue] = useState("");
   const [validationError, setValidationError] = useState("");
 
-  // Load orders
-  useEffect(() => {
+  const loadOrders = useCallback(async () => {
     setIsLoadingOrders(true);
-    const timer = setTimeout(() => {
-      if (isDemo) {
-        setOrders(DEMO_ORDERS);
-      } else {
-        setOrders([]);
-      }
+    if (isDemo) {
+      setTimeout(() => { setOrders(DEMO_ORDERS); setIsLoadingOrders(false); }, 800);
+      return;
+    }
+    try {
+      const result = await request('GET_ORDERS');
+      setOrders(result.orders || []);
+    } catch (err) {
+      console.error('[UI] Failed to load orders:', err);
+      toast.error("שגיאה בטעינת ההזמנות");
+    } finally {
       setIsLoadingOrders(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [isDemo]);
+    }
+  }, [isDemo, request]);
+
+  useEffect(() => { loadOrders(); }, [loadOrders]);
+
+  usePostMessageListener('ORDER_STATUS_UPDATED', (payload) => {
+    setOrders(prev => prev.map(o =>
+      o._id === payload.recordId ? { ...o, ...payload.updates } : o
+    ));
+  });
 
   const showError = (msg) => {
     setValidationError(msg);
     setTimeout(() => setValidationError(""), 3700);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!customerData.phone) {
       showError("מספר טלפון הוא שדה חובה");
       return;
@@ -72,78 +88,89 @@ export default function Dashboard() {
 
     setIsSubmitting(true);
 
-    // Simulate Velo API call
-    setTimeout(() => {
-      const newOrder = {
-        id: `ORD-${orderCounter}`,
-        date: new Date().toISOString(),
-        customer: { ...customerData },
-        products: selectedProducts.map(p => ({ id: p.id, name: p.name, price: p.price, quantity: p.quantity })),
-        total: selectedProducts.reduce((sum, p) => sum + p.price * p.quantity, 0),
-        paymentStatus: paymentStatus,
-        notes: notes,
-        paymentLink: `https://example.com/pay/${Math.random().toString(36).slice(2, 10)}`,
-        timeline: [
-          { type: "created", text: "נוצר קישור תשלום", by: "משתמש נוכחי", date: new Date().toISOString() },
-          { type: "sent", text: "נשלח קישור ללקוח", by: "מערכת", date: new Date().toISOString() },
-        ],
-        orderNotes: notes ? [{ id: `n-${Date.now()}`, text: notes, by: "משתמש נוכחי", date: new Date().toISOString() }] : [],
-      };
+    if (isDemo) {
+      setTimeout(() => {
+        toast.success("(מצב דמו) קישור תשלום נוצר!");
+        resetForm();
+        setIsSubmitting(false);
+      }, 1500);
+      return;
+    }
 
-      setOrders(prev => [newOrder, ...prev]);
-      setOrderCounter(prev => prev + 1);
-      setCustomerData({ firstName: "", lastName: "", email: "", phone: "" });
-      setSelectedProducts([]);
-      setPaymentStatus("unpaid");
-      setNotes("");
+    try {
+      const coupon = couponEnabled && couponValue
+        ? { type: couponType, value: parseFloat(couponValue) }
+        : null;
+
+      const result = await request('CREATE_ORDER', {
+        customer: {
+          ...customerData,
+          contactId: selectedContact?.id || null,
+        },
+        products: selectedProducts.map(p => ({
+          id: p.id, name: p.name, price: p.price, quantity: p.quantity, image: p.image,
+        })),
+        coupon,
+        notes,
+        orderChanges,
+        paymentStatus,
+        paymentTag: paymentStatus === 'paid' ? paymentTag : '',
+        totalPrice: total,
+      });
+
+      console.log('[UI] Order created:', result.orderNumber);
+      toast.success(`הזמנה ${result.orderNumber} נוצרה בהצלחה!`);
+      resetForm();
+      loadOrders();
+    } catch (err) {
+      console.error('[UI] Create order failed:', err);
+      toast.error(err.message || "שגיאה ביצירת ההזמנה");
+    } finally {
       setIsSubmitting(false);
-      toast.success("קישור תשלום נוצר ונשלח בהצלחה!");
-    }, 1500);
+    }
   };
 
-  const handleCancelLink = (orderId) => {
-    setOrders(prev =>
-      prev.map(order => {
-        if (order.id !== orderId) return order;
-        const updated = {
-          ...order,
-          linkCancelled: true,
-          timeline: [...order.timeline, { type: "failed", text: "קישור תשלום בוטל", by: "משתמש נוכחי", date: new Date().toISOString() }],
-        };
-        if (selectedOrder?.id === orderId) setSelectedOrder(updated);
-        return updated;
-      })
-    );
+  const resetForm = () => {
+    setCustomerData({ firstName: "", lastName: "", email: "", phone: "" });
+    setSelectedContact(null);
+    setSelectedProducts([]);
+    setPaymentStatus("unpaid");
+    setNotes("");
+    setOrderChanges("");
+    setPaymentTag("");
+    setCouponEnabled(false);
+    setCouponType("percent");
+    setCouponValue("");
   };
 
-  const handleAddNote = (orderId, noteText) => {
-    setOrders(prev =>
-      prev.map(order => {
-        if (order.id === orderId) {
-          const newNote = {
-            id: `n-${Date.now()}`,
-            text: noteText,
-            by: "משתמש נוכחי",
-            date: new Date().toISOString(),
-          };
-          const newTimeline = [
-            ...order.timeline,
-            { type: "note", text: `נוספה הערה: ${noteText}`, by: "משתמש נוכחי", date: new Date().toISOString() },
-          ];
-          const updated = {
-            ...order,
-            orderNotes: [...order.orderNotes, newNote],
-            timeline: newTimeline,
-          };
-          if (selectedOrder?.id === orderId) {
-            setSelectedOrder(updated);
-          }
-          return updated;
-        }
-        return order;
-      })
-    );
-    toast.success("הערה נוספה בהצלחה");
+  const handleCancelLink = async (orderId) => {
+    if (isDemo) {
+      setOrders(prev => prev.map(o => o.id === orderId
+        ? { ...o, linkCancelled: true, status: 'cancelled' }
+        : o
+      ));
+      return;
+    }
+    try {
+      await request('CANCEL_LINK', { recordId: orderId });
+      loadOrders();
+    } catch (err) {
+      toast.error("שגיאה בביטול הקישור");
+    }
+  };
+
+  const handleAddNote = async (orderId, noteText) => {
+    if (isDemo) {
+      toast.success("(מצב דמו) הערה נוספה");
+      return;
+    }
+    try {
+      await request('ADD_ORDER_NOTE', { recordId: orderId, note: noteText });
+      toast.success("הערה נוספה בהצלחה");
+      loadOrders();
+    } catch (err) {
+      toast.error("שגיאה בהוספת הערה");
+    }
   };
 
   return (
@@ -160,17 +187,11 @@ export default function Dashboard() {
             <h1 className="text-xl font-bold text-slate-900">ניהול הזמנות</h1>
             <p className="text-sm text-slate-400 mt-0.5">יצירת קישורי תשלום ומעקב הזמנות</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-2" dir="ltr">
-              <TestTube className={`w-4 h-4 transition-colors ${isDemo ? 'text-violet-500' : 'text-slate-300'}`} />
-              <Switch
-                id="demo-toggle"
-                checked={isDemo}
-                onCheckedChange={setIsDemo}
-              />
-              <Label htmlFor="demo-toggle" className="text-xs text-slate-500 cursor-pointer">מצב דמו</Label>
+          {isDemo && (
+            <div className="bg-amber-50 border border-amber-200 rounded-full px-4 py-2">
+              <span className="text-xs text-amber-700 font-medium">מצב דמו - לא מחובר לוויקס</span>
             </div>
-          </div>
+          )}
         </motion.div>
 
         {/* Order Form */}
@@ -186,6 +207,8 @@ export default function Dashboard() {
             setCustomerData={setCustomerData}
             paymentStatus={paymentStatus}
             setPaymentStatus={setPaymentStatus}
+            selectedContact={selectedContact}
+            setSelectedContact={setSelectedContact}
           />
 
           <div className="border-t border-slate-100" />
@@ -302,7 +325,7 @@ export default function Dashboard() {
 
           <div className="border-t border-slate-100" />
 
-          {/* Payment Tag - shown only when paid */}
+          {/* Payment Tag */}
           <AnimatePresence>
             {paymentStatus === "paid" && (
               <motion.div
@@ -345,7 +368,6 @@ export default function Dashboard() {
             className="space-y-4"
           >
             <div className="grid grid-cols-2 gap-4">
-              {/* הערות להזמנה */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-[18px] h-[18px] text-slate-400" />
@@ -366,7 +388,6 @@ export default function Dashboard() {
                 />
               </div>
 
-              {/* שינויים להזמנה */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-[18px] h-[18px] text-slate-400" />
@@ -456,7 +477,6 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Order Detail Side Panel */}
       <AnimatePresence>
         {selectedOrder && (
           <OrderDetailPanel
@@ -467,8 +487,6 @@ export default function Dashboard() {
           />
         )}
       </AnimatePresence>
-
-
     </div>
   );
 }

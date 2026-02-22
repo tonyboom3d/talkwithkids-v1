@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { createPageUrl } from "./utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  LayoutDashboard, ShoppingBag, BarChart2, LogOut, Menu, X
+  LayoutDashboard, ShoppingBag, BarChart2, Menu, X
 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/IframeAuthContext";
 
 const navItems = [
   { label: "ניהול הזמנות", page: "Dashboard", icon: LayoutDashboard },
@@ -15,6 +15,7 @@ const navItems = [
 
 export default function Layout({ children, currentPageName }) {
   const [collapsed, setCollapsed] = useState(false);
+  const { user } = useAuth();
 
   return (
     <div style={{ fontFamily: "'Assistant', 'Helvetica Neue', sans-serif" }}>
@@ -28,14 +29,12 @@ export default function Layout({ children, currentPageName }) {
       `}</style>
 
       <div className="flex min-h-screen bg-[#f8f8f8]">
-        {/* Sidebar - Right side */}
         <motion.aside
           animate={{ width: collapsed ? 64 : 220 }}
           transition={{ duration: 0.25, ease: "easeInOut" }}
           className="bg-white border-l border-slate-200 flex flex-col shrink-0 relative z-20"
           style={{ minHeight: "100vh" }}
         >
-          {/* Logo / Toggle */}
           <div className="h-14 flex items-center justify-between px-4 border-b border-slate-100">
             <button
               onClick={() => setCollapsed(!collapsed)}
@@ -48,7 +47,6 @@ export default function Layout({ children, currentPageName }) {
             )}
           </div>
 
-          {/* Nav Items */}
           <nav className="flex-1 py-3 space-y-0.5 px-2">
             {navItems.map(({ label, page, icon: Icon }) => {
               const isActive = currentPageName === page;
@@ -71,20 +69,13 @@ export default function Layout({ children, currentPageName }) {
             })}
           </nav>
 
-          {/* Logout */}
-          <div className="px-2 pb-4 border-t border-slate-100 pt-3">
-            <button
-              title={collapsed ? "התנתקות" : undefined}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors
-                ${collapsed ? "justify-center" : "justify-end"}`}
-            >
-              {!collapsed && <span>התנתקות</span>}
-              <LogOut className="w-4 h-4 shrink-0" />
-            </button>
-          </div>
+          {!collapsed && user && (
+            <div className="px-3 pb-4 border-t border-slate-100 pt-3">
+              <div className="text-xs text-slate-400 text-right truncate">{user.displayName}</div>
+            </div>
+          )}
         </motion.aside>
 
-        {/* Main Content */}
         <main className="flex-1 min-w-0">
           {children}
         </main>

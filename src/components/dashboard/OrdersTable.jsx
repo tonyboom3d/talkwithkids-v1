@@ -10,6 +10,39 @@ import moment from "moment";
 
 const PAGE_SIZE = 8;
 
+const STATUS_CONFIG = {
+  sent:      { label: "נשלח",    className: "bg-slate-100 text-slate-600" },
+  opened:    { label: "נפתח",    className: "bg-yellow-100 text-yellow-700" },
+  unpaid:    { label: "לא שולם", className: "bg-red-100 text-red-700" },
+  cancelled: { label: "בוטל",    className: "bg-gray-100 text-gray-500" },
+  error:     { label: "שגיאה",   className: "bg-red-100 text-red-700" },
+  paid:      { label: "שולם",    className: "bg-emerald-100 text-emerald-700" },
+};
+
+function getDisplayStatus(order) {
+  if (order.status && STATUS_CONFIG[order.status]) {
+    return order.status;
+  }
+
+  if (order.linkCancelled) return 'cancelled';
+  if (order.errors) return 'error';
+  if (order.paymentStatus === 'paid') return 'paid';
+
+  if (order.status === 'opened' || order.changeChain?.some(c => c.action === 'link_opened')) {
+    return 'opened';
+  }
+
+  const createdDate = order._createdDate || order.date;
+  if (createdDate) {
+    const daysSinceCreation = moment().diff(moment(createdDate), 'days');
+    if (daysSinceCreation >= 3 && order.paymentStatus !== 'paid') {
+      return 'unpaid';
+    }
+  }
+
+  return 'sent';
+}
+
 export default function OrdersTable({ orders, isLoading, onSelectOrder }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -17,12 +50,13 @@ export default function OrdersTable({ orders, isLoading, onSelectOrder }) {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return orders;
-    return orders.filter(o =>
-      o.id.toLowerCase().includes(q) ||
-      `${o.customer.firstName} ${o.customer.lastName}`.toLowerCase().includes(q) ||
-      o.customer.phone?.includes(q) ||
-      o.customer.email?.toLowerCase().includes(q)
-    );
+    return orders.filter(o => {
+      const id = (o.orderNumber || o.id || '').toLowerCase();
+      const name = `${o.customer?.firstName || o.customerName || ''} ${o.customer?.lastName || ''}`.toLowerCase();
+      const phone = o.customer?.phone || o.customerPhone || '';
+      const email = o.customer?.email || o.customerEmail || '';
+      return id.includes(q) || name.includes(q) || phone.includes(q) || email.toLowerCase().includes(q);
+    });
   }, [orders, search]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
@@ -40,7 +74,6 @@ export default function OrdersTable({ orders, isLoading, onSelectOrder }) {
       transition={{ duration: 0.35, delay: 0.2 }}
       className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden"
     >
-      {/* Header */}
       <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap" dir="rtl">
         <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2 shrink-0">
           <CreditCard className="w-4 h-4 text-slate-400" />
@@ -88,50 +121,55 @@ export default function OrdersTable({ orders, isLoading, onSelectOrder }) {
               </TableHeader>
               <TableBody>
                 <AnimatePresence mode="popLayout">
-                  {paginated.map((order, index) => (
-                    <motion.tr
-                      key={order.id}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.15, delay: index * 0.03 }}
-                      className="cursor-pointer hover:bg-slate-50 transition-colors group border-b border-slate-50 last:border-0"
-                      onClick={() => onSelectOrder(order)}
-                    >
-                      <TableCell className="text-center">
-                        <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity mx-auto">
-                          <Eye className="w-3.5 h-3.5 text-slate-500" />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={`text-[11px] border-0 font-medium ${
-                          order.paymentStatus === "paid"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-amber-100 text-amber-700"
-                        }`}>
-                          {order.paymentStatus === "paid" ? "שולם" : "לא שולם"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm font-semibold text-slate-800">
-                        ₪{order.total?.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-sm text-slate-600">
-                        {order.customer.firstName} {order.customer.lastName}
-                      </TableCell>
-                      <TableCell className="text-xs text-slate-500">
-                        {moment(order.date).format("DD/MM/YY HH:mm")}
-                      </TableCell>
-                      <TableCell className="text-xs font-mono text-slate-500">
-                        {order.id}
-                      </TableCell>
-                    </motion.tr>
-                  ))}
+                  {paginated.map((order, index) => {
+                    const displayStatus = getDisplayStatus(order);
+                    const statusCfg = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.sent;
+                    const customerName = order.customer
+                      ? `${order.customer.firstName} ${order.customer.lastName}`
+                      : order.customerName || '';
+                    const orderDate = order._createdDate || order.date;
+                    const orderId = order.orderNumber || order.id || order._id;
+
+                    return (
+                      <motion.tr
+                        key={order._id || order.id}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15, delay: index * 0.03 }}
+                        className="cursor-pointer hover:bg-slate-50 transition-colors group border-b border-slate-50 last:border-0"
+                        onClick={() => onSelectOrder(order)}
+                      >
+                        <TableCell className="text-center">
+                          <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity mx-auto">
+                            <Eye className="w-3.5 h-3.5 text-slate-500" />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`text-[11px] border-0 font-medium ${statusCfg.className}`}>
+                            {statusCfg.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm font-semibold text-slate-800">
+                          ₪{(order.totalPrice ?? order.total ?? 0).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-600">
+                          {customerName}
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-500">
+                          {orderDate ? moment(orderDate).format("DD/MM/YY HH:mm") : '—'}
+                        </TableCell>
+                        <TableCell className="text-xs font-mono text-slate-500">
+                          {orderId}
+                        </TableCell>
+                      </motion.tr>
+                    );
+                  })}
                 </AnimatePresence>
               </TableBody>
             </Table>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between" dir="rtl">
               <Button
