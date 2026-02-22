@@ -69,7 +69,7 @@ export default function MySales() {
 
   return (
     <div className="min-h-screen bg-[#f8f8f8] p-6" dir="rtl">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6 relative">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
           <div>
