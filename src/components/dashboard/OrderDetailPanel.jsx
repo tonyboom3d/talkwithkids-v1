@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   X, User, Phone, Mail, Package, CreditCard, Link2,
   MessageSquarePlus, Clock, CheckCircle2, XCircle,
-  Send, Truck, AlertTriangle, FileEdit, Eye, StickyNote
+  Send, Truck, AlertTriangle, FileEdit, Eye, StickyNote, ExternalLink
 } from "lucide-react";
 import moment from "moment";
 
