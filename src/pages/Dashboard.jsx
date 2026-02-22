@@ -182,7 +182,7 @@ export default function Dashboard() {
               <Label className="text-sm font-medium text-slate-700">סטטוס תשלום</Label>
             </div>
             <Select value={paymentStatus} onValueChange={setPaymentStatus}>
-              <SelectTrigger className="h-11 text-sm border-slate-200">
+              <SelectTrigger className="h-11 text-sm border-slate-200 flex-row-reverse">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
