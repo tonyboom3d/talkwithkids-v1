@@ -170,18 +170,59 @@ export default function OrderDetailPanel({ order, onClose, onAddNote, onCancelLi
           {order.paymentLink && (
             <div className="space-y-3">
               <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">קישור תשלום</h4>
-              <div className="bg-slate-50 rounded-lg px-3 py-2.5 flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs text-blue-600 hover:text-blue-700 h-7 shrink-0"
-                  onClick={() => navigator.clipboard.writeText(order.paymentLink)}
-                >
-                  העתק
-                </Button>
-                <span className="text-xs text-slate-500 truncate flex-1" dir="ltr">{order.paymentLink}</span>
-                <Link2 className="w-4 h-4 text-slate-400 shrink-0" />
-              </div>
+              {order.linkCancelled ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 flex items-center gap-2 justify-end">
+                  <span className="text-sm font-medium text-red-600">קישור מבוטל</span>
+                  <XCircle className="w-4 h-4 text-red-500 shrink-0" />
+                </div>
+              ) : (
+                <>
+                  <div className="bg-slate-50 rounded-lg px-3 py-2.5 flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-blue-600 hover:text-blue-700 h-7 shrink-0"
+                      onClick={() => navigator.clipboard.writeText(order.paymentLink)}
+                    >
+                      העתק
+                    </Button>
+                    <span className="text-xs text-slate-500 truncate flex-1" dir="ltr">{order.paymentLink}</span>
+                    <Link2 className="w-4 h-4 text-slate-400 shrink-0" />
+                  </div>
+                  <AnimatePresence>
+                    {confirmCancel ? (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+                          <p className="text-xs text-red-700 text-right">האם לבטל את הקישור? פעולה זו אינה ניתנת לביטול.</p>
+                          <div className="flex gap-2 justify-start">
+                            <Button size="sm" className="text-xs h-8 bg-red-600 hover:bg-red-700 text-white" onClick={handleCancelLink}>
+                              כן, בטל קישור
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setConfirmCancel(false)}>
+                              חזרה
+                            </Button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-8 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 w-full gap-1.5"
+                        onClick={() => setConfirmCancel(true)}
+                      >
+                        <XCircle className="w-3.5 h-3.5" />
+                        ביטול קישור
+                      </Button>
+                    )}
+                  </AnimatePresence>
+                </>
+              )}
             </div>
           )}
 
