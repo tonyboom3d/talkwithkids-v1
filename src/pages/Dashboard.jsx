@@ -273,38 +273,6 @@ export default function Dashboard() {
 
           <div className="border-t border-slate-100" />
 
-          {/* Payment Status */}
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: 0.15 }}
-            className="space-y-3"
-          >
-            <div className="flex items-center gap-2">
-              <CreditCard className="w-[18px] h-[18px] text-slate-400" />
-              <Label className="text-sm font-medium text-slate-700">סטטוס תשלום</Label>
-            </div>
-            <Select value={paymentStatus} onValueChange={setPaymentStatus}>
-              <SelectTrigger className="h-11 text-sm border-slate-200 flex-row-reverse">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="unpaid">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-amber-400" />
-                    לא שולם
-                  </div>
-                </SelectItem>
-                <SelectItem value="paid">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                    שולם
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </motion.div>
-
           {/* Payment Tag - shown only when paid */}
           <AnimatePresence>
             {paymentStatus === "paid" && (
