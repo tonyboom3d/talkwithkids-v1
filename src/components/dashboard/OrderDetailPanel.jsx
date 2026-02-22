@@ -44,9 +44,15 @@ function TimelineItem({ event, isLast }) {
   );
 }
 
-export default function OrderDetailPanel({ order, onClose, onAddNote }) {
+export default function OrderDetailPanel({ order, onClose, onAddNote, onCancelLink }) {
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
+  const handleCancelLink = () => {
+    onCancelLink(order.id);
+    setConfirmCancel(false);
+  };
 
   if (!order) return null;
 
