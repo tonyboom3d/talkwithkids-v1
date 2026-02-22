@@ -236,21 +236,20 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
               <motion.div {...fadeIn} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-500">שם פרטי</Label>
-                    <Input value={customerData.firstName} onChange={e => handleFieldChange("firstName", e.target.value)} className="h-10 text-sm border-slate-200" dir="rtl" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-500">שם משפחה</Label>
-                    <Input value={customerData.lastName} onChange={e => handleFieldChange("lastName", e.target.value)} className="h-10 text-sm border-slate-200" dir="rtl" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
                     <Label className="text-xs text-slate-500 block text-right">אימייל</Label>
                     <Input value={customerData.email} onChange={e => handleFieldChange("email", e.target.value)} className="h-10 text-sm border-slate-200 text-right" dir="rtl" />
                   </div>
                   <div className="space-y-1.5">
+                    <Label className="text-xs text-slate-500 block text-right">שם מלא</Label>
+                    <Input value={customerData.firstName} onChange={e => handleFieldChange("firstName", e.target.value)} className="h-10 text-sm border-slate-200 text-right" dir="rtl" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
+                  <div className="space-y-1.5">
                     <Label className="text-xs text-slate-500 block text-right">טלפון</Label>
                     <Input value={customerData.phone} onChange={e => handleFieldChange("phone", e.target.value)} className="h-10 text-sm border-slate-200 text-right" dir="rtl" />
+                  </div>
                 </div>
                 <div className="flex gap-2 justify-end">
                   <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} className="text-xs h-8">ביטול</Button>
