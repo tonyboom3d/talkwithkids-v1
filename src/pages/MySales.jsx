@@ -131,23 +131,24 @@ export default function MySales() {
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center py-10 text-slate-400">לא נמצאו הזמנות</td></tr>
+                 <tr><td colSpan={6} className="text-center py-10 text-slate-400">לא נמצאו הזמנות</td></tr>
                 ) : filtered.map((order, i) => (
-                  <motion.tr key={order.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
-                    className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors">
-                    <td className="px-4 py-3 font-medium text-slate-700">{order.id}</td>
-                    <td className="px-4 py-3 text-slate-600">{order.customer.firstName} {order.customer.lastName}</td>
-                    <td className="px-4 py-3 text-slate-500 max-w-[180px] truncate">
-                      {order.products.map(p => p.name).join("، ")}
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-slate-700">₪{order.total.toLocaleString()}</td>
-                    <td className="px-4 py-3">
-                      <Badge className={`border-0 text-xs ${order.paymentStatus === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                        {order.paymentStatus === "paid" ? "שולם" : "לא שולם"}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">{moment(order.date).format("DD/MM/YY")}</td>
-                  </motion.tr>
+                 <motion.tr key={order.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
+                   onClick={() => setSelectedOrder(order)}
+                   className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors cursor-pointer">
+                   <td className="px-4 py-3 font-medium text-slate-700">{order.id}</td>
+                   <td className="px-4 py-3 text-slate-600">{order.customer.firstName} {order.customer.lastName}</td>
+                   <td className="px-4 py-3 text-slate-500 max-w-[180px] truncate">
+                     {order.products.map(p => p.name).join("، ")}
+                   </td>
+                   <td className="px-4 py-3 font-semibold text-slate-700">₪{order.total.toLocaleString()}</td>
+                   <td className="px-4 py-3">
+                     <Badge className={`border-0 text-xs ${order.paymentStatus === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                       {order.paymentStatus === "paid" ? "שולם" : "לא שולם"}
+                     </Badge>
+                   </td>
+                   <td className="px-4 py-3 text-slate-400 text-xs">{moment(order.date).format("DD/MM/YY")}</td>
+                 </motion.tr>
                 ))}
               </tbody>
             </table>
