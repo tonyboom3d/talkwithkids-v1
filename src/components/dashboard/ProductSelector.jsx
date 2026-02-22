@@ -143,7 +143,15 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                           isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'
                         }`}
                       >
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-3 shrink-0">
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-10 h-10 rounded-lg object-cover border border-slate-100"
+                          />
+                          <span className="text-sm text-slate-700">{product.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mr-auto shrink-0">
                           {isSelected && (
                             <Badge className="bg-blue-100 text-blue-700 text-[10px] border-0 shrink-0">נבחר</Badge>
                           )}
@@ -153,14 +161,6 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                           <span className="text-sm font-semibold text-slate-800 whitespace-nowrap">
                             ₪{product.price}
                           </span>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0 mr-auto">
-                          <span className="text-sm text-slate-700">{product.name}</span>
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-10 h-10 rounded-lg object-cover border border-slate-100"
-                          />
                         </div>
                       </button>
                     );
