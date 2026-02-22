@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, Loader2, TestTube, CreditCard, MessageSquare, Tag, Percent, DollarSign, Ticket } from "lucide-react";
+import { Send, Loader2, TestTube, MessageSquare, Tag, Percent, DollarSign, Ticket } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
