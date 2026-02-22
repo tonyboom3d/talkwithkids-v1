@@ -288,8 +288,8 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
               <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
               <div className="space-y-1.5">
                 <Label className="text-xs text-slate-500 flex items-center gap-1 justify-end w-full text-right">
-                  <span className="text-red-400">*</span>
                   טלפון
+                  <span className="text-red-400">*</span>
                 </Label>
                 <Input
                   value={customerData.phone}
