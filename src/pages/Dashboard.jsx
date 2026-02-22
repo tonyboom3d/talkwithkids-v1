@@ -30,6 +30,7 @@ export default function Dashboard() {
   const [couponEnabled, setCouponEnabled] = useState(false);
   const [couponType, setCouponType] = useState("percent");
   const [couponValue, setCouponValue] = useState("");
+  const [validationError, setValidationError] = useState("");
 
   // Load orders
   useEffect(() => {
