@@ -444,6 +444,7 @@ export default function Dashboard() {
             order={selectedOrder}
             onClose={() => setSelectedOrder(null)}
             onAddNote={handleAddNote}
+            onCancelLink={handleCancelLink}
           />
         )}
       </AnimatePresence>
