@@ -5,7 +5,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Search, AlertTriangle, Pencil, Phone, Mail, User } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UserPlus, Search, AlertTriangle, Pencil, Phone, Mail, User, CreditCard } from "lucide-react";
+
+function PaymentStatusField({ paymentStatus, setPaymentStatus }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs text-slate-500 block text-right">סטטוס תשלום</Label>
+      <Select value={paymentStatus} onValueChange={setPaymentStatus}>
+        <SelectTrigger className="h-10 text-sm border-slate-200 flex-row-reverse">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="unpaid">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-amber-400" />
+              לא שולם
+            </div>
+          </SelectItem>
+          <SelectItem value="paid">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-400" />
+              שולם
+            </div>
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 import { LoadingSpinner } from "./LoadingSkeleton";
 import { DEMO_CUSTOMERS } from "./DemoDataProvider";
 
