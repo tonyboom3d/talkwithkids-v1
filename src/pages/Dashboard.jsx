@@ -313,19 +313,69 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: 0.2 }}
-            className="space-y-3"
+            className="space-y-4"
           >
-            <div className="flex items-center gap-2">
-              <MessageSquare className="w-[18px] h-[18px] text-slate-400" />
-              <Label className="text-sm font-medium text-slate-700">הערות \ שינויים בהזמנה</Label>
+            {/* הערות להזמנה */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-[18px] h-[18px] text-slate-400" />
+                <Label className="text-sm font-medium text-slate-700">הערות להזמנה</Label>
+                <div className="relative group">
+                  <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-500 text-[10px] flex items-center justify-center cursor-help font-bold">?</span>
+                  <div className="absolute bottom-full right-0 mb-1.5 w-56 bg-slate-800 text-white text-xs rounded-lg p-2.5 hidden group-hover:block z-10 text-right leading-relaxed shadow-lg">
+                    הערות אלה הן בשבילכן והלקוח\ה לא רואה אותן
+                  </div>
+                </div>
+              </div>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="הוסף הערה פנימית..."
+                className="min-h-[70px] text-sm border-slate-200 focus:border-slate-400 resize-none"
+                dir="rtl"
+              />
             </div>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="הוסף הערה או שינוי להזמנה..."
-              className="min-h-[80px] text-sm border-slate-200 focus:border-slate-400 resize-none"
-              dir="rtl"
-            />
+
+            {/* שינויים להזמנה */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-[18px] h-[18px] text-slate-400" />
+                <Label className="text-sm font-medium text-slate-700">שינויים להזמנה</Label>
+                <div className="relative group">
+                  <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-500 text-[10px] flex items-center justify-center cursor-help font-bold">?</span>
+                  <div className="absolute bottom-full right-0 mb-1.5 w-64 bg-slate-800 text-white text-xs rounded-lg p-2.5 hidden group-hover:block z-10 text-right leading-relaxed shadow-lg">
+                    הערות לשינויים בהזמנות עצמן, במידה ויש שינוי בהזמנה, ההזמנה לא תישלח דרך תפוז*
+                  </div>
+                </div>
+              </div>
+              <Textarea
+                value={orderChanges}
+                onChange={(e) => setOrderChanges(e.target.value)}
+                placeholder="הוסף שינוי להזמנה..."
+                className="min-h-[70px] text-sm border-slate-200 focus:border-slate-400 resize-none"
+                dir="rtl"
+              />
+              <AnimatePresence>
+                {orderChanges.trim() && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-700"
+                  >
+                    <motion.span
+                      animate={{ rotate: [0, -5, 5, -5, 0] }}
+                      transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                      className="text-amber-500 text-sm shrink-0"
+                    >
+                      ⚠️
+                    </motion.span>
+                    <span>הוספת הערות לזה זה משנה את אופן השילוח מתפוז לשילוח דרך חן</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </motion.div>
 
           {/* Submit */}

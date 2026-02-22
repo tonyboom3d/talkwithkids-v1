@@ -37,6 +37,11 @@ function exportToCSV(orders) {
 export default function MySales() {
   const [search, setSearch] = useState("");
   const [dateRange, setDateRange] = useState({ from: null, to: null });
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
+  const handleAddNote = (orderId, noteText) => {
+    // In production this would persist; for now just update local state
+  };
 
   const myOrders = useMemo(() =>
     DEMO_ORDERS.filter(o =>
