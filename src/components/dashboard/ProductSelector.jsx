@@ -89,7 +89,7 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
           className="w-full h-11 px-4 flex items-center justify-between rounded-lg border border-slate-200 bg-white hover:border-slate-300 transition-colors text-sm"
         >
           <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-          <span className="text-slate-500">
+          <span className="text-slate-500 text-right flex-1">
             {selectedProducts.length > 0
               ? `${selectedProducts.length} מוצרים נבחרו`
               : "בחר מוצרים מהקטלוג..."
