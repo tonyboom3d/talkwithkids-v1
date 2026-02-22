@@ -177,13 +177,21 @@ export default function Dashboard() {
             transition={{ duration: 0.25, delay: 0.22 }}
             className="space-y-3"
           >
+            {(() => {
+              const totalForCoupon = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
+              const couponDisabled = totalForCoupon === 0;
+              return null;
+            })()}
             <button
               type="button"
-              onClick={() => { setCouponEnabled(!couponEnabled); setCouponValue(""); }}
+              disabled={selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0) === 0}
+              onClick={() => { if (selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0) > 0) { setCouponEnabled(!couponEnabled); setCouponValue(""); } }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all w-full ${
-                couponEnabled
-                  ? "bg-violet-50 border-violet-300 text-violet-700"
-                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
+                selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0) === 0
+                  ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                  : couponEnabled
+                    ? "bg-violet-50 border-violet-300 text-violet-700"
+                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
               }`}
             >
               <Ticket className="w-4 h-4" />
