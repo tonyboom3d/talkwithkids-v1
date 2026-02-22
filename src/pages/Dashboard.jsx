@@ -397,7 +397,7 @@ export default function Dashboard() {
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-all shadow-sm hover:shadow-md"
+              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all shadow-sm hover:shadow-md"
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
