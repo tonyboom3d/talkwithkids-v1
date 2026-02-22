@@ -67,20 +67,20 @@ export default function Dashboard() {
         id: `ORD-${orderCounter}`,
         date: new Date().toISOString(),
         customer: { ...customerData },
-        products: selectedProducts.map(p => ({ id: p.id, name: p.name, price: p.price, quantity: p.quantity })),
+        products: selectedProducts.map((p) => ({ id: p.id, name: p.name, price: p.price, quantity: p.quantity })),
         total: selectedProducts.reduce((sum, p) => sum + p.price * p.quantity, 0),
         paymentStatus: paymentStatus,
         notes: notes,
         paymentLink: `https://example.com/pay/${Math.random().toString(36).slice(2, 10)}`,
         timeline: [
-          { type: "created", text: "נוצר קישור תשלום", by: "משתמש נוכחי", date: new Date().toISOString() },
-          { type: "sent", text: "נשלח קישור ללקוח", by: "מערכת", date: new Date().toISOString() },
-        ],
-        orderNotes: notes ? [{ id: `n-${Date.now()}`, text: notes, by: "משתמש נוכחי", date: new Date().toISOString() }] : [],
+        { type: "created", text: "נוצר קישור תשלום", by: "משתמש נוכחי", date: new Date().toISOString() },
+        { type: "sent", text: "נשלח קישור ללקוח", by: "מערכת", date: new Date().toISOString() }],
+
+        orderNotes: notes ? [{ id: `n-${Date.now()}`, text: notes, by: "משתמש נוכחי", date: new Date().toISOString() }] : []
       };
 
-      setOrders(prev => [newOrder, ...prev]);
-      setOrderCounter(prev => prev + 1);
+      setOrders((prev) => [newOrder, ...prev]);
+      setOrderCounter((prev) => prev + 1);
       setCustomerData({ firstName: "", lastName: "", email: "", phone: "" });
       setSelectedProducts([]);
       setPaymentStatus("unpaid");
@@ -91,31 +91,31 @@ export default function Dashboard() {
   };
 
   const handleAddNote = (orderId, noteText) => {
-    setOrders(prev =>
-      prev.map(order => {
-        if (order.id === orderId) {
-          const newNote = {
-            id: `n-${Date.now()}`,
-            text: noteText,
-            by: "משתמש נוכחי",
-            date: new Date().toISOString(),
-          };
-          const newTimeline = [
-            ...order.timeline,
-            { type: "note", text: `נוספה הערה: ${noteText}`, by: "משתמש נוכחי", date: new Date().toISOString() },
-          ];
-          const updated = {
-            ...order,
-            orderNotes: [...order.orderNotes, newNote],
-            timeline: newTimeline,
-          };
-          if (selectedOrder?.id === orderId) {
-            setSelectedOrder(updated);
-          }
-          return updated;
+    setOrders((prev) =>
+    prev.map((order) => {
+      if (order.id === orderId) {
+        const newNote = {
+          id: `n-${Date.now()}`,
+          text: noteText,
+          by: "משתמש נוכחי",
+          date: new Date().toISOString()
+        };
+        const newTimeline = [
+        ...order.timeline,
+        { type: "note", text: `נוספה הערה: ${noteText}`, by: "משתמש נוכחי", date: new Date().toISOString() }];
+
+        const updated = {
+          ...order,
+          orderNotes: [...order.orderNotes, newNote],
+          timeline: newTimeline
+        };
+        if (selectedOrder?.id === orderId) {
+          setSelectedOrder(updated);
         }
-        return order;
-      })
+        return updated;
+      }
+      return order;
+    })
     );
     toast.success("הערה נוספה בהצלחה");
   };
@@ -128,8 +128,8 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex items-center justify-between"
-        >
+          className="flex items-center justify-between">
+
           <div className="text-right">
             <h1 className="text-xl font-bold text-slate-900">ניהול הזמנות</h1>
             <p className="text-sm text-slate-400 mt-0.5">יצירת קישורי תשלום ומעקב הזמנות</p>
@@ -140,8 +140,8 @@ export default function Dashboard() {
               <Switch
                 id="demo-toggle"
                 checked={isDemo}
-                onCheckedChange={setIsDemo}
-              />
+                onCheckedChange={setIsDemo} />
+
               <Label htmlFor="demo-toggle" className="text-xs text-slate-500 cursor-pointer">מצב דמו</Label>
             </div>
           </div>
@@ -152,106 +152,106 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.1 }}
-          className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 space-y-6"
-        >
+          className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 space-y-6">
+
           <CustomerSection
             isDemo={isDemo}
             customerData={customerData}
             setCustomerData={setCustomerData}
             paymentStatus={paymentStatus}
-            setPaymentStatus={setPaymentStatus}
-          />
+            setPaymentStatus={setPaymentStatus} />
+
 
           <div className="border-t border-slate-100" />
 
           <ProductSelector
             isDemo={isDemo}
             selectedProducts={selectedProducts}
-            setSelectedProducts={setSelectedProducts}
-          />
+            setSelectedProducts={setSelectedProducts} />
+
 
           {/* Coupon */}
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: 0.22 }}
-            className="space-y-3"
-          >
+            className="space-y-3">
+
             <button
               type="button"
-              onClick={() => { setCouponEnabled(!couponEnabled); setCouponValue(""); }}
+              onClick={() => {setCouponEnabled(!couponEnabled);setCouponValue("");}}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all w-full ${
-                couponEnabled
-                  ? "bg-violet-50 border-violet-300 text-violet-700"
-                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
-              }`}
-            >
+              couponEnabled ?
+              "bg-violet-50 border-violet-300 text-violet-700" :
+              "bg-white border-slate-200 text-slate-600 hover:border-slate-400"}`
+              }>
+
               <Ticket className="w-4 h-4" />
               יצירת קופון הנחה להזמנה
               <div className={`mr-auto w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
-                couponEnabled ? "bg-violet-600 border-violet-600" : "border-slate-300"
-              }`}>
+              couponEnabled ? "bg-violet-600 border-violet-600" : "border-slate-300"}`
+              }>
                 {couponEnabled && <div className="w-2 h-2 bg-white rounded-sm" />}
               </div>
             </button>
 
             <AnimatePresence>
-              {couponEnabled && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
+              {couponEnabled &&
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden">
+
                   <div className="bg-violet-50/60 border border-violet-100 rounded-xl p-4 space-y-3">
                     <div className="flex gap-2">
                       <button
-                        type="button"
-                        onClick={() => { setCouponType("percent"); setCouponValue(""); }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                          couponType === "percent" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200"
-                        }`}
-                      >
+                      type="button"
+                      onClick={() => {setCouponType("percent");setCouponValue("");}}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      couponType === "percent" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200"}`
+                      }>
+
                         <Percent className="w-3 h-3" />
                         אחוזים
                       </button>
                       <button
-                        type="button"
-                        onClick={() => { setCouponType("fixed"); setCouponValue(""); }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                          couponType === "fixed" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200"
-                        }`}
-                      >
+                      type="button"
+                      onClick={() => {setCouponType("fixed");setCouponValue("");}}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      couponType === "fixed" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200"}`
+                      }>
+
                         <DollarSign className="w-3 h-3" />
                         מחיר קבוע
                       </button>
                     </div>
                     {(() => {
-                      const total = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
-                      const val = parseFloat(couponValue) || 0;
-                      const discountAmount = couponType === "percent" ? (total * val / 100) : val;
-                      const discountedTotal = total - discountAmount;
-                      const isInvalid = couponType === "percent" ? val >= 100 : val >= total;
-                      return (
-                        <>
+                    const total = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
+                    const val = parseFloat(couponValue) || 0;
+                    const discountAmount = couponType === "percent" ? total * val / 100 : val;
+                    const discountedTotal = total - discountAmount;
+                    const isInvalid = couponType === "percent" ? val >= 100 : val >= total;
+                    return (
+                      <>
                           <div className="flex items-center gap-2">
                             <Input
-                              type="number"
-                              min="0"
-                              max={couponType === "percent" ? 99 : total - 1}
-                              value={couponValue}
-                              onChange={e => setCouponValue(e.target.value)}
-                              placeholder={couponType === "percent" ? "% הנחה" : "סכום הנחה (₪)"}
-                              className="h-9 text-sm border-slate-200 bg-white"
-                              dir="ltr"
-                            />
+                            type="number"
+                            min="0"
+                            max={couponType === "percent" ? 99 : total - 1}
+                            value={couponValue}
+                            onChange={(e) => setCouponValue(e.target.value)}
+                            placeholder={couponType === "percent" ? "% הנחה" : "סכום הנחה (₪)"}
+                            className="h-9 text-sm border-slate-200 bg-white"
+                            dir="ltr" />
+
                             <span className="text-sm text-slate-500">{couponType === "percent" ? "%" : "₪"}</span>
                           </div>
-                          {isInvalid && (
-                            <p className="text-xs text-red-500">ההנחה לא יכולה להיות גדולה מ-{couponType === "percent" ? "99%" : `₪${(total - 1).toLocaleString()}`}</p>
-                          )}
-                          {val > 0 && !isInvalid && total > 0 && (
-                            <div className="bg-white rounded-lg p-3 space-y-1.5 border border-violet-100">
+                          {isInvalid &&
+                        <p className="text-xs text-red-500">ההנחה לא יכולה להיות גדולה מ-{couponType === "percent" ? "99%" : `₪${(total - 1).toLocaleString()}`}</p>
+                        }
+                          {val > 0 && !isInvalid && total > 0 &&
+                        <div className="bg-white rounded-lg p-3 space-y-1.5 border border-violet-100">
                               <div className="flex items-center justify-between text-sm">
                                 <span className="text-red-500 font-medium">-₪{discountAmount.toLocaleString()}</span>
                                 <span className="text-slate-500">הנחה:</span>
@@ -261,13 +261,13 @@ export default function Dashboard() {
                                 <span className="text-slate-500">מחיר סופי:</span>
                               </div>
                             </div>
-                          )}
-                        </>
-                      );
-                    })()}
+                        }
+                        </>);
+
+                  })()}
                   </div>
                 </motion.div>
-              )}
+              }
             </AnimatePresence>
           </motion.div>
 
@@ -275,37 +275,37 @@ export default function Dashboard() {
 
           {/* Payment Tag - shown only when paid */}
           <AnimatePresence>
-            {paymentStatus === "paid" && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
+            {paymentStatus === "paid" &&
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden">
+
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Tag className="w-[18px] h-[18px] text-slate-400" />
                     <Label className="text-sm font-medium text-slate-700">אמצעי תשלום</Label>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {["ביט", "פייבוקס", "הוראת קבע", "העברה בנקאית", "קארדקום טלפונית", "שולם דרך וויקס"].map(tag => (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => setPaymentTag(paymentTag === tag ? "" : tag)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                          paymentTag === tag
-                            ? "bg-slate-900 text-white border-slate-900"
-                            : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
-                        }`}
-                      >
+                    {["ביט", "פייבוקס", "הוראת קבע", "העברה בנקאית", "קארדקום טלפונית", "שולם דרך וויקס"].map((tag) =>
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setPaymentTag(paymentTag === tag ? "" : tag)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                    paymentTag === tag ?
+                    "bg-slate-900 text-white border-slate-900" :
+                    "bg-white text-slate-600 border-slate-200 hover:border-slate-400"}`
+                    }>
+
                         {tag}
                       </button>
-                    ))}
+                  )}
                   </div>
                 </div>
               </motion.div>
-            )}
+            }
           </AnimatePresence>
 
           {/* Notes */}
@@ -313,8 +313,8 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: 0.2 }}
-            className="space-y-4"
-          >
+            className="space-y-4">
+
             {/* הערות להזמנה */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -332,8 +332,8 @@ export default function Dashboard() {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="הוסף הערה פנימית..."
                 className="min-h-[70px] text-sm border-slate-200 focus:border-slate-400 resize-none"
-                dir="rtl"
-              />
+                dir="rtl" />
+
             </div>
 
             {/* שינויים להזמנה */}
@@ -353,27 +353,27 @@ export default function Dashboard() {
                 onChange={(e) => setOrderChanges(e.target.value)}
                 placeholder="הוסף שינוי להזמנה..."
                 className="min-h-[70px] text-sm border-slate-200 focus:border-slate-400 resize-none"
-                dir="rtl"
-              />
+                dir="rtl" />
+
               <AnimatePresence>
-                {orderChanges.trim() && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-700"
-                  >
+                {orderChanges.trim() &&
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-700">
+
                     <motion.span
-                      animate={{ rotate: [0, -5, 5, -5, 0] }}
-                      transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                      className="text-amber-500 text-sm shrink-0"
-                    >
+                    animate={{ rotate: [0, -5, 5, -5, 0] }}
+                    transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                    className="text-amber-500 text-sm shrink-0">
+
                       ⚠️
                     </motion.span>
-                    <span>הוספת הערות לזה זה משנה את אופן השילוח מתפוז לשילוח דרך חן</span>
+                    <span className="">הוספת הערות לשדה זה משנה את אופן השילוח מתפוז לשילוח דרך חן</span>
                   </motion.div>
-                )}
+                }
               </AnimatePresence>
             </div>
           </motion.div>
@@ -382,24 +382,24 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: 0.25 }}
-          >
+            transition={{ duration: 0.25, delay: 0.25 }}>
+
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-all shadow-sm hover:shadow-md"
-            >
-              {isSubmitting ? (
-                <span className="flex items-center gap-2">
+              className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-all shadow-sm hover:shadow-md">
+
+              {isSubmitting ?
+              <span className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   יוצר קישור תשלום...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
+                </span> :
+
+              <span className="flex items-center gap-2">
                   <Send className="w-4 h-4" />
                   צור קישור תשלום ושלח
                 </span>
-              )}
+              }
             </Button>
           </motion.div>
         </motion.div>
@@ -408,22 +408,22 @@ export default function Dashboard() {
         <OrdersTable
           orders={orders}
           isLoading={isLoadingOrders}
-          onSelectOrder={setSelectedOrder}
-        />
+          onSelectOrder={setSelectedOrder} />
+
       </div>
 
       {/* Order Detail Side Panel */}
       <AnimatePresence>
-        {selectedOrder && (
-          <OrderDetailPanel
-            order={selectedOrder}
-            onClose={() => setSelectedOrder(null)}
-            onAddNote={handleAddNote}
-          />
-        )}
+        {selectedOrder &&
+        <OrderDetailPanel
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onAddNote={handleAddNote} />
+
+        }
       </AnimatePresence>
 
 
-    </div>
-  );
+    </div>);
+
 }
