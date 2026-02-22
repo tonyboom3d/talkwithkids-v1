@@ -233,50 +233,45 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
           </motion.div>
         ) : (
           <motion.div key="new" {...fadeIn} className="space-y-3">
+            {/* Row 1: Full name + Email */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-500">שם פרטי</Label>
+                <Label className="text-xs text-slate-500 block text-right">אימייל</Label>
                 <Input
-                  value={customerData.firstName}
-                  onChange={e => setCustomerData(prev => ({ ...prev, firstName: e.target.value }))}
-                  placeholder="שם פרטי"
-                  className="h-10 text-sm border-slate-200 focus:border-slate-400"
+                  value={customerData.email}
+                  onChange={e => setCustomerData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="example@email.com"
+                  className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
                   dir="rtl"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-500">שם משפחה</Label>
+                <Label className="text-xs text-slate-500 block text-right">שם מלא</Label>
                 <Input
-                  value={customerData.lastName}
-                  onChange={e => setCustomerData(prev => ({ ...prev, lastName: e.target.value }))}
-                  placeholder="שם משפחה"
-                  className="h-10 text-sm border-slate-200 focus:border-slate-400"
+                  value={customerData.firstName}
+                  onChange={e => setCustomerData(prev => ({ ...prev, firstName: e.target.value, lastName: "" }))}
+                  placeholder="שם מלא"
+                  className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
                   dir="rtl"
                 />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-slate-500 block text-right">אימייל</Label>
-              <Input
-                value={customerData.email}
-                onChange={e => setCustomerData(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="example@email.com"
-                className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
-                dir="rtl"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-slate-500 flex items-center gap-1 justify-end w-full text-right">
-                <span className="text-red-400">*</span>
-                טלפון
-              </Label>
-              <Input
-                value={customerData.phone}
-                onChange={e => setCustomerData(prev => ({ ...prev, phone: e.target.value }))}
-                placeholder="050-0000000"
-                className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
-                dir="rtl"
-              />
+            {/* Row 2: Phone + Payment Status */}
+            <div className="grid grid-cols-2 gap-3">
+              <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-500 flex items-center gap-1 justify-end w-full text-right">
+                  <span className="text-red-400">*</span>
+                  טלפון
+                </Label>
+                <Input
+                  value={customerData.phone}
+                  onChange={e => setCustomerData(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="050-0000000"
+                  className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
+                  dir="rtl"
+                />
+              </div>
             </div>
           </motion.div>
         )}
