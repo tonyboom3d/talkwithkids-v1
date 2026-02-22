@@ -177,11 +177,6 @@ export default function Dashboard() {
             transition={{ duration: 0.25, delay: 0.22 }}
             className="space-y-3"
           >
-            {(() => {
-              const totalForCoupon = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
-              const couponDisabled = totalForCoupon === 0;
-              return null;
-            })()}
             <button
               type="button"
               disabled={selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0) === 0}
