@@ -10,7 +10,6 @@ import { base44 } from "@/api/base44Client";
 const navItems = [
   { label: "ניהול הזמנות", page: "Dashboard", icon: LayoutDashboard },
   { label: "המכירות שלי", page: "MySales", icon: ShoppingBag },
-  { label: "משימות", page: "Tasks", icon: CheckSquare },
   { label: "סטטיסטיקות", page: "Statistics", icon: BarChart2 },
 ];
 
