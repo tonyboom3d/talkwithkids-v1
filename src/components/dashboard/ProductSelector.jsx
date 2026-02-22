@@ -166,9 +166,6 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                           {!product.inStock && (
                             <Badge variant="outline" className="text-red-500 border-red-200 text-[10px] shrink-0">אזל מהמלאי</Badge>
                           )}
-                          <span className="text-sm font-semibold text-slate-800 whitespace-nowrap">
-                            ₪{product.price}
-                          </span>
                         </div>
                       </button>
                     );
