@@ -46,16 +46,21 @@ export default function Dashboard() {
   }, [isDemo]);
 
   const handleSubmit = () => {
-    if (!customerData.phone && selectedProducts.length === 0) {
-      toast.error("יש למלא טלפון ולבחור מוצרים");
-      return;
-    }
     if (!customerData.phone) {
       toast.error("מספר טלפון הוא שדה חובה");
       return;
     }
     if (selectedProducts.length === 0) {
       toast.error("יש לבחור לפחות מוצר אחד");
+      return;
+    }
+    const total = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
+    if (total === 0) {
+      toast.error("מחיר ההזמנה חייב להיות גדול מ-0");
+      return;
+    }
+    if (paymentStatus === "paid" && !paymentTag) {
+      toast.error("יש לבחור אופן תשלום עבור הזמנה ששולמה");
       return;
     }
 
