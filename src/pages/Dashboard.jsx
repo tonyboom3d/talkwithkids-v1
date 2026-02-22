@@ -414,7 +414,20 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: 0.25 }}
+            className="space-y-2"
           >
+            <AnimatePresence>
+              {validationError && (
+                <motion.p
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="text-sm text-red-500 text-center font-medium"
+                >
+                  {validationError}
+                </motion.p>
+              )}
+            </AnimatePresence>
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting}
