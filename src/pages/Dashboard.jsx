@@ -13,7 +13,6 @@ import CustomerSection from "../components/dashboard/CustomerSection";
 import ProductSelector from "../components/dashboard/ProductSelector";
 import OrdersTable from "../components/dashboard/OrdersTable";
 import OrderDetailPanel from "../components/dashboard/OrderDetailPanel";
-import TasksPanel from "../components/tasks/TasksPanel";
 import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
 
 export default function Dashboard() {
