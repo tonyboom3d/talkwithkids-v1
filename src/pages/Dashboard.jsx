@@ -46,22 +46,27 @@ export default function Dashboard() {
     return () => clearTimeout(timer);
   }, [isDemo]);
 
+  const showError = (msg) => {
+    setValidationError(msg);
+    setTimeout(() => setValidationError(""), 3700);
+  };
+
   const handleSubmit = () => {
     if (!customerData.phone) {
-      toast.error("מספר טלפון הוא שדה חובה");
+      showError("מספר טלפון הוא שדה חובה");
       return;
     }
     if (selectedProducts.length === 0) {
-      toast.error("יש לבחור לפחות מוצר אחד");
+      showError("יש לבחור לפחות מוצר אחד");
       return;
     }
     const total = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
     if (total === 0) {
-      toast.error("מחיר ההזמנה חייב להיות גדול מ-0");
+      showError("מחיר ההזמנה חייב להיות גדול מ-0");
       return;
     }
     if (paymentStatus === "paid" && !paymentTag) {
-      toast.error("יש לבחור אופן תשלום עבור הזמנה ששולמה");
+      showError("יש לבחור אופן תשלום עבור הזמנה ששולמה");
       return;
     }
 
