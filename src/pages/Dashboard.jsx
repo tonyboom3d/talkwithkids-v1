@@ -95,6 +95,21 @@ export default function Dashboard() {
     }, 1500);
   };
 
+  const handleCancelLink = (orderId) => {
+    setOrders(prev =>
+      prev.map(order => {
+        if (order.id !== orderId) return order;
+        const updated = {
+          ...order,
+          linkCancelled: true,
+          timeline: [...order.timeline, { type: "failed", text: "קישור תשלום בוטל", by: "משתמש נוכחי", date: new Date().toISOString() }],
+        };
+        if (selectedOrder?.id === orderId) setSelectedOrder(updated);
+        return updated;
+      })
+    );
+  };
+
   const handleAddNote = (orderId, noteText) => {
     setOrders(prev =>
       prev.map(order => {
