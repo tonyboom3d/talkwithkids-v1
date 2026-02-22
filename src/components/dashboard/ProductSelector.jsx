@@ -186,35 +186,52 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
             exit={{ opacity: 0, height: 0 }}
             className="space-y-2 overflow-hidden"
           >
-            {selectedProducts.map((product) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="flex items-center gap-3 bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-100"
-              >
-                <button onClick={() => removeProduct(product.id)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0">
-                  <X className="w-4 h-4" />
-                </button>
-                <span className="text-sm font-semibold text-slate-700 shrink-0">
-                  ₪{product.price * product.quantity}
-                </span>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button onClick={() => updateQuantity(product.id, 1)} className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors">
-                    <Plus className="w-3.5 h-3.5 text-slate-600" />
-                  </button>
-                  <span className="text-sm font-medium text-slate-700 w-6 text-center">{product.quantity}</span>
-                  <button onClick={() => updateQuantity(product.id, -1)} className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors">
-                    <Minus className="w-3.5 h-3.5 text-slate-600" />
-                  </button>
-                </div>
-                <div className="flex-1 min-w-0 text-right">
-                  <span className="text-sm text-slate-700">{product.name}</span>
-                </div>
-                <img src={product.image} alt="" className="w-9 h-9 rounded-lg object-cover border border-slate-100 shrink-0" />
-              </motion.div>
-            ))}
+            {selectedProducts.map((product) => {
+              const priceInvalid = product.priceInput !== undefined && product.priceInput !== "" && product.priceInput.length < 4;
+              return (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-1"
+                >
+                  <div className="flex items-center gap-3 bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-100">
+                    <button onClick={() => removeProduct(product.id)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0">
+                      <X className="w-4 h-4" />
+                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-sm text-slate-500">₪</span>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={product.priceInput ?? ""}
+                        onChange={(e) => updatePrice(product.id, e.target.value)}
+                        placeholder="מחיר"
+                        className={`h-8 w-24 text-sm text-left border ${priceInvalid ? "border-red-400 focus:border-red-400" : "border-slate-200"} bg-white`}
+                        dir="ltr"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button onClick={() => updateQuantity(product.id, 1)} className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors">
+                        <Plus className="w-3.5 h-3.5 text-slate-600" />
+                      </button>
+                      <span className="text-sm font-medium text-slate-700 w-6 text-center">{product.quantity}</span>
+                      <button onClick={() => updateQuantity(product.id, -1)} className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors">
+                        <Minus className="w-3.5 h-3.5 text-slate-600" />
+                      </button>
+                    </div>
+                    <div className="flex-1 min-w-0 text-right">
+                      <span className="text-sm text-slate-700">{product.name}</span>
+                    </div>
+                    <img src={product.image} alt="" className="w-9 h-9 rounded-lg object-cover border border-slate-100 shrink-0" />
+                  </div>
+                  {priceInvalid && (
+                    <p className="text-xs text-red-500 text-right pr-1">המחיר חייב להכיל לפחות 4 ספרות</p>
+                  )}
+                </motion.div>
+              );
+            })}
 
             {/* Total */}
             <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
