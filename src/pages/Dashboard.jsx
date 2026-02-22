@@ -158,6 +158,8 @@ export default function Dashboard() {
             isDemo={isDemo}
             customerData={customerData}
             setCustomerData={setCustomerData}
+            paymentStatus={paymentStatus}
+            setPaymentStatus={setPaymentStatus}
           />
 
           <div className="border-t border-slate-100" />
