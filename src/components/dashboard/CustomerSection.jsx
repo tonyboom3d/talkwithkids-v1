@@ -16,7 +16,7 @@ const fadeIn = {
   transition: { duration: 0.25, ease: "easeOut" }
 };
 
-export default function CustomerSection({ isDemo, customerData, setCustomerData }) {
+export default function CustomerSection({ isDemo, customerData, setCustomerData, paymentStatus, setPaymentStatus }) {
   const [isExisting, setIsExisting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
