@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Download, Search, TrendingUp, ShoppingBag, CreditCard, Users } from "lucide-react";
 import moment from "moment";
 import DateRangePicker from "../components/dashboard/DateRangePicker";
+import OrderDetailPanel from "../components/dashboard/OrderDetailPanel";
 
 const MY_NAME = "שרה מ.";
 

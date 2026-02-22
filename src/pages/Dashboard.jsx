@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [paymentStatus, setPaymentStatus] = useState("unpaid");
   const [notes, setNotes] = useState("");
+  const [orderChanges, setOrderChanges] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orders, setOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
