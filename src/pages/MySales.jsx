@@ -156,5 +156,16 @@ export default function MySales() {
         </motion.div>
       </div>
     </div>
+
+      <AnimatePresence>
+        {selectedOrder && (
+          <OrderDetailPanel
+            order={selectedOrder}
+            onClose={() => setSelectedOrder(null)}
+            onAddNote={handleAddNote}
+          />
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
