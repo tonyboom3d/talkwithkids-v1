@@ -26,7 +26,10 @@ export default function Dashboard() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderCounter, setOrderCounter] = useState(1005);
-  const [showTasks, setShowTasks] = useState(false);
+  const [paymentTag, setPaymentTag] = useState("");
+  const [couponEnabled, setCouponEnabled] = useState(false);
+  const [couponType, setCouponType] = useState("percent");
+  const [couponValue, setCouponValue] = useState("");
 
   // Load orders
   useEffect(() => {
