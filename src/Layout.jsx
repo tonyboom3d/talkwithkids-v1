@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "./utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard, ShoppingBag, CheckSquare, BarChart2, LogOut, Menu, X, ClipboardList
+  LayoutDashboard, ShoppingBag, BarChart2, LogOut, Menu, X
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
