@@ -155,7 +155,6 @@ export default function MySales() {
           </div>
         </motion.div>
       </div>
-    </div>
 
       <AnimatePresence>
         {selectedOrder && (
