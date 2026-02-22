@@ -45,8 +45,16 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
     if (existing) {
       setSelectedProducts(prev => prev.map(p => p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p));
     } else {
-      setSelectedProducts(prev => [...prev, { ...product, quantity: 1 }]);
+      setSelectedProducts(prev => [...prev, { ...product, quantity: 1, price: 0, priceInput: "" }]);
     }
+  };
+
+  const updatePrice = (productId, value) => {
+    setSelectedProducts(prev => prev.map(p => {
+      if (p.id !== productId) return p;
+      const num = parseInt(value.replace(/\D/g, ""), 10);
+      return { ...p, priceInput: value.replace(/\D/g, ""), price: isNaN(num) ? 0 : num };
+    }));
   };
 
   const updateQuantity = (productId, delta) => {
