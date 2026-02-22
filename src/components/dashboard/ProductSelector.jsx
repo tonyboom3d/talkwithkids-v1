@@ -143,18 +143,18 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                           isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'
                         }`}
                       >
-                        <div className="flex-1 min-w-0 flex items-center gap-3">
+                        <div className="flex items-center gap-2 shrink-0">
                           {isSelected && (
                             <Badge className="bg-blue-100 text-blue-700 text-[10px] border-0 shrink-0">נבחר</Badge>
+                          )}
+                          {!product.inStock && (
+                            <Badge variant="outline" className="text-red-500 border-red-200 text-[10px] shrink-0">אזל מהמלאי</Badge>
                           )}
                           <span className="text-sm font-semibold text-slate-800 whitespace-nowrap">
                             ₪{product.price}
                           </span>
-                          {!product.inStock && (
-                            <Badge variant="outline" className="text-red-500 border-red-200 text-[10px] shrink-0">אזל מהמלאי</Badge>
-                          )}
                         </div>
-                        <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex items-center gap-3 shrink-0 mr-auto">
                           <span className="text-sm text-slate-700">{product.name}</span>
                           <img
                             src={product.image}
