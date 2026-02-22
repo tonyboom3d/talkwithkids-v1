@@ -107,6 +107,19 @@ export default function OrderDetailPanel({ order, onClose, onAddNote, onCancelLi
               <div className="flex items-center gap-2 justify-end">
                 <span className="text-sm font-medium text-slate-700">{order.customer.firstName} {order.customer.lastName}</span>
                 <User className="w-4 h-4 text-slate-400" />
+                <button
+                  title="פתח כרטיס לקוח בוויקס"
+                  onClick={() => {
+                    window.parent.postMessage(
+                      { action: "openWixContact", email: order.customer.email, phone: order.customer.phone, name: `${order.customer.firstName} ${order.customer.lastName}` },
+                      "*"
+                    );
+                    window.open(`https://manage.wix.com/premium-purchase-plan/dynamo?appId=contacts`, "_blank");
+                  }}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
               </div>
               {order.customer.phone ? (
                 <div className="flex items-center gap-2 justify-end">
