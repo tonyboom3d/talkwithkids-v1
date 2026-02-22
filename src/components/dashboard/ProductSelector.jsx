@@ -228,8 +228,13 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
             ))}
 
             {/* Total */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
-              <span className="text-base font-bold text-slate-800">₪{total.toLocaleString()}</span>
+            <div className={`flex items-center justify-between pt-2 border-t border-slate-200/60`}>
+              <div className="flex items-center gap-2">
+                <span className="text-base font-bold text-slate-800">₪{total.toLocaleString()}</span>
+                {total > 0 && total.toString().length < 4 && (
+                  <span className="text-xs text-red-500">סכום ההזמנה חייב להיות לפחות 4 ספרות</span>
+                )}
+              </div>
               <span className="text-sm text-slate-500">סה״כ</span>
             </div>
           </motion.div>
