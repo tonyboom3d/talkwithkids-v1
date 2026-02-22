@@ -400,16 +400,7 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* Tasks Panel */}
-      <AnimatePresence>
-        {showTasks && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setShowTasks(false)} className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-40" />
-            <TasksPanel onClose={() => setShowTasks(false)} />
-          </>
-        )}
-      </AnimatePresence>
+
     </div>
   );
 }
