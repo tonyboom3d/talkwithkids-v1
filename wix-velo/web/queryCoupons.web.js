@@ -1,6 +1,6 @@
 /**
- * Web module — אופציונלי לקריאה מדפי אתר בוויקס (לא מה-iframe ב-GitHub Pages).
- * הדאשבורד משתמש ב-backend/dashboardApi.jsw (searchStoreCoupons) דרך postMessage.
+ * Web module (אופציונלי) — אם לא בשימוש, אפשר להסיר.
+ * חיפוש קופונים בדאשבורד: דרך `wixData.query('Marketing/Coupons')` ב־`backend/helpers/couponHelper.js`.
  */
 import { coupons } from 'wix-marketing.v2';
 import { webMethod, Permissions } from 'wix-web-module';

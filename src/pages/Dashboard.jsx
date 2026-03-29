@@ -10,12 +10,29 @@ import { toast } from "sonner";
 import CustomerSection from "../components/dashboard/CustomerSection";
 import ProductSelector from "../components/dashboard/ProductSelector";
 import StoreCouponPicker from "../components/dashboard/StoreCouponPicker";
-import { computeDiscountForSubtotal } from "@/lib/couponDiscount";
 import OrdersTable from "../components/dashboard/OrdersTable";
 import OrderDetailPanel from "../components/dashboard/OrderDetailPanel";
 import { useAuth } from "@/lib/IframeAuthContext";
 import { usePostMessage, usePostMessageListener } from "@/hooks/usePostMessage";
 import { DEMO_ORDERS, DEMO_PRODUCTS, DEMO_CUSTOMERS } from "../components/dashboard/DemoDataProvider";
+
+/** לוגיקה מזוהה ל־`wix-velo/backend/helpers/couponHelper.js` — computeDiscountForSubtotal */
+function computeDiscountForSubtotal(subtotal, coupon) {
+  if (!coupon || subtotal <= 0) {
+    return { discountAmount: 0, discountedTotal: subtotal };
+  }
+  const t = coupon.type;
+  if (t === "PercentOff" || (coupon.percentOffRate != null && coupon.percentOffRate > 0)) {
+    const pct = Math.min(100, Math.max(0, Number(coupon.percentOffRate) || 0));
+    const discountAmount = subtotal * (pct / 100);
+    return { discountAmount, discountedTotal: subtotal - discountAmount };
+  }
+  if (t === "MoneyOff" || (coupon.moneyOffAmount != null && coupon.moneyOffAmount > 0)) {
+    const off = Math.min(subtotal, Math.max(0, Number(coupon.moneyOffAmount) || 0));
+    return { discountAmount: off, discountedTotal: subtotal - off };
+  }
+  return { discountAmount: 0, discountedTotal: subtotal };
+}
 
 export default function Dashboard() {
   const { user, canViewOthers } = useAuth();

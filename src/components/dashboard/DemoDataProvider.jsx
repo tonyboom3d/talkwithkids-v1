@@ -23,6 +23,9 @@ export const DEMO_STORE_COUPONS = [
     percentOffRate: 10,
     moneyOffAmount: null,
     active: true,
+    discountTypeLabel: "הנחה באחוזים",
+    discountValueText: "10%",
+    rulesSummary: "מינימום סל: ₪100",
   },
   {
     id: "demo-c2",
@@ -33,6 +36,9 @@ export const DEMO_STORE_COUPONS = [
     percentOffRate: null,
     moneyOffAmount: 50,
     active: true,
+    discountTypeLabel: "הנחה בסכום קבוע",
+    discountValueText: "₪50",
+    rulesSummary: null,
   },
 ];
 

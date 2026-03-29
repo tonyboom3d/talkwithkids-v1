@@ -79,9 +79,12 @@ export default function StoreCouponPicker({ isDemo, selectedCoupon, onSelect, di
           <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${isOpen ? "rotate-180" : ""}`} />
           <span className="text-slate-600 text-right flex-1 min-w-0 truncate">
             {selectedCoupon ? (
-              <span className="font-medium text-violet-800">
+              <span className="font-medium text-violet-800 truncate">
                 {selectedCoupon.name || selectedCoupon.code}{" "}
                 <span className="text-slate-500 font-normal">({selectedCoupon.code})</span>
+                {selectedCoupon.discountValueText && (
+                  <span className="text-slate-600 font-normal mr-1"> · {selectedCoupon.discountValueText}</span>
+                )}
               </span>
             ) : (
               <span className="text-slate-400">חיפוש קופון לפי שם או קוד...</span>
@@ -134,7 +137,7 @@ export default function StoreCouponPicker({ isDemo, selectedCoupon, onSelect, di
                       key={c.id}
                       type="button"
                       onClick={() => pick(c)}
-                      className="w-full px-4 py-3 flex flex-col items-stretch gap-1 text-right border-b border-slate-50 last:border-0 hover:bg-violet-50/60 transition-colors"
+                      className="w-full px-4 py-3 flex flex-col items-stretch gap-1.5 text-right border-b border-slate-50 last:border-0 hover:bg-violet-50/60 transition-colors"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-base font-medium text-slate-800 truncate">{c.name || c.code}</span>
@@ -142,13 +145,18 @@ export default function StoreCouponPicker({ isDemo, selectedCoupon, onSelect, di
                           {c.code}
                         </Badge>
                       </div>
-                      <span className="text-xs text-slate-500">
-                        {c.type === "MoneyOff" && c.moneyOffAmount != null
-                          ? `₪${Number(c.moneyOffAmount).toLocaleString()} הנחה`
-                          : c.percentOffRate != null
-                            ? `${c.percentOffRate}% הנחה`
-                            : "קופון חנות"}
-                      </span>
+                      <div className="text-sm text-slate-600 flex flex-wrap items-center gap-x-2 gap-y-0.5 justify-end">
+                        <span className="text-violet-700 font-medium">{c.discountTypeLabel || "סוג קופון"}</span>
+                        <span className="text-slate-400">·</span>
+                        <span className="tabular-nums font-semibold text-slate-800">
+                          {c.discountValueText ?? "—"}
+                        </span>
+                      </div>
+                      {c.rulesSummary && (
+                        <span className="text-[11px] text-slate-500 leading-snug border-t border-slate-100 pt-1.5">
+                          {c.rulesSummary}
+                        </span>
+                      )}
                     </button>
                   ))
                 )}

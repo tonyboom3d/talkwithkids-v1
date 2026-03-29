@@ -1,8 +1,11 @@
 import wixData from 'wix-data';
 import { searchContactsByQuery } from 'backend/helpers/contactHelper';
-import { searchStoreCoupons, validateExistingStoreCoupon } from 'backend/helpers/storeCouponSearch';
 import { normalizeIsraeliPhone } from 'backend/helpers/phoneUtils';
-import { createOrderCoupon } from 'backend/helpers/couponHelper';
+import {
+    createOrderCoupon,
+    searchStoreCoupons,
+    validateExistingStoreCoupon,
+} from 'backend/helpers/couponHelper';
 import { createDashboardCheckout } from 'backend/helpers/checkoutHelper';
 import { createMemberForOrder } from 'backend/helpers/memberHelper';
 import { assignPricingPlansToMember } from 'backend/helpers/pricingPlanHelper';
