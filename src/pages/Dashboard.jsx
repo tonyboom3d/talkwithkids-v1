@@ -311,7 +311,6 @@ export default function Dashboard() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
                 >
                   <div className="bg-violet-50/60 border border-violet-100 rounded-xl p-4 space-y-3">
                     <div className="flex flex-wrap gap-2" dir="rtl">
@@ -405,11 +404,11 @@ export default function Dashboard() {
                         if (discountAmount <= 0) return null;
                         return (
                           <div className="bg-white rounded-lg p-3 space-y-1.5 border border-violet-100" dir="rtl">
-                            <div className="flex items-center justify-between text-sm gap-3">
+                            <div className="flex items-center justify-start gap-2 text-sm">
                               <span className="text-slate-500 shrink-0">הנחה:</span>
                               <span className="text-red-500 font-medium tabular-nums">-₪{discountAmount.toLocaleString()}</span>
                             </div>
-                            <div className="flex items-center justify-between text-sm border-t border-violet-100 pt-1.5 gap-3">
+                            <div className="flex items-center justify-start gap-2 text-sm border-t border-violet-100 pt-1.5">
                               <span className="text-slate-500 shrink-0">מחיר סופי:</span>
                               <span className="font-bold text-violet-700 text-base tabular-nums">₪{discountedTotal.toLocaleString()}</span>
                             </div>
@@ -425,11 +424,11 @@ export default function Dashboard() {
                         if (val <= 0 || isInvalid) return null;
                         return (
                           <div className="bg-white rounded-lg p-3 space-y-1.5 border border-violet-100" dir="rtl">
-                            <div className="flex items-center justify-between text-sm gap-3">
+                            <div className="flex items-center justify-start gap-2 text-sm">
                               <span className="text-slate-500 shrink-0">הנחה:</span>
                               <span className="text-red-500 font-medium tabular-nums">-₪{discountAmount.toLocaleString()}</span>
                             </div>
-                            <div className="flex items-center justify-between text-sm border-t border-violet-100 pt-1.5 gap-3">
+                            <div className="flex items-center justify-start gap-2 text-sm border-t border-violet-100 pt-1.5">
                               <span className="text-slate-500 shrink-0">מחיר סופי:</span>
                               <span className="font-bold text-violet-700 text-base tabular-nums">₪{discountedTotal.toLocaleString()}</span>
                             </div>

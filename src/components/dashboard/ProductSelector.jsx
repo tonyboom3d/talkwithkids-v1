@@ -114,16 +114,18 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
 
       <div className="relative" ref={dropdownRef}>
         <button
+          type="button"
+          dir="rtl"
           onClick={() => setIsOpen(!isOpen)}
           className="w-full h-11 px-4 flex items-center justify-between rounded-lg border border-slate-200 bg-white hover:border-slate-300 transition-colors text-base"
         >
-          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-          <span className="text-slate-500 text-right flex-1">
+          <span className="text-slate-500 text-right flex-1 min-w-0">
             {selectedProducts.length > 0
               ? `${selectedProducts.length} מוצרים נבחרו`
               : "בחר מוצרים מהקטלוג..."
             }
           </span>
+          <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
 
         <AnimatePresence>
@@ -149,11 +151,11 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                 </div>
               </div>
 
-              <div className="max-h-64 overflow-y-auto">
+              <div className="max-h-64 overflow-y-auto" dir="ltr">
                 {isLoading ? (
                   <LoadingSpinner text="טוען מוצרים..." />
                 ) : filteredProducts.length === 0 ? (
-                  <div className="p-4 text-center text-base text-slate-400">
+                  <div className="p-4 text-center text-base text-slate-400" dir="rtl">
                     <Package className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     לא נמצאו מוצרים
                   </div>
@@ -165,22 +167,13 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                       <button
                         key={product.id}
                         type="button"
+                        dir="ltr"
                         onClick={() => addProduct(product)}
-                        className={`w-full px-4 py-3 flex items-center gap-3 transition-colors text-right border-b border-slate-50 last:border-0 dir-rtl ${
+                        className={`w-full px-4 py-3 flex flex-row items-center gap-3 transition-colors border-b border-slate-50 last:border-0 ${
                           isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'
                         }`}
                       >
-                        <div className="flex-1 min-w-0 flex items-center gap-3 justify-end">
-                          <span className="text-base text-slate-700 truncate">{product.name}</span>
-                          {product.image && (
-                            <img
-                              src={product.image}
-                              alt=""
-                              className="w-10 h-10 rounded-lg object-cover border border-slate-100 shrink-0"
-                            />
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex shrink-0 items-center gap-2">
                           {listPrice != null && (
                             <span className="text-sm font-medium text-slate-600 tabular-nums whitespace-nowrap">
                               ₪{listPrice.toLocaleString()}
@@ -189,6 +182,18 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                           {isSelected && (
                             <Badge className="bg-blue-100 text-blue-700 text-xs border-0 shrink-0">נבחר</Badge>
                           )}
+                        </div>
+                        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                          {product.image && (
+                            <img
+                              src={product.image}
+                              alt=""
+                              className="w-10 h-10 rounded-lg object-cover border border-slate-100 shrink-0"
+                            />
+                          )}
+                          <span className="text-base text-slate-700 truncate text-right" dir="rtl">
+                            {product.name}
+                          </span>
                         </div>
                       </button>
                     );
@@ -216,7 +221,7 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-1"
               >
-                <div className="flex items-center gap-3 bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-100 dir-rtl">
+                <div className="flex items-center gap-3 bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-100" dir="rtl">
                   {product.image && (
                     <img src={product.image} alt="" className="w-11 h-11 rounded-lg object-cover border border-slate-100 shrink-0" />
                   )}
@@ -257,7 +262,7 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
               </motion.div>
             ))}
 
-            <div className="flex items-center justify-start gap-2 pt-2 border-t border-slate-200/60 dir-rtl">
+            <div className="flex items-center justify-start gap-2 pt-2 border-t border-slate-200/60" dir="rtl">
               <span className="text-base text-slate-600 font-medium">סה״כ</span>
               <span className="text-lg font-bold text-slate-800 tabular-nums">₪{total.toLocaleString()}</span>
             </div>

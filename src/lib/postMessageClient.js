@@ -1,16 +1,38 @@
-const WIX_ORIGIN = 'https://www.talkwithkids.co.il';
+/** מקור דף האם בוויקס (iframe). כשפותחים את הדאשבורד ישירות ב-GitHub Pages, parent הוא אותו חלון — חייבים targetOrigin תואם. */
+const WIX_PARENT_ORIGIN = 'https://www.talkwithkids.co.il';
 const MSG_TYPE = 'TWK_MSG';
 
 let requestIdCounter = 0;
 const pendingRequests = new Map();
 const listeners = new Map();
 
+function postMessageTargetOrigin() {
+  if (typeof window === 'undefined') return WIX_PARENT_ORIGIN;
+  // טאב רגיל / אותו מקור — אחרת postMessage נכשל (targetOrigin חייב להתאים ל-recipient)
+  if (window.parent === window) {
+    return window.location.origin;
+  }
+  const fromEnv = import.meta.env.VITE_POST_MESSAGE_TARGET_ORIGIN;
+  if (fromEnv) return fromEnv;
+  return WIX_PARENT_ORIGIN;
+}
+
+function isTrustedMessageOrigin(origin) {
+  if (origin === window.location.origin) return true;
+  if (origin === WIX_PARENT_ORIGIN) return true;
+  const extra = import.meta.env.VITE_EXTRA_ALLOWED_MESSAGE_ORIGINS;
+  if (extra) {
+    return extra.split(',').map((s) => s.trim()).includes(origin);
+  }
+  return false;
+}
+
 function generateRequestId() {
   return `req_${Date.now()}_${++requestIdCounter}`;
 }
 
 function handleMessage(event) {
-  if (event.origin !== WIX_ORIGIN) return;
+  if (!isTrustedMessageOrigin(event.origin)) return;
 
   const data = event.data;
   if (!data || data.type !== MSG_TYPE) return;
@@ -47,9 +69,10 @@ function destroy() {
 }
 
 function send(action, payload = {}) {
+  const targetOrigin = postMessageTargetOrigin();
   window.parent.postMessage(
     { type: MSG_TYPE, action, payload },
-    WIX_ORIGIN
+    targetOrigin
   );
 }
 
@@ -63,9 +86,10 @@ function request(action, payload = {}, timeoutMs = 30000) {
 
     pendingRequests.set(requestId, { resolve, reject, timer });
 
+    const targetOrigin = postMessageTargetOrigin();
     window.parent.postMessage(
       { type: MSG_TYPE, action, requestId, payload },
-      WIX_ORIGIN
+      targetOrigin
     );
   });
 }
@@ -84,5 +108,9 @@ export const postMessageClient = {
   send,
   request,
   on,
-  WIX_ORIGIN,
+  /** @deprecated השתמש ב-postMessageTargetOrigin דרך הקוד הפנימי; נשמר לתאימות */
+  get WIX_ORIGIN() {
+    return WIX_PARENT_ORIGIN;
+  },
+  postMessageTargetOrigin,
 };

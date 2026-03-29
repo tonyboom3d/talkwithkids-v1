@@ -44,7 +44,10 @@ export default function StoreCouponPicker({ isDemo, selectedCoupon, onSelect, di
     const t = setTimeout(async () => {
       try {
         const result = await request("SEARCH_COUPONS", { query: searchQuery });
-        const list = result?.coupons ?? result?.data?.coupons;
+        const list =
+          result?.coupons ??
+          result?.data?.coupons ??
+          (Array.isArray(result) ? result : null);
         setCoupons(Array.isArray(list) ? list : []);
       } catch (err) {
         console.error("[UI] Coupon search failed:", err);
@@ -72,11 +75,11 @@ export default function StoreCouponPicker({ isDemo, selectedCoupon, onSelect, di
       <div className="relative">
         <button
           type="button"
+          dir="rtl"
           disabled={disabled}
           onClick={() => !disabled && setIsOpen(!isOpen)}
-          className="w-full h-11 px-4 flex items-center justify-between rounded-lg border border-violet-200 bg-white hover:border-violet-300 transition-colors text-base disabled:opacity-50"
+          className="w-full h-11 px-4 flex items-center justify-between gap-2 rounded-lg border border-violet-200 bg-white hover:border-violet-300 transition-colors text-base disabled:opacity-50"
         >
-          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${isOpen ? "rotate-180" : ""}`} />
           <span className="text-slate-600 text-right flex-1 min-w-0 truncate">
             {selectedCoupon ? (
               <span className="font-medium text-violet-800 truncate">
@@ -90,7 +93,8 @@ export default function StoreCouponPicker({ isDemo, selectedCoupon, onSelect, di
               <span className="text-slate-400">חיפוש קופון לפי שם או קוד...</span>
             )}
           </span>
-          <Ticket className="w-4 h-4 text-violet-400 shrink-0 ml-2" />
+          <Ticket className="w-4 h-4 text-violet-400 shrink-0" />
+          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${isOpen ? "rotate-180" : ""}`} />
         </button>
 
         {selectedCoupon && (
@@ -111,7 +115,7 @@ export default function StoreCouponPicker({ isDemo, selectedCoupon, onSelect, di
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -4, scale: 0.98 }}
               transition={{ duration: 0.15 }}
-              className="absolute z-30 top-full mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden"
+              className="absolute z-[100] top-full mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden"
             >
               <div className="p-3 border-b border-slate-100">
                 <div className="relative">
@@ -132,15 +136,16 @@ export default function StoreCouponPicker({ isDemo, selectedCoupon, onSelect, di
                 ) : coupons.length === 0 ? (
                   <div className="p-4 text-center text-sm text-slate-400">לא נמצאו קופונים (חנות)</div>
                 ) : (
-                  coupons.map((c) => (
+                  coupons.map((c, idx) => (
                     <button
-                      key={c.id}
+                      key={String(c.id ?? c._id ?? c.code ?? `c-${idx}`)}
                       type="button"
+                      dir="rtl"
                       onClick={() => pick(c)}
                       className="w-full px-4 py-3 flex flex-col items-stretch gap-1.5 text-right border-b border-slate-50 last:border-0 hover:bg-violet-50/60 transition-colors"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-base font-medium text-slate-800 truncate">{c.name || c.code}</span>
+                      <div className="flex items-center justify-start gap-2">
+                        <span className="text-base font-medium text-slate-800 truncate flex-1 min-w-0">{c.name || c.code}</span>
                         <Badge variant="outline" className="shrink-0 text-xs">
                           {c.code}
                         </Badge>
