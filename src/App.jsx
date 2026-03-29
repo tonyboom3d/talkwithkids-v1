@@ -7,6 +7,16 @@ import PageNotFound from './lib/PageNotFound';
 import { IframeAuthProvider, useAuth } from '@/lib/IframeAuthContext';
 import { Loader2 } from 'lucide-react';
 
+/** GitHub project site uses /repo-name/; custom domain uses /. Detect at runtime. */
+function routerBasename() {
+  if (typeof window === 'undefined') return undefined;
+  const p = window.location.pathname;
+  if (p === '/talkwithkids-v1' || p.startsWith('/talkwithkids-v1/')) {
+    return '/talkwithkids-v1';
+  }
+  return undefined;
+}
+
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : () => <></>;
@@ -66,7 +76,7 @@ function App() {
   return (
     <IframeAuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        <Router basename="/talkwithkids-v1">
+        <Router basename={routerBasename()}>
           <AuthenticatedApp />
         </Router>
         <Toaster />
