@@ -21,6 +21,7 @@ export default function Layout({ children, currentPageName }) {
     <div style={{ fontFamily: "'Assistant', 'Helvetica Neue', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@200;300;400;500;600;700;800&display=swap');
+        html { font-size: 19px; }
         * { font-family: 'Assistant', 'Helvetica Neue', sans-serif !important; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }

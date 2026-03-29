@@ -81,7 +81,8 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
     const timer = setTimeout(async () => {
       try {
         const result = await request('SEARCH_CONTACTS', { query: searchQuery });
-        setSearchResults(result.contacts || []);
+        const list = result?.contacts ?? result?.data?.contacts;
+        setSearchResults(Array.isArray(list) ? list : []);
       } catch (err) {
         console.error('[UI] Contact search failed:', err);
         setSearchResults([]);
@@ -247,8 +248,8 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-500 block text-right">טלפון</Label>
+                  <div className="space-y-1.5 w-full" dir="rtl">
+                    <Label className="text-xs text-slate-500 block w-full text-right">טלפון</Label>
                     <Input value={customerData.phone} onChange={e => handleFieldChange("phone", e.target.value)} className="h-10 text-sm border-slate-200 text-right" dir="rtl" />
                   </div>
                 </div>
@@ -285,12 +286,12 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
             </div>
             <div className="grid grid-cols-2 gap-3">
               <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
-              <div className="space-y-1.5">
-                <Label className="text-xs text-slate-500 flex items-center gap-1 justify-end w-full text-right">
-                  טלפון
-                  <span className="text-red-400">*</span>
+              <div className="space-y-1.5 w-full" dir="rtl">
+                <Label className="text-xs text-slate-500 block w-full text-right">
+                  טלפון<span className="text-red-400 mr-0.5">*</span>
                 </Label>
                 <Input
+                  id="customer-phone-new"
                   value={customerData.phone}
                   onChange={e => setCustomerData(prev => ({ ...prev, phone: e.target.value }))}
                   placeholder="050-0000000"

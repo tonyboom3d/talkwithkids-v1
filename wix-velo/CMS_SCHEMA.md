@@ -32,7 +32,7 @@
 
 | Field ID | Display Name | Type | Notes |
 |----------|-------------|------|-------|
-| memberRef | משתמש | Reference -> Members/PrivateMembersData | |
+| connectedMembers | משתמש מחובר | Reference -> Members (פריט אחד) | גישה לדאשבורד כש־memberId של המשתמש המחובר תואם לרפרנס |
 | displayName | שם להצגה | Text | חן/חני/לני |
 | canViewOtherRecords | צפייה ברשומות אחרות | Boolean | |
 | commissionRate | אחוז עמלה | Number | For profit calculations |
@@ -54,7 +54,19 @@
 | pricingPlanId | תוכנית | Text | Pricing Plan ID |
 | planDuration | משך תוכנית | Text | "unlimited" |
 
-## 5. ShippingRouting
+## 5. ManualFulfillments
+
+| Field ID | Display Name | Type | Notes |
+|----------|-------------|------|-------|
+| orderNumber | מספר הזמנה | Text | |
+| orderId | מזהה הזמנה | Text | |
+| reason | סיבה | Text | למשל: "איסוף עצמי" / "הזמנה מרובת פריטים" |
+| isHandled | טופל | Boolean | false = ממתין לטיפול |
+| shippingAddress | כתובת משלוח | Text | JSON: {firstName, lastName, phone, email, street, streetNumber, city, zipCode} |
+
+**Permissions**: Read = Admin, Write = Admin (all access via suppressAuth: true in backend)
+
+## 6. ShippingRouting
 
 | Field ID | Display Name | Type | Notes |
 |----------|-------------|------|-------|
@@ -62,3 +74,29 @@
 | routedTo | ניתוב אל | Text | "chen" or "tapuz" |
 | changeNote | הערת שינוי | Text | |
 | handledDate | תאריך טיפול | Date | null until handled |
+
+## 7. DeliveryRules
+
+חוקי משלוח לפי מוצר. כל רשומה מגדירה כיצד לטפל במוצר בעת הזמנה.
+
+**לוגיקת שדה deliveryType:**
+- **"תפוז"** — המוצר נשלח אוטומטית דרך תפוז
+- **"בית"** — המוצר נשלח ידנית מהבית (בהזמנה של פריט בודד בלבד)
+- **ריק (ללא תגיות)** — המוצר לא נשלח כלל (מנוי דיגיטלי, תוכן, וכו'). המערכת תדלג עליו לחלוטין בחישוב המשלוח.
+
+| Field ID | Display Name | Type | Notes |
+|----------|-------------|------|-------|
+| product | מוצר | Reference → Wix Catalog (Products) | |
+| deliveryType | סוג משלוח | Tags | "תפוז" / "בית" / ריק = ללא משלוח |
+| relatedPlan | תוכנית מנוי | Reference → PricingPlans | אופציונלי — אם ממולא, המערכת תשייך pricing plan ללקוח בעת רכישה |
+| inventoryAlertThreshold | סף התראת מלאי | Number | שולח התראה כשהמלאי יורד מתחת לסף |
+| manualRoutingThreshold | סף ניתוב ידני | Number | מנתב לתפוז ידני כשהמלאי נמוך מהסף |
+
+**שימוש:**
+- מוצר פיזי למשלוח תפוז: `deliveryType = ["תפוז"]`
+- מוצר פיזי למשלוח ידני מהבית: `deliveryType = ["בית"]`
+- מוצר דיגיטלי/מנוי ללא משלוח עם תוכנית: `deliveryType = []` + `relatedPlan = <plan_id>`
+- מוצר דיגיטלי ללא שום טיפול: אין צורך ברשומה כלל, או רשומה עם `deliveryType` ריק
+
+**Permissions**: Read = Admin, Write = Admin (all access via suppressAuth: true in backend)
+

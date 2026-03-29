@@ -55,19 +55,27 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
   );
 
   const addProduct = (product) => {
+    const catalogPrice = Number(product.price);
+    const unitPrice = Number.isFinite(catalogPrice) ? catalogPrice : 0;
     const existing = selectedProducts.find(p => p.id === product.id);
     if (existing) {
       setSelectedProducts(prev => prev.map(p => p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p));
     } else {
-      setSelectedProducts(prev => [...prev, { ...product, quantity: 1, price: 0, priceInput: "" }]);
+      setSelectedProducts(prev => [...prev, {
+        ...product,
+        quantity: 1,
+        price: unitPrice,
+        priceInput: unitPrice > 0 ? String(unitPrice) : "",
+      }]);
     }
   };
 
   const updatePrice = (productId, value) => {
+    const raw = value.replace(/[^\d.]/g, "");
+    const num = parseFloat(raw);
     setSelectedProducts(prev => prev.map(p => {
       if (p.id !== productId) return p;
-      const num = parseInt(value.replace(/\D/g, ""), 10);
-      return { ...p, priceInput: value.replace(/\D/g, ""), price: isNaN(num) ? 0 : num };
+      return { ...p, priceInput: raw, price: isNaN(num) ? 0 : num };
     }));
   };
 
@@ -98,7 +106,7 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
     >
       <div className="flex items-center gap-2">
         <ShoppingBag className="w-[18px] h-[18px] text-slate-400" />
-        <Label className="text-sm font-medium text-slate-700 flex items-center gap-1">
+        <Label className="text-base font-medium text-slate-700 flex items-center gap-1">
           בחירת מוצרים
           <span className="text-red-400">*</span>
         </Label>
@@ -107,7 +115,7 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full h-11 px-4 flex items-center justify-between rounded-lg border border-slate-200 bg-white hover:border-slate-300 transition-colors text-sm"
+          className="w-full h-11 px-4 flex items-center justify-between rounded-lg border border-slate-200 bg-white hover:border-slate-300 transition-colors text-base"
         >
           <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           <span className="text-slate-500 text-right flex-1">
@@ -134,7 +142,7 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                     placeholder="חיפוש מוצר..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pr-10 h-9 text-sm border-slate-200"
+                    className="pr-10 h-9 text-base border-slate-200"
                     dir="rtl"
                     autoFocus
                   />
@@ -145,34 +153,41 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                 {isLoading ? (
                   <LoadingSpinner text="טוען מוצרים..." />
                 ) : filteredProducts.length === 0 ? (
-                  <div className="p-4 text-center text-sm text-slate-400">
+                  <div className="p-4 text-center text-base text-slate-400">
                     <Package className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     לא נמצאו מוצרים
                   </div>
                 ) : (
                   filteredProducts.map((product) => {
                     const isSelected = selectedProducts.some(p => p.id === product.id);
+                    const listPrice = product.price != null && Number.isFinite(Number(product.price)) ? Number(product.price) : null;
                     return (
                       <button
                         key={product.id}
+                        type="button"
                         onClick={() => addProduct(product)}
-                        className={`w-full px-4 py-3 flex items-center gap-3 transition-colors text-right border-b border-slate-50 last:border-0 ${
+                        className={`w-full px-4 py-3 flex items-center gap-3 transition-colors text-right border-b border-slate-50 last:border-0 dir-rtl ${
                           isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'
                         }`}
                       >
-                        <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex-1 min-w-0 flex items-center gap-3 justify-end">
+                          <span className="text-base text-slate-700 truncate">{product.name}</span>
                           {product.image && (
                             <img
                               src={product.image}
-                              alt={product.name}
-                              className="w-10 h-10 rounded-lg object-cover border border-slate-100"
+                              alt=""
+                              className="w-10 h-10 rounded-lg object-cover border border-slate-100 shrink-0"
                             />
                           )}
-                          <span className="text-sm text-slate-700">{product.name}</span>
                         </div>
-                        <div className="flex items-center gap-2 mr-auto shrink-0">
+                        <div className="flex items-center gap-2 shrink-0">
+                          {listPrice != null && (
+                            <span className="text-sm font-medium text-slate-600 tabular-nums whitespace-nowrap">
+                              ₪{listPrice.toLocaleString()}
+                            </span>
+                          )}
                           {isSelected && (
-                            <Badge className="bg-blue-100 text-blue-700 text-[10px] border-0 shrink-0">נבחר</Badge>
+                            <Badge className="bg-blue-100 text-blue-700 text-xs border-0 shrink-0">נבחר</Badge>
                           )}
                         </div>
                       </button>
@@ -201,44 +216,50 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-1"
               >
-                <div className="flex items-center gap-3 bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-100">
-                  <button onClick={() => removeProduct(product.id)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0">
-                    <X className="w-4 h-4" />
-                  </button>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-sm text-slate-500">₪</span>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={product.priceInput ?? ""}
-                      onChange={(e) => updatePrice(product.id, e.target.value)}
-                      placeholder="מחיר"
-                      className="h-8 w-24 text-sm text-left border border-slate-200 bg-white"
-                      dir="ltr"
-                    />
+                <div className="flex items-center gap-3 bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-100 dir-rtl">
+                  {product.image && (
+                    <img src={product.image} alt="" className="w-11 h-11 rounded-lg object-cover border border-slate-100 shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0 text-right space-y-0.5">
+                    <span className="text-base text-slate-700 block">{product.name}</span>
+                    <span className="text-sm text-slate-500 tabular-nums">
+                      סה״כ שורה: ₪{(product.price * product.quantity).toLocaleString()}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => updateQuantity(product.id, 1)} className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors">
-                      <Plus className="w-3.5 h-3.5 text-slate-600" />
+                    <button type="button" onClick={() => updateQuantity(product.id, 1)} className="w-8 h-8 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors">
+                      <Plus className="w-4 h-4 text-slate-600" />
                     </button>
-                    <span className="text-sm font-medium text-slate-700 w-6 text-center">{product.quantity}</span>
-                    <button onClick={() => updateQuantity(product.id, -1)} className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors">
-                      <Minus className="w-3.5 h-3.5 text-slate-600" />
+                    <span className="text-base font-medium text-slate-700 w-7 text-center tabular-nums">{product.quantity}</span>
+                    <button type="button" onClick={() => updateQuantity(product.id, -1)} className="w-8 h-8 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors">
+                      <Minus className="w-4 h-4 text-slate-600" />
                     </button>
                   </div>
-                  <div className="flex-1 min-w-0 text-right">
-                    <span className="text-sm text-slate-700">{product.name}</span>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="text-xs text-slate-500">מחיר ליחידה (₪)</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-slate-500">₪</span>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={product.priceInput ?? ""}
+                        onChange={(e) => updatePrice(product.id, e.target.value)}
+                        placeholder="0"
+                        className="h-9 w-28 text-base text-left border border-slate-200 bg-white"
+                        dir="ltr"
+                      />
+                    </div>
                   </div>
-                  {product.image && (
-                    <img src={product.image} alt="" className="w-9 h-9 rounded-lg object-cover border border-slate-100 shrink-0" />
-                  )}
+                  <button type="button" onClick={() => removeProduct(product.id)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0 p-1">
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
               </motion.div>
             ))}
 
-            <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
-              <span className="text-base font-bold text-slate-800">₪{total.toLocaleString()}</span>
-              <span className="text-sm text-slate-500">סה״כ</span>
+            <div className="flex items-center justify-start gap-2 pt-2 border-t border-slate-200/60 dir-rtl">
+              <span className="text-base text-slate-600 font-medium">סה״כ</span>
+              <span className="text-lg font-bold text-slate-800 tabular-nums">₪{total.toLocaleString()}</span>
             </div>
           </motion.div>
         )}

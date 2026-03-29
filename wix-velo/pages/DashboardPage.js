@@ -14,6 +14,7 @@ import {
   getStoreProducts,
   getPricingPlans,
   searchContactsByQuery,
+  searchStoreCoupons,
 } from 'backend/dashboardApi.jsw';
 
 const MSG_TYPE = 'TWK_MSG';
@@ -98,6 +99,12 @@ async function handleIframeMessage(data) {
       case 'SEARCH_CONTACTS': {
         const contacts = await searchContactsByQuery(payload.query);
         sendToIframe('CONTACTS_RESULT', { contacts }, requestId);
+        break;
+      }
+
+      case 'SEARCH_COUPONS': {
+        const coupons = await searchStoreCoupons(payload.query || '');
+        sendToIframe('COUPONS_RESULT', { coupons }, requestId);
         break;
       }
 

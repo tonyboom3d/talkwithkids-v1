@@ -12,6 +12,30 @@ export const DEMO_PRODUCTS = [
   { id: "p8", name: "משקפי שמש אוויאטור", price: 299, image: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=80&h=80&fit=crop", inStock: false },
 ];
 
+/** קופוני דמו — scope חנות בלבד */
+export const DEMO_STORE_COUPONS = [
+  {
+    id: "demo-c1",
+    code: "DEMO10",
+    name: "הנחה 10% לדמו",
+    scopeNamespace: "stores",
+    type: "PercentOff",
+    percentOffRate: 10,
+    moneyOffAmount: null,
+    active: true,
+  },
+  {
+    id: "demo-c2",
+    code: "DEMO50",
+    name: "הנחה ₪50 לדמו",
+    scopeNamespace: "stores",
+    type: "MoneyOff",
+    percentOffRate: null,
+    moneyOffAmount: 50,
+    active: true,
+  },
+];
+
 export const DEMO_CUSTOMERS = [
   { id: "c1", firstName: "יוסי", lastName: "כהן", email: "yossi@email.com", phone: "050-1234567" },
   { id: "c2", firstName: "מיכל", lastName: "לוי", email: "michal@email.com", phone: "052-9876543" },
