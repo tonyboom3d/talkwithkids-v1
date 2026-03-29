@@ -56,10 +56,11 @@ $w.onReady(async () => {
       changeChain: JSON.stringify(chain),
     }, { suppressAuth: true });
 
-    console.log(`${LOG_PREFIX} Link opened for order: ${record.orderNumber}`);
+    console.log(`${LOG_PREFIX} Link opened for order record, orderNumber=${record.orderNumber || '(עדיין ללא — אחרי תשלום)'}`);
 
-    // Show order info
-    $w('#orderNumberText').text = `הזמנה מס׳ ${record.orderNumber}`;
+    // Show order info (מספר TWK מוקצה רק לאחר תשלום)
+    const num = record.orderNumber && String(record.orderNumber).trim();
+    $w('#orderNumberText').text = num ? `הזמנה מס׳ ${num}` : 'הזמנה ממתינה לתשלום';
     $w('#totalText').text = `₪${record.totalPrice?.toLocaleString() || '0'}`;
 
     if (record.checkoutLink) {

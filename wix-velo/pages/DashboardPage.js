@@ -97,7 +97,9 @@ async function handleIframeMessage(data) {
       }
 
       case 'SEARCH_CONTACTS': {
+        console.log(`${LOG_PREFIX} SEARCH_CONTACTS query=`, payload?.query);
         const contacts = await searchContactsByQuery(payload.query);
+        console.log(`${LOG_PREFIX} SEARCH_CONTACTS returned ${contacts?.length ?? 0} contacts`);
         sendToIframe('CONTACTS_RESULT', { contacts }, requestId);
         break;
       }

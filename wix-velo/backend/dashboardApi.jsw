@@ -1,4 +1,5 @@
 import wixData from 'wix-data';
+import { fetch } from 'wix-fetch';
 import { searchContactsByQuery } from 'backend/helpers/contactHelper';
 import { normalizeIsraeliPhone } from 'backend/helpers/phoneUtils';
 import {
@@ -14,6 +15,12 @@ import { products } from 'wix-stores.v2';
 export { searchContactsByQuery, searchStoreCoupons };
 
 const LOG_PREFIX = '[VELO-BE]';
+
+/** LeadConnector — אחרי יצירת checkout + רשומת CMS */
+const DASHBOARD_CHECKOUT_WEBHOOK_URL =
+    'https://services.leadconnectorhq.com/hooks/Qt9lEQiyh8wgVPJM4d6Q/webhook-trigger/387433a5-66c1-4a3c-8aec-797419749654';
+
+const PAYMENT_PAGE_BASE = 'https://www.talkwithkids.co.il/payment-page';
 
 // ─── Employee Permissions ───
 
@@ -58,19 +65,42 @@ export async function getOrderDetails(recordId) {
 // ─── Create Order ───
 
 async function generateOrderNumber() {
-    const latest = await wixData.query('DashboardOrders')
-        .descending('_createdDate')
-        .limit(1)
+    const r = await wixData.query('DashboardOrders')
+        .startsWith('orderNumber', 'TWK-')
+        .limit(1000)
         .find({ suppressAuth: true });
 
-    if (latest.items.length === 0) return 'TWK-1001';
-
-    const lastNum = latest.items[0].orderNumber;
-    if (lastNum) {
-        const num = parseInt(lastNum.replace('TWK-', ''), 10);
-        return `TWK-${num + 1}`;
+    let maxN = 1000;
+    for (const item of r.items) {
+        const raw = item.orderNumber;
+        if (!raw || typeof raw !== 'string') continue;
+        const m = /^TWK-(\d+)$/i.exec(raw.trim());
+        if (m) {
+            const n = parseInt(m[1], 10);
+            if (!isNaN(n) && n > maxN) maxN = n;
+        }
     }
-    return `TWK-${Date.now().toString().slice(-4)}`;
+    return `TWK-${maxN + 1}`;
+}
+
+async function sendDashboardCheckoutWebhook({ customerName, customerPhone, checkoutId }) {
+    const paymentUrl = `${PAYMENT_PAGE_BASE}?id=${encodeURIComponent(checkoutId)}`;
+    const payload = {
+        customerName: customerName || '',
+        customerPhone: customerPhone || '',
+        paymentUrl,
+    };
+    try {
+        const res = await fetch(DASHBOARD_CHECKOUT_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const text = await res.text();
+        console.log(`${LOG_PREFIX} Checkout webhook sent status=${res.status} paymentUrl=${paymentUrl} body=${text.slice(0, 200)}`);
+    } catch (err) {
+        console.error(`${LOG_PREFIX} Checkout webhook failed:`, err.message || err);
+    }
 }
 
 export async function createOrderRecord(orderData, employeeId) {
@@ -114,11 +144,10 @@ export async function createOrderRecord(orderData, employeeId) {
         }
     }
 
-    const orderNumber = await generateOrderNumber();
     const dynamicLinkId = null; // Will be set after insert from _id
 
     const record = {
-        orderNumber,
+        orderNumber: '',
         status: 'sent',
         createdByRef: employeeId,
         paymentMethod: orderData.paymentTag || '',
@@ -167,6 +196,12 @@ export async function createOrderRecord(orderData, employeeId) {
         }, { suppressAuth: true });
 
         console.log(`${LOG_PREFIX} Checkout created: ${checkoutResult.checkoutId}`);
+
+        await sendDashboardCheckoutWebhook({
+            customerName: record.customerName || '',
+            customerPhone: record.customerPhone || '',
+            checkoutId: checkoutResult.checkoutId,
+        });
     } catch (err) {
         console.error(`${LOG_PREFIX} Checkout creation failed:`, err);
         const currentRecord = await wixData.get('DashboardOrders', inserted._id, { suppressAuth: true });
@@ -179,7 +214,7 @@ export async function createOrderRecord(orderData, employeeId) {
 
     return {
         recordId: inserted._id,
-        orderNumber,
+        orderNumber: '',
         checkoutLink: checkoutResult?.checkoutUrl || '',
         dynamicLinkId: dynamicId,
     };
@@ -257,8 +292,15 @@ export async function handleOrderCompleted(ecomOrder) {
         detail: 'הזמנה שולמה בהצלחה',
     });
 
+    let orderNumber = record.orderNumber && String(record.orderNumber).trim();
+    if (!orderNumber) {
+        orderNumber = await generateOrderNumber();
+        console.log(`${LOG_PREFIX} Assigned order number on payment: ${orderNumber}`);
+    }
+
     const updatedRecord = {
         ...record,
+        orderNumber,
         status: 'paid',
         completedOrderData: JSON.stringify(ecomOrder),
         changeChain: JSON.stringify(chain),

@@ -128,7 +128,10 @@ export default function OrdersTable({ orders, isLoading, onSelectOrder }) {
                       ? `${order.customer.firstName} ${order.customer.lastName}`
                       : order.customerName || '';
                     const orderDate = order._createdDate || order.date;
-                    const orderId = order.orderNumber || order.id || order._id;
+                    const orderId =
+                      order.orderNumber && String(order.orderNumber).trim()
+                        ? order.orderNumber
+                        : 'ממתין לתשלום';
 
                     return (
                       <motion.tr

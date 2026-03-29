@@ -175,8 +175,12 @@ export default function Dashboard() {
         totalPrice: total,
       });
 
-      console.log('[UI] Order created:', result.orderNumber);
-      toast.success(`הזמנה ${result.orderNumber} נוצרה בהצלחה!`);
+      console.log('[UI] Order created:', result.recordId, result.checkoutLink);
+      toast.success(
+        result.orderNumber
+          ? `הזמנה ${result.orderNumber} נוצרה בהצלחה!`
+          : 'קישור תשלום נוצר בהצלחה. מספר הזמנה יוקצה לאחר תשלום הלקוח.'
+      );
       resetForm();
       loadOrders();
     } catch (err) {
@@ -603,7 +607,7 @@ export default function Dashboard() {
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all shadow-sm hover:shadow-md"
+              className="w-full h-12 bg-[#30D46B] hover:bg-[#28b85f] text-white rounded-xl text-sm font-medium transition-all shadow-sm hover:shadow-md"
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
@@ -613,7 +617,7 @@ export default function Dashboard() {
               ) : (
                 <span className="flex items-center gap-2">
                   <Send className="w-4 h-4" />
-                  צור קישור תשלום ושלח
+                 יצירת קישור לתשלום ושליחה לוואטסאפ
                 </span>
               )}
             </Button>

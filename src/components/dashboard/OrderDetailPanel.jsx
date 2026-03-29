@@ -76,7 +76,10 @@ export default function OrderDetailPanel({ order, onClose, onAddNote, onCancelLi
   const timeline = order.changeChain || order.timeline || [];
   const orderNotes = order.orderNotes || [];
   const checkoutLink = order.checkoutLink || order.paymentLink || '';
-  const orderId = order.orderNumber || order.id || order._id;
+  const orderId =
+    order.orderNumber && String(order.orderNumber).trim()
+      ? order.orderNumber
+      : 'ממתין לתשלום';
   const orderDate = order._createdDate || order.date;
   const isLinkCancelled = order.linkCancelled || order.status === 'cancelled';
 

@@ -1,10 +1,13 @@
 import { checkout } from 'wix-ecom-backend';
 
 export async function createDashboardCheckout(orderData) {
-  const customLineItems = orderData.products.map(p => ({
+  /** חובה ב-API — בלי itemType / descriptionLines מתקבלת שגיאת validation */
+  const customLineItems = orderData.products.map((p) => ({
     productName: { original: p.name },
     quantity: p.quantity,
     price: String(orderData.isPaid ? 0 : p.price),
+    itemType: { preset: 'PHYSICAL' },
+    descriptionLines: [{ name: { original: p.name } }],
   }));
 
   const checkoutInfo = {};
