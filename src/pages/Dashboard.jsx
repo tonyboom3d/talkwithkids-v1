@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2, MessageSquare, Tag, Percent, DollarSign, Ticket } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 import CustomerSection from "../components/dashboard/CustomerSection";
@@ -32,6 +33,13 @@ function computeDiscountForSubtotal(subtotal, coupon) {
     return { discountAmount: off, discountedTotal: subtotal - off };
   }
   return { discountAmount: 0, discountedTotal: subtotal };
+}
+
+/** תצוגת הנחה בסגנון עברי: המספר ואז מינוס ואז ₪ (למשל 72- ₪) */
+function formatDiscountLineShekels(amount) {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return "—";
+  return `${n.toLocaleString("he-IL")}- ₪`;
 }
 
 export default function Dashboard() {
@@ -404,13 +412,25 @@ export default function Dashboard() {
                         if (discountAmount <= 0) return null;
                         return (
                           <div className="bg-white rounded-lg p-3 space-y-1.5 border border-violet-100" dir="rtl">
-                            <div className="flex items-center justify-start gap-2 text-sm">
+                            <div className="flex flex-wrap items-center justify-start gap-2 text-sm">
                               <span className="text-slate-500 shrink-0">הנחה:</span>
-                              <span className="text-red-500 font-medium tabular-nums">-₪{discountAmount.toLocaleString()}</span>
+                              <Badge
+                                variant="outline"
+                                className="shrink-0 border-violet-200 bg-violet-50/80 text-[10px] font-normal text-violet-800"
+                              >
+                                {selectedStoreCoupon.code
+                                  ? `קופון ${selectedStoreCoupon.code}`
+                                  : "קופון"}
+                              </Badge>
+                              <span className="text-red-500 font-medium tabular-nums" dir="ltr">
+                                {formatDiscountLineShekels(discountAmount)}
+                              </span>
                             </div>
                             <div className="flex items-center justify-start gap-2 text-sm border-t border-violet-100 pt-1.5">
                               <span className="text-slate-500 shrink-0">מחיר סופי:</span>
-                              <span className="font-bold text-violet-700 text-base tabular-nums">₪{discountedTotal.toLocaleString()}</span>
+                              <span className="font-bold text-violet-700 text-base tabular-nums" dir="ltr">
+                                ₪{discountedTotal.toLocaleString("he-IL")}
+                              </span>
                             </div>
                           </div>
                         );
@@ -424,13 +444,23 @@ export default function Dashboard() {
                         if (val <= 0 || isInvalid) return null;
                         return (
                           <div className="bg-white rounded-lg p-3 space-y-1.5 border border-violet-100" dir="rtl">
-                            <div className="flex items-center justify-start gap-2 text-sm">
+                            <div className="flex flex-wrap items-center justify-start gap-2 text-sm">
                               <span className="text-slate-500 shrink-0">הנחה:</span>
-                              <span className="text-red-500 font-medium tabular-nums">-₪{discountAmount.toLocaleString()}</span>
+                              <Badge
+                                variant="outline"
+                                className="shrink-0 border-violet-200 bg-violet-50/80 text-[10px] font-normal text-violet-800"
+                              >
+                                קופון חדש
+                              </Badge>
+                              <span className="text-red-500 font-medium tabular-nums" dir="ltr">
+                                {formatDiscountLineShekels(discountAmount)}
+                              </span>
                             </div>
                             <div className="flex items-center justify-start gap-2 text-sm border-t border-violet-100 pt-1.5">
                               <span className="text-slate-500 shrink-0">מחיר סופי:</span>
-                              <span className="font-bold text-violet-700 text-base tabular-nums">₪{discountedTotal.toLocaleString()}</span>
+                              <span className="font-bold text-violet-700 text-base tabular-nums" dir="ltr">
+                                ₪{discountedTotal.toLocaleString("he-IL")}
+                              </span>
                             </div>
                           </div>
                         );

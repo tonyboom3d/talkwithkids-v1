@@ -68,6 +68,7 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
         priceInput: unitPrice > 0 ? String(unitPrice) : "",
       }]);
     }
+    setIsOpen(false);
   };
 
   const updatePrice = (productId, value) => {
@@ -169,31 +170,31 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                         type="button"
                         dir="ltr"
                         onClick={() => addProduct(product)}
-                        className={`w-full px-4 py-3 flex flex-row items-center gap-3 transition-colors border-b border-slate-50 last:border-0 ${
+                        className={`w-full px-4 py-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 transition-colors border-b border-slate-50 last:border-0 ${
                           isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'
                         }`}
                       >
-                        <div className="flex shrink-0 items-center gap-2">
+                        <div className="flex shrink-0 items-center gap-2 justify-self-start">
                           {listPrice != null && (
-                            <span className="text-sm font-medium text-slate-600 tabular-nums whitespace-nowrap">
-                              ₪{listPrice.toLocaleString()}
+                            <span className="text-sm font-medium text-slate-600 tabular-nums whitespace-nowrap" dir="ltr">
+                              ₪{listPrice.toLocaleString("he-IL")}
                             </span>
                           )}
                           {isSelected && (
                             <Badge className="bg-blue-100 text-blue-700 text-xs border-0 shrink-0">נבחר</Badge>
                           )}
                         </div>
-                        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                        <span className="text-base text-slate-700 truncate text-right min-w-0 justify-self-stretch self-center" dir="rtl">
+                          {product.name}
+                        </span>
+                        <div className="justify-self-end shrink-0">
                           {product.image && (
                             <img
                               src={product.image}
                               alt=""
-                              className="w-10 h-10 rounded-lg object-cover border border-slate-100 shrink-0"
+                              className="w-10 h-10 rounded-lg object-cover border border-slate-100"
                             />
                           )}
-                          <span className="text-base text-slate-700 truncate text-right" dir="rtl">
-                            {product.name}
-                          </span>
                         </div>
                       </button>
                     );

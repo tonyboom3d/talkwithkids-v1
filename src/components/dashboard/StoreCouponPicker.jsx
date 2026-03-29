@@ -7,6 +7,18 @@ import { LoadingSpinner } from "./LoadingSkeleton";
 import { DEMO_STORE_COUPONS } from "./DemoDataProvider";
 import { usePostMessage } from "@/hooks/usePostMessage";
 
+function formatCouponListValue(c) {
+  const t = c.type;
+  if (t === "PercentOff" || (c.percentOffRate != null && Number(c.percentOffRate) > 0)) {
+    const p = Number(c.percentOffRate);
+    return `${p.toLocaleString("he-IL")}- %`;
+  }
+  if (c.moneyOffAmount != null && c.moneyOffAmount !== "") {
+    return `${Number(c.moneyOffAmount).toLocaleString("he-IL")}- ₪`;
+  }
+  return c.discountValueText ?? "—";
+}
+
 export default function StoreCouponPicker({ isDemo, selectedCoupon, onSelect, disabled }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -101,7 +113,7 @@ export default function StoreCouponPicker({ isDemo, selectedCoupon, onSelect, di
           <button
             type="button"
             onClick={clear}
-            className="absolute left-10 top-1/2 -translate-y-1/2 p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50"
+            className="absolute right-10 top-1/2 -translate-y-1/2 p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50"
             aria-label="נקה בחירה"
           >
             <X className="w-4 h-4" />
@@ -130,7 +142,7 @@ export default function StoreCouponPicker({ isDemo, selectedCoupon, onSelect, di
                   />
                 </div>
               </div>
-              <div className="max-h-56 overflow-y-auto">
+              <div className="max-h-56 overflow-y-auto" dir="rtl">
                 {isLoading ? (
                   <LoadingSpinner text="טוען קופונים..." />
                 ) : coupons.length === 0 ? (
@@ -140,28 +152,33 @@ export default function StoreCouponPicker({ isDemo, selectedCoupon, onSelect, di
                     <button
                       key={String(c.id ?? c._id ?? c.code ?? `c-${idx}`)}
                       type="button"
-                      dir="rtl"
                       onClick={() => pick(c)}
-                      className="w-full px-4 py-3 flex flex-col items-stretch gap-1.5 text-right border-b border-slate-50 last:border-0 hover:bg-violet-50/60 transition-colors"
+                      className="w-full px-4 py-3 text-right border-b border-slate-50 last:border-0 hover:bg-violet-50/60 transition-colors"
                     >
-                      <div className="flex items-center justify-start gap-2">
-                        <span className="text-base font-medium text-slate-800 truncate flex-1 min-w-0">{c.name || c.code}</span>
-                        <Badge variant="outline" className="shrink-0 text-xs">
-                          {c.code}
-                        </Badge>
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-start gap-2">
+                          <span className="text-base font-medium text-slate-800 truncate flex-1 min-w-0 leading-snug">
+                            {c.name || c.code}
+                          </span>
+                          {c.code && (
+                            <Badge variant="outline" className="shrink-0 text-[11px] font-normal border-violet-200 bg-white text-violet-800">
+                              {c.code}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center justify-start gap-x-2 gap-y-1 text-sm text-slate-600">
+                          <span className="text-violet-700 font-medium">{c.discountTypeLabel || "סוג קופון"}</span>
+                          <span className="text-slate-300">·</span>
+                          <span className="tabular-nums font-semibold text-slate-800" dir="ltr">
+                            {formatCouponListValue(c)}
+                          </span>
+                        </div>
+                        {c.rulesSummary && (
+                          <p className="text-[11px] text-slate-500 leading-snug border-t border-violet-100/80 pt-2">
+                            {c.rulesSummary}
+                          </p>
+                        )}
                       </div>
-                      <div className="text-sm text-slate-600 flex flex-wrap items-center gap-x-2 gap-y-0.5 justify-end">
-                        <span className="text-violet-700 font-medium">{c.discountTypeLabel || "סוג קופון"}</span>
-                        <span className="text-slate-400">·</span>
-                        <span className="tabular-nums font-semibold text-slate-800">
-                          {c.discountValueText ?? "—"}
-                        </span>
-                      </div>
-                      {c.rulesSummary && (
-                        <span className="text-[11px] text-slate-500 leading-snug border-t border-slate-100 pt-1.5">
-                          {c.rulesSummary}
-                        </span>
-                      )}
                     </button>
                   ))
                 )}
