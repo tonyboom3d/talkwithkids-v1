@@ -255,6 +255,53 @@ export default function Dashboard() {
     }
   };
 
+  const handleResendWhatsapp = async (orderId) => {
+    if (isDemo) {
+      toast.success("(מצב דמו) הקישור נשלח שוב לוואטסאפ");
+      return;
+    }
+    try {
+      await request('RESEND_ORDER_WHATSAPP', { recordId: orderId });
+      toast.success("הקישור נשלח שוב ללקוח בוואטסאפ");
+      loadOrders();
+    } catch (err) {
+      toast.error(err.message || "שגיאה בשליחה חוזרת לוואטסאפ");
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, status) => {
+    if (isDemo) {
+      setOrders(prev => prev.map(o => (o.id === orderId || o._id === orderId) ? { ...o, status } : o));
+      toast.success("(מצב דמו) סטטוס ההזמנה עודכן");
+      return;
+    }
+    try {
+      await request('UPDATE_ORDER_STATUS', { recordId: orderId, status });
+      toast.success("סטטוס ההזמנה עודכן");
+      loadOrders();
+    } catch (err) {
+      toast.error(err.message || "שגיאה בעדכון סטטוס");
+    }
+  };
+
+  const handleDeleteOrder = async (orderId) => {
+    if (isDemo) {
+      setOrders(prev => prev.filter(o => (o.id || o._id) !== orderId));
+      toast.success("(מצב דמו) ההזמנה נמחקה");
+      return;
+    }
+    try {
+      await request('DELETE_ORDER', { recordId: orderId });
+      toast.success("ההזמנה נמחקה");
+      if (selectedOrder && (selectedOrder._id || selectedOrder.id) === orderId) {
+        setSelectedOrder(null);
+      }
+      loadOrders();
+    } catch (err) {
+      toast.error(err.message || "שגיאה במחיקת ההזמנה");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#fafafa]" dir="rtl">
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
@@ -649,6 +696,9 @@ export default function Dashboard() {
           orders={orders}
           isLoading={isLoadingOrders}
           onSelectOrder={setSelectedOrder}
+          onResendWhatsapp={handleResendWhatsapp}
+          onUpdateStatus={handleUpdateOrderStatus}
+          onDeleteOrder={handleDeleteOrder}
         />
       </div>
 

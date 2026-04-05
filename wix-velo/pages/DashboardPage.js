@@ -11,6 +11,9 @@ import {
   createOrderRecord,
   addOrderNote,
   cancelOrderLink,
+  resendOrderWhatsapp,
+  updateOrderStatus,
+  deleteOrderRecord,
   getStoreProducts,
   searchContactsByQuery,
   searchStoreCoupons,
@@ -110,7 +113,7 @@ async function handleIframeMessage(data) {
       }
 
       case 'CREATE_ORDER': {
-        const result = await createOrderRecord(payload, currentEmployee._id);
+        const result = await createOrderRecord(payload, currentEmployee._id, currentEmployee.displayName);
         sendToIframe('ORDER_CREATED', result, requestId);
         break;
       }
@@ -130,6 +133,24 @@ async function handleIframeMessage(data) {
       case 'CANCEL_LINK': {
         await cancelOrderLink(payload.recordId, currentEmployee.displayName);
         sendToIframe('LINK_CANCELLED', { success: true }, requestId);
+        break;
+      }
+
+      case 'RESEND_ORDER_WHATSAPP': {
+        await resendOrderWhatsapp(payload.recordId, currentEmployee.displayName);
+        sendToIframe('ORDER_WHATSAPP_RESENT', { success: true }, requestId);
+        break;
+      }
+
+      case 'UPDATE_ORDER_STATUS': {
+        await updateOrderStatus(payload.recordId, payload.status, currentEmployee.displayName);
+        sendToIframe('ORDER_STATUS_SAVED', { success: true }, requestId);
+        break;
+      }
+
+      case 'DELETE_ORDER': {
+        await deleteOrderRecord(payload.recordId, currentEmployee.displayName);
+        sendToIframe('ORDER_DELETED', { success: true }, requestId);
         break;
       }
 

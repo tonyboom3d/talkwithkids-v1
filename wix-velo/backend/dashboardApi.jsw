@@ -13,12 +13,49 @@ import { products } from 'wix-stores.v2';
 export { searchContactsByQuery, searchStoreCoupons };
 
 const LOG_PREFIX = '[VELO-BE]';
+const UPDATABLE_ORDER_STATUSES = new Set(['sent', 'opened', 'paid', 'cancelled', 'error']);
 
 /** LeadConnector — אחרי יצירת checkout + רשומת CMS */
 const DASHBOARD_CHECKOUT_WEBHOOK_URL =
     'https://services.leadconnectorhq.com/hooks/Qt9lEQiyh8wgVPJM4d6Q/webhook-trigger/387433a5-66c1-4a3c-8aec-797419749654';
 
 const PAYMENT_PAGE_BASE = 'https://www.talkwithkids.co.il/payment-page';
+
+function safeParseJson(value, fallback) {
+    if (!value) return fallback;
+    if (typeof value !== 'string') return value;
+    try {
+        return JSON.parse(value);
+    } catch (err) {
+        return fallback;
+    }
+}
+
+async function getEmployeeNameMap(employeeIds) {
+    const ids = [...new Set((employeeIds || []).filter(Boolean))];
+    if (ids.length === 0) return {};
+    const result = await wixData.query('AuthorizedEmployees')
+        .hasSome('_id', ids)
+        .limit(Math.min(ids.length, 100))
+        .find({ suppressAuth: true });
+    return (result.items || []).reduce((acc, item) => {
+        acc[item._id] = item.displayName || '';
+        return acc;
+    }, {});
+}
+
+function normalizeOrderRecord(item, employeeNameMap = {}) {
+    const changeChain = safeParseJson(item.changeChain, []);
+    const productsList = safeParseJson(item.products, []);
+    const couponDetails = safeParseJson(item.couponDetails, null);
+    return {
+        ...item,
+        changeChain,
+        products: productsList,
+        couponDetails,
+        createdByName: item.createdByName || employeeNameMap[item.createdByRef] || '',
+    };
+}
 
 // ─── Employee Permissions ───
 
@@ -52,12 +89,15 @@ export async function getOrderRecords(employeeId, canViewOthers) {
         .limit(100)
         .find({ suppressAuth: true });
 
-    return results.items;
+    const items = (results.items || []).filter((item) => !item.deletedAt);
+    const employeeNameMap = await getEmployeeNameMap(items.map((item) => item.createdByRef));
+    return items.map((item) => normalizeOrderRecord(item, employeeNameMap));
 }
 
 export async function getOrderDetails(recordId) {
     const item = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
-    return item;
+    const employeeNameMap = await getEmployeeNameMap([item.createdByRef]);
+    return normalizeOrderRecord(item, employeeNameMap);
 }
 
 // ─── Create Order ───
@@ -101,7 +141,7 @@ async function sendDashboardCheckoutWebhook({ customerName, customerPhone, check
     }
 }
 
-export async function createOrderRecord(orderData, employeeId) {
+export async function createOrderRecord(orderData, employeeId, employeeName = '') {
     console.log(`${LOG_PREFIX} Creating order for employee: ${employeeId}`);
 
     let couponResult = null;
@@ -148,6 +188,7 @@ export async function createOrderRecord(orderData, employeeId) {
         orderNumber: '',
         status: 'sent',
         createdByRef: employeeId,
+        createdByName: employeeName || '',
         paymentMethod: orderData.paymentTag || '',
         products: JSON.stringify(orderData.products),
         totalPrice: orderData.totalPrice,
@@ -156,7 +197,7 @@ export async function createOrderRecord(orderData, employeeId) {
         notes: orderData.notes || '',
         orderChangeNotes: orderData.orderChanges || '',
         changeChain: JSON.stringify([
-            { action: 'created', by: employeeId, date: new Date().toISOString(), detail: 'הזמנה נוצרה' }
+            { action: 'created', by: employeeName || employeeId, date: new Date().toISOString(), detail: 'הזמנה נוצרה' }
         ]),
         payerContactId: contactId || '',
         customerName: orderData.customer.firstName + (orderData.customer.lastName ? ' ' + orderData.customer.lastName : ''),
@@ -254,6 +295,73 @@ export async function cancelOrderLink(recordId, employeeName) {
         status: 'cancelled',
         changeChain: JSON.stringify(chain),
     }, { suppressAuth: true });
+}
+
+export async function resendOrderWhatsapp(recordId, employeeName) {
+    const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
+    if (!record.checkoutId) {
+        throw new Error('לא נמצא קישור תשלום לשליחה חוזרת');
+    }
+
+    await sendDashboardCheckoutWebhook({
+        customerName: record.customerName || '',
+        customerPhone: record.customerPhone || '',
+        checkoutId: record.checkoutId,
+    });
+
+    const chain = JSON.parse(record.changeChain || '[]');
+    chain.push({
+        action: 'sent',
+        by: employeeName,
+        date: new Date().toISOString(),
+        detail: 'קישור התשלום נשלח מחדש ללקוח בוואטסאפ',
+    });
+
+    await wixData.update('DashboardOrders', {
+        ...record,
+        changeChain: JSON.stringify(chain),
+    }, { suppressAuth: true });
+}
+
+export async function updateOrderStatus(recordId, nextStatus, employeeName) {
+    if (!UPDATABLE_ORDER_STATUSES.has(nextStatus)) {
+        throw new Error('סטטוס לא נתמך');
+    }
+
+    const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
+    const chain = JSON.parse(record.changeChain || '[]');
+    chain.push({
+        action: 'status_updated',
+        by: employeeName,
+        date: new Date().toISOString(),
+        detail: `סטטוס ההזמנה עודכן ל-${nextStatus}`,
+    });
+
+    await wixData.update('DashboardOrders', {
+        ...record,
+        status: nextStatus,
+        changeChain: JSON.stringify(chain),
+    }, { suppressAuth: true });
+}
+
+export async function deleteOrderRecord(recordId, employeeName) {
+    const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
+    const chain = JSON.parse(record.changeChain || '[]');
+    chain.push({
+        action: 'deleted',
+        by: employeeName,
+        date: new Date().toISOString(),
+        detail: 'ההזמנה נמחקה מלוח הבקרה',
+    });
+
+    await wixData.update('DashboardOrders', {
+        ...record,
+        status: 'cancelled',
+        deletedAt: new Date(),
+        changeChain: JSON.stringify(chain),
+    }, { suppressAuth: true });
+
+    await wixData.remove('DashboardOrders', recordId, { suppressAuth: true });
 }
 
 // ─── Post-Purchase (called from events.js) ───

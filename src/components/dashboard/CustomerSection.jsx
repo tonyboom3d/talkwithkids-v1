@@ -319,7 +319,7 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
                   placeholder="05XXXXXXXX"
                   inputMode="numeric"
                   maxLength={10}
-                  className="h-10 text-sm border-slate-200 focus:border-slate-400 text-left"
+                  className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
                   dir="ltr"
                 />
               </div>
