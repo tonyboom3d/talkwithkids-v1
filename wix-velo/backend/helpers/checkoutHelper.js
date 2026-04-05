@@ -1,14 +1,26 @@
 import { checkout } from 'wix-ecom-backend';
 
+/** מזהה אפליקציית Wix Stores לקטלוג (מתועד ב-createCheckout) */
+const WIX_STORES_CATALOG_APP_ID = '215238eb-22a5-4c36-9e7b-e7c08025e04e';
+
 export async function createDashboardCheckout(orderData) {
-  /** חובה ב-API — בלי itemType / descriptionLines מתקבלת שגיאת validation */
-  const customLineItems = orderData.products.map((p) => ({
-    productName: { original: p.name },
-    quantity: p.quantity,
-    price: String(orderData.isPaid ? 0 : p.price),
-    itemType: { preset: 'PHYSICAL' },
-    descriptionLines: [{ name: { original: p.name } }],
-  }));
+  const lineItems = (orderData.products || []).map((p) => {
+    const catalogItemId = p.id || p.productId;
+    if (!catalogItemId) {
+      throw new Error('חסר מזהה מוצר (id) — נדרש מוצר מהקטלוג');
+    }
+    return {
+      quantity: Math.max(1, Number(p.quantity) || 1),
+      catalogReference: {
+        appId: WIX_STORES_CATALOG_APP_ID,
+        catalogItemId: String(catalogItemId),
+      },
+    };
+  });
+
+  if (lineItems.length === 0) {
+    throw new Error('אין פריטים לחיוב');
+  }
 
   const checkoutInfo = {};
 
@@ -27,7 +39,7 @@ export async function createDashboardCheckout(orderData) {
 
   const checkoutOptions = {
     channelType: 'OTHER_PLATFORM',
-    customLineItems,
+    lineItems,
     checkoutInfo,
   };
 
@@ -35,7 +47,6 @@ export async function createDashboardCheckout(orderData) {
     checkoutOptions.couponCode = orderData.couponCode;
   }
 
-  // @ts-ignore - channelType is a valid string enum value accepted by the API
   const checkoutObj = await checkout.createCheckout(checkoutOptions);
   const urlResult = await checkout.getCheckoutUrl(checkoutObj._id);
 

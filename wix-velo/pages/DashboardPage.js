@@ -12,7 +12,6 @@ import {
   addOrderNote,
   cancelOrderLink,
   getStoreProducts,
-  getPricingPlans,
   searchContactsByQuery,
   searchStoreCoupons,
 } from 'backend/dashboardApi.jsw';
@@ -137,12 +136,6 @@ async function handleIframeMessage(data) {
       case 'GET_PRODUCTS': {
         const products = await getStoreProducts();
         sendToIframe('PRODUCTS_RESULT', { products }, requestId);
-        break;
-      }
-
-      case 'GET_PRICING_PLANS': {
-        const plans = await getPricingPlans();
-        sendToIframe('PRICING_PLANS_RESULT', { plans }, requestId);
         break;
       }
 

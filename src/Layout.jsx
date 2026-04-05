@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "./utils";
-import { motion } from "framer-motion";
 import {
-  LayoutDashboard, ShoppingBag, BarChart2, Menu, X
+  LayoutDashboard, ShoppingBag, BarChart2
 } from "lucide-react";
 import { useAuth } from "@/lib/IframeAuthContext";
 
@@ -14,8 +13,8 @@ const navItems = [
 ];
 
 export default function Layout({ children, currentPageName }) {
-  const [collapsed, setCollapsed] = useState(false);
   const { user } = useAuth();
+  const collapsed = true;
 
   return (
     <div style={{ fontFamily: "'Assistant', 'Helvetica Neue', sans-serif" }}>
@@ -30,52 +29,49 @@ export default function Layout({ children, currentPageName }) {
       `}</style>
 
       <div className="flex min-h-screen bg-[#f8f8f8]">
-        <motion.aside
-          animate={{ width: collapsed ? 64 : 220 }}
-          transition={{ duration: 0.25, ease: "easeInOut" }}
-          className="bg-white border-l border-slate-200 flex flex-col shrink-0 relative z-20"
+        <aside
+          className="w-16 bg-white border-l border-slate-200 flex flex-col shrink-0 relative z-20"
           style={{ minHeight: "100vh" }}
         >
-          <div className="h-14 flex items-center justify-between px-4 border-b border-slate-100">
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors text-slate-500"
-            >
-              {collapsed ? <Menu className="w-4 h-4" /> : <X className="w-4 h-4" />}
-            </button>
-            {!collapsed && (
-              <span className="text-sm font-bold text-slate-800 truncate">לוח בקרה</span>
-            )}
+          <div className="h-14 flex items-center justify-center border-b border-slate-100">
+            <span className="text-xs font-bold text-slate-500 tracking-wide">TWK</span>
           </div>
 
-          <nav className="flex-1 py-3 space-y-0.5 px-2">
+          <nav className="flex-1 py-3 space-y-0.5 px-2 overflow-visible">
             {navItems.map(({ label, page, icon: Icon }) => {
               const isActive = currentPageName === page;
               return (
                 <Link
                   key={page}
                   to={createPageUrl(page)}
-                  title={collapsed ? label : undefined}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium
+                  title={label}
+                  className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium
                     ${isActive
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     }
                     ${collapsed ? "justify-center" : "justify-end"}`}
                 >
-                  {!collapsed && <span className="truncate">{label}</span>}
                   <Icon className="w-4 h-4 shrink-0" />
+                  <span className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2.5 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+                    {label}
+                  </span>
                 </Link>
               );
             })}
           </nav>
 
-          {!collapsed && user && (
-            <div className="px-3 pb-4 border-t border-slate-100 pt-3">
-              <div className="text-xs text-slate-400 text-right truncate">{user.displayName}</div>
+          {user && (
+            <div className="px-2 pb-4 border-t border-slate-100 pt-3">
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-[11px] font-semibold text-slate-500 mx-auto"
+                title={user.displayName}
+              >
+                {user.displayName?.trim()?.slice(0, 2) || "TW"}
+              </div>
             </div>
           )}
-        </motion.aside>
+        </aside>
 
         <main className="flex-1 min-w-0">
           {children}

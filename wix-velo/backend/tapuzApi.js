@@ -239,7 +239,7 @@ async function buildTapuzString(order, quantity, customerCode, sender, itemsSumm
         )?.value
         || "";
 
-    // הערות למשלוח: שם ילד + רשימת מוצרים + buyerNote + customFields["הערות"] + addressLine2 המלא, מופרדים ב-|
+    // הערות למשלוח: שם ילד + רשימת מוצרים + buyerNote + customFields["הערות"] + addressLine2 המלא, מופרדים ב-|||
     const noteParts = [];
     if (childName) {
         noteParts.push(`שם הילד/ה: ${childName}`);
@@ -262,7 +262,7 @@ async function buildTapuzString(order, quantity, customerCode, sender, itemsSumm
         noteParts.push(`פרטי כתובת נוספים: ${addressLine2}`);
     }
 
-    const deliveryNote = noteParts.length ? noteParts.join(" | ") : "אין הערות";
+    const deliveryNote = noteParts.length ? noteParts.join(" ||| ") : "אין הערות";
 
     // שדה 6: מס׳ בית + דירה מ-streetAddress.apt (אם יש) — ברמת הכתובת הבסיסית
     const houseAndApt = apt ? `${streetNum} דירה ${apt}` : streetNum;

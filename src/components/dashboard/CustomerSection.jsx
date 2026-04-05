@@ -45,6 +45,10 @@ const fadeIn = {
   transition: { duration: 0.25, ease: "easeOut" }
 };
 
+function sanitizeIsraeliPhoneInput(value) {
+  return String(value || "").replace(/\D/g, "").slice(0, 10);
+}
+
 export default function CustomerSection({ isDemo, customerData, setCustomerData, paymentStatus, setPaymentStatus, selectedContact, setSelectedContact }) {
   const [isExisting, setIsExisting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -242,15 +246,31 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
                     <Input value={customerData.email} onChange={e => handleFieldChange("email", e.target.value)} className="h-10 text-sm border-slate-200 text-right" dir="rtl" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-500 block text-right">שם מלא</Label>
-                    <Input value={customerData.firstName} onChange={e => handleFieldChange("firstName", e.target.value)} className="h-10 text-sm border-slate-200 text-right" dir="rtl" />
+                    <Label className="text-xs text-slate-500 block text-right">
+                      שם<span className="text-red-400 mr-0.5">*</span>
+                    </Label>
+                    <Input
+                      value={customerData.firstName}
+                      onChange={e => handleFieldChange("firstName", e.target.value)}
+                      placeholder="לפחות שם פרטי"
+                      className="h-10 text-sm border-slate-200 text-right"
+                      dir="rtl"
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
                   <div className="space-y-1.5 w-full" dir="rtl">
                     <Label className="text-xs text-slate-500 block w-full text-right">טלפון</Label>
-                    <Input value={customerData.phone} onChange={e => handleFieldChange("phone", e.target.value)} className="h-10 text-sm border-slate-200 text-right" dir="rtl" />
+                    <Input
+                      value={customerData.phone}
+                      onChange={e => handleFieldChange("phone", sanitizeIsraeliPhoneInput(e.target.value))}
+                      placeholder="05XXXXXXXX"
+                      inputMode="numeric"
+                      maxLength={10}
+                      className="h-10 text-sm border-slate-200 text-right"
+                      dir="ltr"
+                    />
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
@@ -274,11 +294,13 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-500 block text-right">שם מלא</Label>
+                <Label className="text-xs text-slate-500 block text-right">
+                  שם<span className="text-red-400 mr-0.5">*</span>
+                </Label>
                 <Input
                   value={customerData.firstName}
                   onChange={e => setCustomerData(prev => ({ ...prev, firstName: e.target.value, lastName: "" }))}
-                  placeholder="שם מלא"
+                  placeholder="לפחות שם פרטי"
                   className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
                   dir="rtl"
                 />
@@ -293,10 +315,12 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
                 <Input
                   id="customer-phone-new"
                   value={customerData.phone}
-                  onChange={e => setCustomerData(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder="050-0000000"
-                  className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
-                  dir="rtl"
+                  onChange={e => setCustomerData(prev => ({ ...prev, phone: sanitizeIsraeliPhoneInput(e.target.value) }))}
+                  placeholder="05XXXXXXXX"
+                  inputMode="numeric"
+                  maxLength={10}
+                  className="h-10 text-sm border-slate-200 focus:border-slate-400 text-left"
+                  dir="ltr"
                 />
               </div>
             </div>

@@ -8,8 +8,6 @@ import {
     validateExistingStoreCoupon,
 } from 'backend/helpers/couponHelper';
 import { createDashboardCheckout } from 'backend/helpers/checkoutHelper';
-import { createMemberForOrder } from 'backend/helpers/memberHelper';
-import { assignPricingPlansToMember } from 'backend/helpers/pricingPlanHelper';
 import { products } from 'wix-stores.v2';
 
 export { searchContactsByQuery, searchStoreCoupons };
@@ -184,7 +182,6 @@ export async function createOrderRecord(orderData, employeeId) {
             contactId,
             orderChangeNotes: orderData.orderChanges || '',
             couponCode: couponResult?.code || null,
-            isPaid: orderData.paymentStatus === 'paid',
         });
 
         const currentRecord = await wixData.get('DashboardOrders', inserted._id, { suppressAuth: true });
@@ -281,9 +278,6 @@ export async function handleOrderCompleted(ecomOrder) {
 
     const record = results.items[0];
 
-    // Backup before update
-    const backup = { ...record };
-
     const chain = JSON.parse(record.changeChain || '[]');
     chain.push({
         action: 'paid',
@@ -309,38 +303,7 @@ export async function handleOrderCompleted(ecomOrder) {
     await wixData.update('DashboardOrders', updatedRecord, { suppressAuth: true });
     console.log(`${LOG_PREFIX} Order status updated to paid: ${record._id}`);
 
-    // Create member
-    const email = record.customerEmail || ecomOrder.buyerInfo?.email;
-    const phone = await normalizeIsraeliPhone(record.customerPhone || "");
-
-    if (email && phone) {
-        try {
-            const memberResult = await createMemberForOrder(email, phone, record.customerName);
-
-            if (memberResult.memberId) {
-                const freshRecord = await wixData.get('DashboardOrders', record._id, { suppressAuth: true });
-                await wixData.update('DashboardOrders', {
-                    ...freshRecord,
-                    payerMemberRef: memberResult.memberId,
-                }, { suppressAuth: true });
-
-                console.log(`${LOG_PREFIX} Member created: ${memberResult.memberId}`);
-
-                // Assign pricing plans
-                const orderProducts = JSON.parse(record.products || '[]');
-                await assignPricingPlansToMember(memberResult.memberId, orderProducts);
-            }
-        } catch (err) {
-            console.error(`${LOG_PREFIX} Member creation error:`, err.message);
-            const freshRecord = await wixData.get('DashboardOrders', record._id, { suppressAuth: true });
-            await wixData.update('DashboardOrders', {
-                ...freshRecord,
-                errors: JSON.stringify({ member: err.message }),
-            }, { suppressAuth: true });
-        }
-    }
-
-    // Shipping routing
+    // Shipping routing (Tapuz / ידני — ראו backend/events.js + tapuzApi.js)
     const hasOrderChanges = record.orderChangeNotes && record.orderChangeNotes.trim() !== '';
     await wixData.insert('ShippingRouting', {
         orderRef: record._id,
@@ -352,7 +315,7 @@ export async function handleOrderCompleted(ecomOrder) {
     console.log(`${LOG_PREFIX} Shipping routed to: ${hasOrderChanges ? 'chen' : 'tapuz'}`);
 }
 
-// ─── Products & Pricing Plans ───
+// ─── Store products (קטלוג לדאשבורד) ───
 
 function unitPriceFromStoreProduct(p) {
     const pd = p.priceData;
@@ -375,15 +338,6 @@ export async function getStoreProducts() {
             price,
         };
     });
-}
-
-export async function getPricingPlans() {
-    const result = await wixData.query('PaidPlans/Plans')
-        .find({ suppressAuth: true });
-    return result.items.map(p => ({
-        id: p._id,
-        name: p.name,
-    }));
 }
 
 // ─── Contact Search (exposed to page code) ───

@@ -42,6 +42,10 @@ function formatDiscountLineShekels(amount) {
   return `${n.toLocaleString("he-IL")}- ₪`;
 }
 
+function isValidIsraeliPhone(phone) {
+  return /^05\d{8}$/.test(String(phone || "").trim());
+}
+
 export default function Dashboard() {
   const { user, canViewOthers } = useAuth();
   const { send, request } = usePostMessage();
@@ -86,6 +90,14 @@ export default function Dashboard() {
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
+  useEffect(() => {
+    if (paymentStatus !== "paid") return;
+    setCouponEnabled(false);
+    setCouponMode("create");
+    setSelectedStoreCoupon(null);
+    setCouponValue("");
+  }, [paymentStatus]);
+
   usePostMessageListener('ORDER_STATUS_UPDATED', (payload) => {
     setOrders(prev => prev.map(o =>
       o._id === payload.recordId ? { ...o, ...payload.updates } : o
@@ -98,8 +110,12 @@ export default function Dashboard() {
   };
 
   const handleSubmit = async () => {
-    if (!customerData.phone) {
-      showError("מספר טלפון הוא שדה חובה");
+    if (!customerData.firstName.trim()) {
+      showError("יש למלא שם לקוח");
+      return;
+    }
+    if (!isValidIsraeliPhone(customerData.phone)) {
+      showError("יש למלא מספר פלאפון ישראלי תקין שמתחיל ב-05 ומכיל 10 ספרות");
       return;
     }
     if (selectedProducts.length === 0) {
@@ -116,7 +132,7 @@ export default function Dashboard() {
       return;
     }
 
-    if (couponEnabled) {
+    if (couponEnabled && paymentStatus !== "paid") {
       if (couponMode === "existing") {
         if (!selectedStoreCoupon) {
           showError("נא לבחור קופון מהרשימה");
@@ -150,7 +166,7 @@ export default function Dashboard() {
     try {
       let coupon = null;
       let existingCoupon = null;
-      if (couponEnabled) {
+      if (couponEnabled && paymentStatus !== "paid") {
         if (couponMode === "existing" && selectedStoreCoupon) {
           existingCoupon = { id: selectedStoreCoupon.id, code: selectedStoreCoupon.code };
         } else if (couponMode === "create") {
@@ -161,6 +177,9 @@ export default function Dashboard() {
       const result = await request('CREATE_ORDER', {
         customer: {
           ...customerData,
+          firstName: customerData.firstName.trim(),
+          lastName: customerData.lastName.trim(),
+          phone: customerData.phone.trim(),
           contactId: selectedContact?.id || null,
         },
         products: selectedProducts.map(p => ({
@@ -282,201 +301,202 @@ export default function Dashboard() {
             setSelectedProducts={setSelectedProducts}
           />
 
-          {/* Coupon */}
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: 0.22 }}
-            className="space-y-3"
-          >
-            <button
-              type="button"
-              disabled={selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0) === 0}
-              onClick={() => {
-                if (selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0) > 0) {
-                  setCouponEnabled(!couponEnabled);
-                  setCouponValue("");
-                  setSelectedStoreCoupon(null);
-                  setCouponMode("create");
-                }
-              }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all w-full ${
-                selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0) === 0
-                  ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
-                  : couponEnabled
-                    ? "bg-violet-50 border-violet-300 text-violet-700"
-                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
-              }`}
+          {paymentStatus !== "paid" && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: 0.22 }}
+              className="space-y-3"
             >
-              <Ticket className="w-4 h-4" />
-              קופון הנחה להזמנה
-              <div className={`mr-auto w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
-                couponEnabled ? "bg-violet-600 border-violet-600" : "border-slate-300"
-              }`}>
-                {couponEnabled && <div className="w-2 h-2 bg-white rounded-sm" />}
-              </div>
-            </button>
+              <button
+                type="button"
+                disabled={selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0) === 0}
+                onClick={() => {
+                  if (selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0) > 0) {
+                    setCouponEnabled(!couponEnabled);
+                    setCouponValue("");
+                    setSelectedStoreCoupon(null);
+                    setCouponMode("create");
+                  }
+                }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all w-full ${
+                  selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0) === 0
+                    ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                    : couponEnabled
+                      ? "bg-violet-50 border-violet-300 text-violet-700"
+                      : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
+                }`}
+              >
+                <Ticket className="w-4 h-4" />
+                קופון הנחה להזמנה
+                <div className={`mr-auto w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+                  couponEnabled ? "bg-violet-600 border-violet-600" : "border-slate-300"
+                }`}>
+                  {couponEnabled && <div className="w-2 h-2 bg-white rounded-sm" />}
+                </div>
+              </button>
 
-            <AnimatePresence>
-              {couponEnabled && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                >
-                  <div className="bg-violet-50/60 border border-violet-100 rounded-xl p-4 space-y-3">
-                    <div className="flex flex-wrap gap-2" dir="rtl">
-                      <button
-                        type="button"
-                        onClick={() => { setCouponMode("create"); setSelectedStoreCoupon(null); }}
-                        className={`flex-1 min-w-[140px] px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
-                          couponMode === "create" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-                        }`}
-                      >
-                        יצירת קופון חדש
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setCouponMode("existing"); setCouponValue(""); }}
-                        className={`flex-1 min-w-[140px] px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
-                          couponMode === "existing" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-                        }`}
-                      >
-                        קופון קיים מהחנות
-                      </button>
-                    </div>
+              <AnimatePresence>
+                {couponEnabled && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                  >
+                    <div className="bg-violet-50/60 border border-violet-100 rounded-xl p-4 space-y-3">
+                      <div className="flex flex-wrap gap-2" dir="rtl">
+                        <button
+                          type="button"
+                          onClick={() => { setCouponMode("create"); setSelectedStoreCoupon(null); }}
+                          className={`flex-1 min-w-[140px] px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
+                            couponMode === "create" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                          }`}
+                        >
+                          יצירת קופון חדש
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setCouponMode("existing"); setCouponValue(""); }}
+                          className={`flex-1 min-w-[140px] px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
+                            couponMode === "existing" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                          }`}
+                        >
+                          קופון קיים מהחנות
+                        </button>
+                      </div>
 
-                    {couponMode === "existing" ? (
-                      <StoreCouponPicker
-                        isDemo={isDemo}
-                        selectedCoupon={selectedStoreCoupon}
-                        onSelect={setSelectedStoreCoupon}
-                        disabled={false}
-                      />
-                    ) : (
-                      <>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => { setCouponType("percent"); setCouponValue(""); }}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                              couponType === "percent" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200"
-                            }`}
-                          >
-                            <Percent className="w-3 h-3" />
-                            אחוזים
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setCouponType("fixed"); setCouponValue(""); }}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                              couponType === "fixed" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200"
-                            }`}
-                          >
-                            <DollarSign className="w-3 h-3" />
-                            מחיר קבוע
-                          </button>
-                        </div>
-                        {(() => {
-                          const total = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
-                          const val = parseFloat(couponValue) || 0;
-                          const isInvalid = couponType === "percent" ? val >= 100 : val >= total;
+                      {couponMode === "existing" ? (
+                        <StoreCouponPicker
+                          isDemo={isDemo}
+                          selectedCoupon={selectedStoreCoupon}
+                          onSelect={setSelectedStoreCoupon}
+                          disabled={false}
+                        />
+                      ) : (
+                        <>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => { setCouponType("percent"); setCouponValue(""); }}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                                couponType === "percent" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200"
+                              }`}
+                            >
+                              <Percent className="w-3 h-3" />
+                              אחוזים
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setCouponType("fixed"); setCouponValue(""); }}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                                couponType === "fixed" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200"
+                              }`}
+                            >
+                              <DollarSign className="w-3 h-3" />
+                              מחיר קבוע
+                            </button>
+                          </div>
+                          {(() => {
+                            const total = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
+                            const val = parseFloat(couponValue) || 0;
+                            const isInvalid = couponType === "percent" ? val >= 100 : val >= total;
+                            return (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max={couponType === "percent" ? 99 : Math.max(0, total - 1)}
+                                    value={couponValue}
+                                    onChange={(e) => setCouponValue(e.target.value)}
+                                    placeholder={couponType === "percent" ? "% הנחה" : "סכום הנחה (₪)"}
+                                    className="h-9 text-sm border-slate-200 bg-white"
+                                    dir="ltr"
+                                  />
+                                  <span className="text-sm text-slate-500">{couponType === "percent" ? "%" : "₪"}</span>
+                                </div>
+                                {isInvalid && couponValue !== "" && (
+                                  <p className="text-xs text-red-500">
+                                    ההנחה לא יכולה להיות גדולה מ-{couponType === "percent" ? "99%" : `₪${(total - 1).toLocaleString()}`}
+                                  </p>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </>
+                      )}
+
+                      {(() => {
+                        const total = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
+                        if (total <= 0) return null;
+
+                        if (couponMode === "existing" && selectedStoreCoupon) {
+                          const { discountAmount, discountedTotal } = computeDiscountForSubtotal(total, selectedStoreCoupon);
+                          if (discountAmount <= 0) return null;
                           return (
-                            <>
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  max={couponType === "percent" ? 99 : Math.max(0, total - 1)}
-                                  value={couponValue}
-                                  onChange={(e) => setCouponValue(e.target.value)}
-                                  placeholder={couponType === "percent" ? "% הנחה" : "סכום הנחה (₪)"}
-                                  className="h-9 text-sm border-slate-200 bg-white"
-                                  dir="ltr"
-                                />
-                                <span className="text-sm text-slate-500">{couponType === "percent" ? "%" : "₪"}</span>
+                            <div className="bg-white rounded-lg p-3 space-y-1.5 border border-violet-100" dir="rtl">
+                              <div className="flex flex-wrap items-center justify-start gap-2 text-sm">
+                                <span className="text-slate-500 shrink-0">הנחה:</span>
+                                <Badge
+                                  variant="outline"
+                                  className="shrink-0 border-violet-200 bg-violet-50/80 text-[10px] font-normal text-violet-800"
+                                >
+                                  {selectedStoreCoupon.code
+                                    ? `קופון ${selectedStoreCoupon.code}`
+                                    : "קופון"}
+                                </Badge>
+                                <span className="text-red-500 font-medium tabular-nums" dir="ltr">
+                                  {formatDiscountLineShekels(discountAmount)}
+                                </span>
                               </div>
-                              {isInvalid && couponValue !== "" && (
-                                <p className="text-xs text-red-500">
-                                  ההנחה לא יכולה להיות גדולה מ-{couponType === "percent" ? "99%" : `₪${(total - 1).toLocaleString()}`}
-                                </p>
-                              )}
-                            </>
+                              <div className="flex items-center justify-start gap-2 text-sm border-t border-violet-100 pt-1.5">
+                                <span className="text-slate-500 shrink-0">מחיר סופי:</span>
+                                <span className="font-bold text-violet-700 text-base tabular-nums" dir="ltr">
+                                  ₪{discountedTotal.toLocaleString("he-IL")}
+                                </span>
+                              </div>
+                            </div>
                           );
-                        })()}
-                      </>
-                    )}
+                        }
 
-                    {(() => {
-                      const total = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
-                      if (total <= 0) return null;
+                        if (couponMode === "create") {
+                          const val = parseFloat(couponValue) || 0;
+                          const discountAmount = couponType === "percent" ? (total * val) / 100 : val;
+                          const discountedTotal = total - discountAmount;
+                          const isInvalid = couponType === "percent" ? val >= 100 : val >= total;
+                          if (val <= 0 || isInvalid) return null;
+                          return (
+                            <div className="bg-white rounded-lg p-3 space-y-1.5 border border-violet-100" dir="rtl">
+                              <div className="flex flex-wrap items-center justify-start gap-2 text-sm">
+                                <span className="text-slate-500 shrink-0">הנחה:</span>
+                                <Badge
+                                  variant="outline"
+                                  className="shrink-0 border-violet-200 bg-violet-50/80 text-[10px] font-normal text-violet-800"
+                                >
+                                  קופון חדש
+                                </Badge>
+                                <span className="text-red-500 font-medium tabular-nums" dir="ltr">
+                                  {formatDiscountLineShekels(discountAmount)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-start gap-2 text-sm border-t border-violet-100 pt-1.5">
+                                <span className="text-slate-500 shrink-0">מחיר סופי:</span>
+                                <span className="font-bold text-violet-700 text-base tabular-nums" dir="ltr">
+                                  ₪{discountedTotal.toLocaleString("he-IL")}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
 
-                      if (couponMode === "existing" && selectedStoreCoupon) {
-                        const { discountAmount, discountedTotal } = computeDiscountForSubtotal(total, selectedStoreCoupon);
-                        if (discountAmount <= 0) return null;
-                        return (
-                          <div className="bg-white rounded-lg p-3 space-y-1.5 border border-violet-100" dir="rtl">
-                            <div className="flex flex-wrap items-center justify-start gap-2 text-sm">
-                              <span className="text-slate-500 shrink-0">הנחה:</span>
-                              <Badge
-                                variant="outline"
-                                className="shrink-0 border-violet-200 bg-violet-50/80 text-[10px] font-normal text-violet-800"
-                              >
-                                {selectedStoreCoupon.code
-                                  ? `קופון ${selectedStoreCoupon.code}`
-                                  : "קופון"}
-                              </Badge>
-                              <span className="text-red-500 font-medium tabular-nums" dir="ltr">
-                                {formatDiscountLineShekels(discountAmount)}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-start gap-2 text-sm border-t border-violet-100 pt-1.5">
-                              <span className="text-slate-500 shrink-0">מחיר סופי:</span>
-                              <span className="font-bold text-violet-700 text-base tabular-nums" dir="ltr">
-                                ₪{discountedTotal.toLocaleString("he-IL")}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      if (couponMode === "create") {
-                        const val = parseFloat(couponValue) || 0;
-                        const discountAmount = couponType === "percent" ? (total * val) / 100 : val;
-                        const discountedTotal = total - discountAmount;
-                        const isInvalid = couponType === "percent" ? val >= 100 : val >= total;
-                        if (val <= 0 || isInvalid) return null;
-                        return (
-                          <div className="bg-white rounded-lg p-3 space-y-1.5 border border-violet-100" dir="rtl">
-                            <div className="flex flex-wrap items-center justify-start gap-2 text-sm">
-                              <span className="text-slate-500 shrink-0">הנחה:</span>
-                              <Badge
-                                variant="outline"
-                                className="shrink-0 border-violet-200 bg-violet-50/80 text-[10px] font-normal text-violet-800"
-                              >
-                                קופון חדש
-                              </Badge>
-                              <span className="text-red-500 font-medium tabular-nums" dir="ltr">
-                                {formatDiscountLineShekels(discountAmount)}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-start gap-2 text-sm border-t border-violet-100 pt-1.5">
-                              <span className="text-slate-500 shrink-0">מחיר סופי:</span>
-                              <span className="font-bold text-violet-700 text-base tabular-nums" dir="ltr">
-                                ₪{discountedTotal.toLocaleString("he-IL")}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      return null;
-                    })()}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
+                        return null;
+                      })()}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
 
           <div className="border-t border-slate-100" />
 
@@ -577,7 +597,7 @@ export default function Dashboard() {
                       >
                         ⚠️
                       </motion.span>
-                      <span>הוספת הערות לזה זה משנה את אופן השילוח מתפוז לשילוח דרך חן</span>
+                      <span>הוספת הערות לשדה זה משנה את אופן השילוח מתפוז לשילוח דרך חן</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
