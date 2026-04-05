@@ -4,6 +4,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { currentMember } from 'wix-members-frontend';
+import wixWindowFrontend from 'wix-window-frontend';
 import {
   getEmployeePermissions,
   getOrderRecords,
@@ -151,6 +152,12 @@ async function handleIframeMessage(data) {
       case 'DELETE_ORDER': {
         await deleteOrderRecord(payload.recordId, currentEmployee.displayName);
         sendToIframe('ORDER_DELETED', { success: true }, requestId);
+        break;
+      }
+
+      case 'COPY_TO_CLIPBOARD': {
+        await wixWindowFrontend.copyToClipboard(payload.text || '');
+        sendToIframe('CLIPBOARD_COPIED', { success: true }, requestId);
         break;
       }
 

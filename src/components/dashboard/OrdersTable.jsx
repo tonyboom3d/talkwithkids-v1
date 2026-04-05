@@ -36,9 +36,9 @@ import {
   Phone,
   Search,
   Tag,
-  Trash2,
   UserRound,
   Workflow,
+  XCircle,
 } from "lucide-react";
 import { TableSkeleton } from "./LoadingSkeleton";
 
@@ -50,10 +50,11 @@ const STATUS_CONFIG = {
   unpaid: { label: "לא שולם", className: "bg-red-100 text-red-700" },
   cancelled: { label: "בוטל", className: "bg-gray-100 text-gray-500" },
   error: { label: "שגיאה", className: "bg-red-100 text-red-700" },
+  paid_pending_details: { label: "שולמה - לא הושלמה", className: "bg-sky-100 text-sky-700" },
   paid: { label: "שולם", className: "bg-emerald-100 text-emerald-700" },
 };
 
-const STATUS_UPDATE_OPTIONS = ["sent", "opened", "paid", "cancelled", "error"];
+const STATUS_UPDATE_OPTIONS = ["sent", "opened", "paid_pending_details", "paid", "cancelled", "error"];
 
 function safeParseJson(value, fallback) {
   if (value == null || value === "") return fallback;
@@ -90,6 +91,9 @@ function getDisplayStatus(order) {
 
 function getCouponSummary(couponDetails) {
   if (!couponDetails) return "ללא קופון";
+  if (couponDetails.source === "auto_paid") {
+    return "שולם מראש - קופון 100% להשלמת פרטים";
+  }
   if (couponDetails.source === "existing") {
     return couponDetails.code ? `קופון קיים: ${couponDetails.code}` : "קופון קיים מהחנות";
   }
@@ -175,7 +179,10 @@ function ActionButton({ icon: Icon, label, onClick, className = "", disabled = f
       type="button"
       variant="outline"
       size="sm"
-      onClick={onClick}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick?.(event);
+      }}
       disabled={disabled}
       className={`gap-1.5 h-8 text-xs ${className}`}
     >
@@ -188,7 +195,7 @@ function ActionButton({ icon: Icon, label, onClick, className = "", disabled = f
 export default function OrdersTable({
   orders,
   isLoading,
-  onSelectOrder,
+  onCopyToClipboard,
   onResendWhatsapp,
   onUpdateStatus,
   onDeleteOrder,
@@ -237,8 +244,7 @@ export default function OrdersTable({
       toast.error("אין קישור זמין להעתקה");
       return;
     }
-    await navigator.clipboard.writeText(order.checkoutLink);
-    toast.success("הקישור הועתק");
+    await onCopyToClipboard?.(order.checkoutLink);
   };
 
   const runRowAction = async (type, order, action) => {
@@ -331,15 +337,20 @@ export default function OrdersTable({
                 {paginated.map((order) => {
                   const isExpanded = expandedRowId === order.rowId;
                   const isBusy = busyAction.rowId === order.rowId;
+                  const isCancelled = order.displayStatus === "cancelled";
 
                   return (
                     <React.Fragment key={order.rowId}>
-                      <TableRow className="group hover:bg-slate-50/70">
+                      <TableRow
+                        className="group cursor-pointer hover:bg-slate-50/70"
+                        onClick={() => setExpandedRowId(isExpanded ? null : order.rowId)}
+                      >
                         <TableCell className="text-center">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button
                                 type="button"
+                                onClick={(event) => event.stopPropagation()}
                                 className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 opacity-0 transition-all hover:bg-slate-100 group-hover:opacity-100 focus:opacity-100"
                               >
                                 <MoreHorizontal className="w-4 h-4" />
@@ -347,7 +358,7 @@ export default function OrdersTable({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-52" dir="rtl">
                               <DropdownMenuItem
-                                disabled={!order.checkoutLink || !onResendWhatsapp || isBusy}
+                                disabled={!order.checkoutLink || !onResendWhatsapp || isBusy || isCancelled}
                                 onClick={() => runRowAction("resend", order, () => onResendWhatsapp(order.rowId))}
                               >
                                 <MessageCircleMore className="w-4 h-4" />
@@ -373,8 +384,8 @@ export default function OrdersTable({
                                 disabled={!onDeleteOrder || isBusy}
                                 onClick={() => setDeleteOrderState(order)}
                               >
-                                <Trash2 className="w-4 h-4" />
-                                מחיקה
+                                <XCircle className="w-4 h-4" />
+                                ביטול הזמנה
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -405,7 +416,10 @@ export default function OrdersTable({
                         <TableCell className="text-left">
                           <button
                             type="button"
-                            onClick={() => setExpandedRowId(isExpanded ? null : order.rowId)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setExpandedRowId(isExpanded ? null : order.rowId);
+                            }}
                             className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-100"
                             aria-label={isExpanded ? "סגור פרטים" : "פתח פרטים"}
                           >
@@ -419,24 +433,33 @@ export default function OrdersTable({
                           <TableCell colSpan={9} className="p-4">
                             <AnimatePresence initial={false}>
                               <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                exit={{ opacity: 0, height: 0 }}
+                                initial={{ opacity: 0, height: 0, y: -4, scale: 0.985 }}
+                                animate={{ opacity: 1, height: "auto", y: 0, scale: 1 }}
+                                exit={{ opacity: 0, height: 0, y: -4, scale: 0.985 }}
+                                transition={{ duration: 0.22, ease: "easeOut" }}
                                 className="overflow-hidden"
                               >
-                                <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 space-y-5">
-                                  <div className="flex flex-wrap items-center justify-between gap-3" dir="rtl">
-                                    <div className="flex flex-wrap items-center gap-2">
+                                <div className="rounded-2xl border border-slate-200/80 bg-white p-3 md:p-4 space-y-4" dir="rtl">
+                                  <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div className="text-right">
+                                      <p className="text-sm font-semibold text-slate-800">{order.customerName || "ללא שם"}</p>
+                                      <div className="mt-1 flex flex-wrap items-center justify-end gap-2 text-xs text-slate-400">
+                                        <span>{order.orderNumber}</span>
+                                        <span>•</span>
+                                        <span>{order.sentDate ? moment(order.sentDate).format("DD/MM/YYYY HH:mm") : "—"}</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-wrap items-center justify-end gap-2">
                                       <ActionButton
                                         icon={MessageCircleMore}
                                         label="שליחה חוזרת לוואטסאפ"
-                                        disabled={!order.checkoutLink || !onResendWhatsapp || isBusy}
+                                        disabled={!order.checkoutLink || !onResendWhatsapp || isBusy || isCancelled}
                                         onClick={() => runRowAction("resend", order, () => onResendWhatsapp(order.rowId))}
                                       />
                                       <ActionButton
                                         icon={Copy}
                                         label="העתקת קישור"
-                                        disabled={!order.checkoutLink}
+                                        disabled={!order.checkoutLink || !onCopyToClipboard}
                                         onClick={() => handleCopyLink(order)}
                                       />
                                       <ActionButton
@@ -446,155 +469,176 @@ export default function OrdersTable({
                                         onClick={() => openStatusDialog(order)}
                                       />
                                       <ActionButton
-                                        icon={Trash2}
-                                        label="מחיקה"
+                                        icon={XCircle}
+                                        label="ביטול"
                                         disabled={!onDeleteOrder || isBusy}
                                         onClick={() => setDeleteOrderState(order)}
                                         className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
                                       />
                                     </div>
-                                    <div className="text-right">
-                                      <p className="text-sm font-semibold text-slate-800">{order.customerName || "ללא שם"}</p>
-                                      <p className="text-xs text-slate-400">{order.orderNumber}</p>
-                                    </div>
                                   </div>
 
-                                  <div className="grid gap-4 xl:grid-cols-3">
-                                    <div className="rounded-xl bg-slate-50 p-4 space-y-3">
-                                      <div className="flex items-center gap-2 justify-end">
-                                        <span className="text-sm font-semibold text-slate-700">{order.customerName || "—"}</span>
-                                        <UserRound className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      <div className="flex items-center gap-2 justify-end">
-                                        <span className="text-sm text-slate-600 text-right tabular-nums" dir="ltr">{order.customerPhone || "—"}</span>
-                                        <Phone className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      <div className="flex items-center gap-2 justify-end">
-                                        <span className="text-sm text-slate-600">{order.creatorName || "—"}</span>
-                                        <UserRound className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      <div className="flex items-center gap-2 justify-end">
-                                        <span className="text-sm text-slate-600">{order.orderDate ? moment(order.orderDate).format("DD/MM/YYYY HH:mm") : "—"}</span>
-                                        <CalendarDays className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      <div className="flex items-center gap-2 justify-end">
-                                        <span className="text-sm text-slate-600">{order.couponSummary}</span>
-                                        <Tag className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      {order.checkoutLink && (
-                                        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-right">
-                                          <div className="flex items-center gap-2 justify-end mb-1">
-                                            <Link2 className="w-4 h-4 text-slate-400" />
-                                            <span className="text-xs font-medium text-slate-500">קישור תשלום</span>
+                                  {isCancelled && (
+                                    <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-right text-sm text-red-700">
+                                      ההזמנה בוטלה. קישור התשלום נשאר ברשומה לצורכי מעקב, אבל לא ניתן לשלוח אותו שוב בוואטסאפ.
+                                    </div>
+                                  )}
+
+                                  <div className="grid gap-3 lg:grid-cols-[1.15fr_0.85fr]">
+                                    <div className="space-y-3">
+                                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
+                                          <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
+                                            <UserRound className="w-3.5 h-3.5" />
+                                            <span>לקוח</span>
                                           </div>
-                                          <p className="text-xs text-slate-500 break-all" dir="ltr">{order.checkoutLink}</p>
+                                          <p className="text-sm font-medium text-slate-700">{order.customerName || "—"}</p>
                                         </div>
-                                      )}
-                                    </div>
-
-                                    <div className="rounded-xl bg-slate-50 p-4 space-y-3">
-                                      <div className="flex items-center gap-2 justify-end">
-                                        <span className="text-sm font-semibold text-slate-700">מוצרים</span>
-                                        <Package className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      <div className="space-y-2">
-                                        {order.products.length > 0 ? order.products.map((product, index) => (
-                                          <div key={`${order.rowId}-product-${index}`} className="rounded-lg border border-slate-200 bg-white px-3 py-2.5">
-                                            <div className="flex items-center justify-between gap-3">
-                                              <span className="text-sm font-semibold text-slate-700">
-                                                ₪{Number((product.price || 0) * (product.quantity || 0)).toLocaleString("he-IL")}
-                                              </span>
-                                              <div className="text-right">
-                                                <p className="text-sm text-slate-700">{product.name || "מוצר"}</p>
-                                                <p className="text-xs text-slate-400">כמות: {product.quantity || 1}</p>
-                                              </div>
-                                            </div>
+                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
+                                          <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
+                                            <Phone className="w-3.5 h-3.5" />
+                                            <span>טלפון</span>
                                           </div>
-                                        )) : (
-                                          <p className="text-sm text-slate-400 text-right">אין פרטי מוצרים להצגה</p>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center justify-between border-t border-slate-200 pt-3">
-                                        <span className="text-base font-bold text-slate-800">
-                                          ₪{order.totalAmount.toLocaleString("he-IL")}
-                                        </span>
-                                        <span className="text-sm text-slate-500">סה״כ הזמנה</span>
-                                      </div>
-                                    </div>
-
-                                    <div className="rounded-xl bg-slate-50 p-4 space-y-3">
-                                      <div className="flex items-center gap-2 justify-end">
-                                        <span className="text-sm font-semibold text-slate-700">פרטים נוספים</span>
-                                        <CreditCard className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      <div className="space-y-2 text-right">
-                                        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                                          <p className="text-xs text-slate-400 mb-1">סטטוס נוכחי</p>
+                                          <p className="text-sm text-slate-700 tabular-nums" dir="ltr">{order.customerPhone || "—"}</p>
+                                        </div>
+                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
+                                          <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
+                                            <CalendarDays className="w-3.5 h-3.5" />
+                                            <span>תאריך יצירה</span>
+                                          </div>
+                                          <p className="text-sm text-slate-700">{order.orderDate ? moment(order.orderDate).format("DD/MM/YYYY HH:mm") : "—"}</p>
+                                        </div>
+                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
+                                          <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
+                                            <Tag className="w-3.5 h-3.5" />
+                                            <span>קופון</span>
+                                          </div>
+                                          <p className="text-sm text-slate-700">{order.couponSummary}</p>
+                                        </div>
+                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
+                                          <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
+                                            <Workflow className="w-3.5 h-3.5" />
+                                            <span>סטטוס</span>
+                                          </div>
                                           <Badge className={`text-[11px] border-0 font-medium ${order.statusCfg.className}`}>
                                             {order.statusCfg.label}
                                           </Badge>
                                         </div>
-                                        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                                          <p className="text-xs text-slate-400 mb-1">מס׳ הזמנה</p>
-                                          <p className="text-sm font-mono text-slate-600">{order.orderNumber}</p>
-                                        </div>
-                                        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                                          <p className="text-xs text-slate-400 mb-1">קופון</p>
-                                          <p className="text-sm text-slate-600">{order.couponSummary}</p>
-                                        </div>
-                                        {order.orderChangeNotes && (
-                                          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                                            <p className="text-xs text-amber-700 mb-1">שינויים להזמנה</p>
-                                            <p className="text-sm text-amber-900">{order.orderChangeNotes}</p>
+                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
+                                          <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
+                                            <UserRound className="w-3.5 h-3.5" />
+                                            <span>נוצרה על ידי</span>
                                           </div>
-                                        )}
-                                        {order.notes && (
-                                          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                                            <p className="text-xs text-slate-400 mb-1">הערות פנימיות</p>
-                                            <p className="text-sm text-slate-600">{order.notes}</p>
-                                          </div>
-                                        )}
+                                          <p className="text-sm text-slate-700">{order.creatorName || "—"}</p>
+                                        </div>
                                       </div>
-                                    </div>
-                                  </div>
 
-                                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                    <div className="flex items-center gap-2 justify-end mb-4">
-                                      <span className="text-sm font-semibold text-slate-700">תרשים זרימה</span>
-                                      <Workflow className="w-4 h-4 text-slate-400" />
-                                    </div>
-                                    {order.timeline.length > 0 ? (
-                                      <div className="space-y-3">
-                                        {order.timeline.map((event, index) => {
-                                          const action = event.action || event.type || "event";
-                                          return (
-                                            <div key={`${order.rowId}-timeline-${index}`} className="flex items-start gap-3">
-                                              <div className="flex flex-col items-center shrink-0">
-                                                <div className={`h-2.5 w-2.5 rounded-full ${timelineDotClass(action)}`} />
-                                                {index < order.timeline.length - 1 && (
-                                                  <div className="w-px min-h-[38px] bg-slate-200" />
-                                                )}
-                                              </div>
-                                              <div className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-right">
-                                                <div className="flex items-center justify-between gap-2 mb-1">
-                                                  <span className="text-xs text-slate-400">
-                                                    {event.date ? moment(event.date).format("DD/MM/YY HH:mm") : "—"}
-                                                  </span>
-                                                  <Badge variant="outline" className="text-[10px] border-slate-200 text-slate-500">
-                                                    {event.by || "מערכת"}
-                                                  </Badge>
+                                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                                        <div className="mb-3 flex items-center justify-end gap-2">
+                                          <Package className="w-4 h-4 text-slate-400" />
+                                          <span className="text-sm font-semibold text-slate-700">מוצרים</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                        {order.products.length > 0 ? order.products.map((product, index) => (
+                                            <div key={`${order.rowId}-product-${index}`} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                                              <div className="flex items-center justify-between gap-3">
+                                                <span className="text-sm font-semibold text-slate-700">
+                                                  ₪{Number((product.price || 0) * (product.quantity || 0)).toLocaleString("he-IL")}
+                                                </span>
+                                                <div className="text-right">
+                                                  <p className="text-sm text-slate-700">{product.name || "מוצר"}</p>
+                                                  <p className="text-xs text-slate-400">כמות: {product.quantity || 1}</p>
                                                 </div>
-                                                <p className="text-sm text-slate-700">
-                                                  {event.text || event.detail || "עודכן אירוע בהזמנה"}
-                                                </p>
                                               </div>
                                             </div>
-                                          );
-                                        })}
+                                          )) : (
+                                          <p className="text-sm text-slate-400 text-right">אין פרטי מוצרים להצגה</p>
+                                          )}
+                                        </div>
+                                        <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                                          <span className="text-base font-bold text-slate-800">
+                                            ₪{order.totalAmount.toLocaleString("he-IL")}
+                                          </span>
+                                          <span className="text-sm text-slate-500">סה״כ הזמנה</span>
+                                        </div>
                                       </div>
-                                    ) : (
-                                      <p className="text-sm text-slate-400 text-right">אין תרשים זרימה זמין להזמנה זו</p>
-                                    )}
+                                    </div>
+
+                                    <div className="space-y-3">
+                                      {order.checkoutLink && (
+                                        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 text-right">
+                                          <div className="mb-2 flex items-center justify-end gap-2">
+                                            <Link2 className="w-4 h-4 text-slate-400" />
+                                            <span className="text-sm font-semibold text-slate-700">קישור תשלום</span>
+                                          </div>
+                                          <p className="text-xs text-slate-500 break-all" dir="ltr">{order.checkoutLink}</p>
+                                        </div>
+                                      )}
+
+                                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                                        <div className="mb-2 flex items-center justify-end gap-2">
+                                          <CreditCard className="w-4 h-4 text-slate-400" />
+                                          <span className="text-sm font-semibold text-slate-700">פרטים נוספים</span>
+                                        </div>
+                                        <div className="space-y-2 text-right">
+                                          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                            <p className="text-xs text-slate-400 mb-1">מס׳ הזמנה</p>
+                                            <p className="text-sm font-mono text-slate-600">{order.orderNumber}</p>
+                                          </div>
+                                          {order.orderChangeNotes && (
+                                            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                                              <p className="text-xs text-amber-700 mb-1">שינויים להזמנה</p>
+                                              <p className="text-sm text-amber-900">{order.orderChangeNotes}</p>
+                                            </div>
+                                          )}
+                                          {order.notes && (
+                                            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                              <p className="text-xs text-slate-400 mb-1">הערות פנימיות</p>
+                                              <p className="text-sm text-slate-600">{order.notes}</p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                                        <div className="mb-3 flex items-center justify-end gap-2">
+                                          <Workflow className="w-4 h-4 text-slate-400" />
+                                          <span className="text-sm font-semibold text-slate-700">תרשים זרימה</span>
+                                        </div>
+                                        {order.timeline.length > 0 ? (
+                                          <div className="space-y-2.5">
+                                            {order.timeline.map((event, index) => {
+                                              const action = event.action || event.type || "event";
+                                              return (
+                                                <div key={`${order.rowId}-timeline-${index}`} className="flex items-start gap-2.5">
+                                                  <div className="flex flex-col items-center shrink-0">
+                                                    <div className={`h-2.5 w-2.5 rounded-full ${timelineDotClass(action)}`} />
+                                                    {index < order.timeline.length - 1 && (
+                                                      <div className="w-px min-h-[28px] bg-slate-200" />
+                                                    )}
+                                                  </div>
+                                                  <div className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right">
+                                                    <div className="mb-1 flex items-center justify-between gap-2">
+                                                      <span className="text-[11px] text-slate-400">
+                                                        {event.date ? moment(event.date).format("DD/MM/YY HH:mm") : "—"}
+                                                      </span>
+                                                      <Badge variant="outline" className="text-[10px] border-slate-200 text-slate-500">
+                                                        {event.by || "מערכת"}
+                                                      </Badge>
+                                                    </div>
+                                                    <p className="text-sm text-slate-700">
+                                                      {event.text || event.detail || "עודכן אירוע בהזמנה"}
+                                                    </p>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        ) : (
+                                          <p className="text-sm text-slate-400 text-right">אין תרשים זרימה זמין להזמנה זו</p>
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               </motion.div>
@@ -686,13 +730,13 @@ export default function OrdersTable({
       <Dialog open={Boolean(deleteOrderState)} onOpenChange={(open) => !open && setDeleteOrderState(null)}>
         <DialogContent dir="rtl" className="max-w-md">
           <DialogHeader className="text-right">
-            <DialogTitle className="text-right">מחיקת הזמנה</DialogTitle>
+            <DialogTitle className="text-right">ביטול הזמנה</DialogTitle>
             <DialogDescription className="text-right">
-              מחיקת ההזמנה תסיר אותה מלוח הבקרה ותבטל את הגישה של הלקוח/ה לקישור התשלום הקיים. לא ניתן לשחזר את הפעולה לאחר האישור.
+              ביטול ההזמנה יעדכן את הסטטוס ל״בוטל״, ישאיר את הרשומה בלוח הבקרה, ויחסום שליחה חוזרת של הקישור לוואטסאפ.
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 text-right">
-            ההזמנה של {deleteOrderState?.customerName || "הלקוח/ה"} תימחק לצמיתות.
+            לאחר האישור ההזמנה של {deleteOrderState?.customerName || "הלקוח/ה"} תסומן כ״בוטלה״ והקישור לא יהיה זמין יותר לשליחה חוזרת בוואטסאפ.
           </div>
           <DialogFooter className="sm:justify-start sm:space-x-0 gap-2">
             <Button
@@ -701,7 +745,7 @@ export default function OrdersTable({
               onClick={handleConfirmDelete}
               disabled={busyAction.type === "delete"}
             >
-              כן, למחוק את ההזמנה
+              כן, לבטל את ההזמנה
             </Button>
             <Button type="button" variant="ghost" onClick={() => setDeleteOrderState(null)}>
               ביטול

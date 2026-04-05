@@ -286,19 +286,34 @@ export default function Dashboard() {
 
   const handleDeleteOrder = async (orderId) => {
     if (isDemo) {
-      setOrders(prev => prev.filter(o => (o.id || o._id) !== orderId));
-      toast.success("(מצב דמו) ההזמנה נמחקה");
+      setOrders(prev => prev.map(o => (o.id === orderId || o._id === orderId) ? { ...o, status: "cancelled" } : o));
+      toast.success("(מצב דמו) ההזמנה בוטלה");
       return;
     }
     try {
       await request('DELETE_ORDER', { recordId: orderId });
-      toast.success("ההזמנה נמחקה");
-      if (selectedOrder && (selectedOrder._id || selectedOrder.id) === orderId) {
-        setSelectedOrder(null);
-      }
+      toast.success("ההזמנה בוטלה");
       loadOrders();
     } catch (err) {
-      toast.error(err.message || "שגיאה במחיקת ההזמנה");
+      toast.error(err.message || "שגיאה בביטול ההזמנה");
+    }
+  };
+
+  const handleCopyToClipboard = async (text) => {
+    if (!text) {
+      toast.error("אין תוכן להעתקה");
+      return;
+    }
+    if (isDemo) {
+      await navigator.clipboard.writeText(text);
+      toast.success("(מצב דמו) התוכן הועתק");
+      return;
+    }
+    try {
+      await request('COPY_TO_CLIPBOARD', { text });
+      toast.success("הקישור הועתק");
+    } catch (err) {
+      toast.error(err.message || "שגיאה בהעתקת התוכן");
     }
   };
 
@@ -695,7 +710,7 @@ export default function Dashboard() {
         <OrdersTable
           orders={orders}
           isLoading={isLoadingOrders}
-          onSelectOrder={setSelectedOrder}
+          onCopyToClipboard={handleCopyToClipboard}
           onResendWhatsapp={handleResendWhatsapp}
           onUpdateStatus={handleUpdateOrderStatus}
           onDeleteOrder={handleDeleteOrder}

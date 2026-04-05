@@ -146,8 +146,19 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
 
     let couponResult = null;
     let couponDetailsObj = null;
+    const isMarkedPaid = orderData.paymentStatus === 'paid';
+    const initialStatus = isMarkedPaid ? 'paid_pending_details' : 'sent';
 
-    if (orderData.existingCoupon?.id && orderData.existingCoupon?.code) {
+    if (isMarkedPaid) {
+        couponResult = await createOrderCoupon('percent', 100);
+        couponDetailsObj = {
+            source: 'auto_paid',
+            type: 'percent',
+            value: 100,
+            code: couponResult.code,
+        };
+        console.log(`${LOG_PREFIX} Auto-created 100% coupon for paid order: ${couponResult.code}`);
+    } else if (orderData.existingCoupon?.id && orderData.existingCoupon?.code) {
         const validated = await validateExistingStoreCoupon(
             orderData.existingCoupon.id,
             orderData.existingCoupon.code
@@ -186,7 +197,7 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
 
     const record = {
         orderNumber: '',
-        status: 'sent',
+        status: initialStatus,
         createdByRef: employeeId,
         createdByName: employeeName || '',
         paymentMethod: orderData.paymentTag || '',
@@ -197,7 +208,14 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
         notes: orderData.notes || '',
         orderChangeNotes: orderData.orderChanges || '',
         changeChain: JSON.stringify([
-            { action: 'created', by: employeeName || employeeId, date: new Date().toISOString(), detail: 'הזמנה נוצרה' }
+            {
+                action: 'created',
+                by: employeeName || employeeId,
+                date: new Date().toISOString(),
+                detail: isMarkedPaid
+                    ? 'הזמנה סומנה כשולמה וממתינה להשלמת פרטים דרך הקישור'
+                    : 'הזמנה נוצרה',
+            }
         ]),
         payerContactId: contactId || '',
         customerName: orderData.customer.firstName + (orderData.customer.lastName ? ' ' + orderData.customer.lastName : ''),
@@ -299,6 +317,9 @@ export async function cancelOrderLink(recordId, employeeName) {
 
 export async function resendOrderWhatsapp(recordId, employeeName) {
     const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
+    if (record.status === 'cancelled') {
+        throw new Error('לא ניתן לשלוח מחדש קישור להזמנה שבוטלה');
+    }
     if (!record.checkoutId) {
         throw new Error('לא נמצא קישור תשלום לשליחה חוזרת');
     }
@@ -348,20 +369,17 @@ export async function deleteOrderRecord(recordId, employeeName) {
     const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
     const chain = JSON.parse(record.changeChain || '[]');
     chain.push({
-        action: 'deleted',
+        action: 'cancelled',
         by: employeeName,
         date: new Date().toISOString(),
-        detail: 'ההזמנה נמחקה מלוח הבקרה',
+        detail: 'ההזמנה בוטלה מלוח הבקרה וקישור התשלום אינו זמין יותר',
     });
 
     await wixData.update('DashboardOrders', {
         ...record,
         status: 'cancelled',
-        deletedAt: new Date(),
         changeChain: JSON.stringify(chain),
     }, { suppressAuth: true });
-
-    await wixData.remove('DashboardOrders', recordId, { suppressAuth: true });
 }
 
 // ─── Post-Purchase (called from events.js) ───
@@ -391,7 +409,9 @@ export async function handleOrderCompleted(ecomOrder) {
         action: 'paid',
         by: 'מערכת',
         date: new Date().toISOString(),
-        detail: 'הזמנה שולמה בהצלחה',
+        detail: record.status === 'paid_pending_details'
+            ? 'הלקוח/ה השלים/ה את הפרטים דרך הקישור'
+            : 'הזמנה שולמה בהצלחה',
     });
 
     let orderNumber = record.orderNumber && String(record.orderNumber).trim();
