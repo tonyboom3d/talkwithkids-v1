@@ -5,6 +5,7 @@ import moment from "moment";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   DropdownMenu,
@@ -29,8 +30,8 @@ import {
   ChevronUp,
   Copy,
   CreditCard,
-  Link2,
   MessageCircleMore,
+  MessageSquarePlus,
   MoreHorizontal,
   Package,
   Phone,
@@ -46,15 +47,16 @@ const PAGE_SIZE = 8;
 
 const STATUS_CONFIG = {
   sent: { label: "נשלח", className: "bg-slate-100 text-slate-600" },
-  opened: { label: "נפתח", className: "bg-yellow-100 text-yellow-700" },
+  opened: { label: "נפתח", className: "bg-orange-100 text-orange-700" },
   unpaid: { label: "לא שולם", className: "bg-red-100 text-red-700" },
-  cancelled: { label: "בוטל", className: "bg-gray-100 text-gray-500" },
+  cancelled: { label: "בוטל", className: "bg-red-100 text-red-700" },
   error: { label: "שגיאה", className: "bg-red-100 text-red-700" },
-  paid_pending_details: { label: "שולמה - לא הושלמה", className: "bg-sky-100 text-sky-700" },
+  paid_pending_details: { label: "שולמה - לא הושלמה", className: "bg-violet-100 text-violet-700" },
+  paid_completed: { label: "שולמה - הושלמה", className: "bg-emerald-100 text-emerald-700" },
   paid: { label: "שולם", className: "bg-emerald-100 text-emerald-700" },
 };
 
-const STATUS_UPDATE_OPTIONS = ["sent", "opened", "paid_pending_details", "paid", "cancelled", "error"];
+const STATUS_UPDATE_OPTIONS = ["sent", "opened", "paid_pending_details", "paid_completed", "paid", "cancelled"];
 
 function safeParseJson(value, fallback) {
   if (value == null || value === "") return fallback;
@@ -161,6 +163,7 @@ function timelineDotClass(action) {
       return "bg-emerald-500";
     case "cancelled":
     case "deleted":
+    case "error":
     case "failed":
       return "bg-red-500";
     case "opened":
@@ -171,6 +174,12 @@ function timelineDotClass(action) {
     default:
       return "bg-slate-400";
   }
+}
+
+function getActorBadgeText(event) {
+  if (event.actorType === "customer" || String(event.by || "").includes("לקוח")) return "לקוח/ה";
+  if (event.actorType === "system" || String(event.by || "") === "מערכת") return "מערכת";
+  return "משתמש/ת מורשה";
 }
 
 function ActionButton({ icon: Icon, label, onClick, className = "", disabled = false }) {
@@ -199,6 +208,7 @@ export default function OrdersTable({
   onResendWhatsapp,
   onUpdateStatus,
   onDeleteOrder,
+  onAddNote,
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -207,6 +217,7 @@ export default function OrdersTable({
   const [deleteOrderState, setDeleteOrderState] = useState(null);
   const [pendingStatus, setPendingStatus] = useState("sent");
   const [busyAction, setBusyAction] = useState({ type: "", rowId: "" });
+  const [noteDrafts, setNoteDrafts] = useState({});
 
   const normalizedOrders = useMemo(
     () => (orders || []).map(normalizeOrder),
@@ -280,6 +291,15 @@ export default function OrdersTable({
     });
   };
 
+  const handleSaveNote = async (order) => {
+    const noteText = String(noteDrafts[order.rowId] || "").trim();
+    if (!noteText || !onAddNote) return;
+    await runRowAction("note", order, async () => {
+      await onAddNote(order.rowId, noteText);
+      setNoteDrafts((prev) => ({ ...prev, [order.rowId]: "" }));
+    });
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -338,7 +358,7 @@ export default function OrdersTable({
                   const isExpanded = expandedRowId === order.rowId;
                   const isBusy = busyAction.rowId === order.rowId;
                   const isCancelled = order.displayStatus === "cancelled";
-
+                  const isError = order.displayStatus === "error";
                   return (
                     <React.Fragment key={order.rowId}>
                       <TableRow
@@ -351,6 +371,7 @@ export default function OrdersTable({
                               <button
                                 type="button"
                                 onClick={(event) => event.stopPropagation()}
+                                disabled={isError}
                                 className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 opacity-0 transition-all hover:bg-slate-100 group-hover:opacity-100 focus:opacity-100"
                               >
                                 <MoreHorizontal className="w-4 h-4" />
@@ -358,21 +379,21 @@ export default function OrdersTable({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-52" dir="rtl">
                               <DropdownMenuItem
-                                disabled={!order.checkoutLink || !onResendWhatsapp || isBusy || isCancelled}
+                                disabled={!order.checkoutLink || !onResendWhatsapp || isBusy || isCancelled || isError}
                                 onClick={() => runRowAction("resend", order, () => onResendWhatsapp(order.rowId))}
                               >
                                 <MessageCircleMore className="w-4 h-4" />
                                 שליחה חוזרת לוואטסאפ
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                disabled={!order.checkoutLink}
+                                disabled={!order.checkoutLink || isError}
                                 onClick={() => handleCopyLink(order)}
                               >
                                 <Copy className="w-4 h-4" />
                                 העתקת קישור
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                disabled={!onUpdateStatus || isBusy}
+                                disabled={!onUpdateStatus || isBusy || isError}
                                 onClick={() => openStatusDialog(order)}
                               >
                                 <Workflow className="w-4 h-4" />
@@ -381,7 +402,7 @@ export default function OrdersTable({
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-red-600 focus:text-red-700"
-                                disabled={!onDeleteOrder || isBusy}
+                                disabled={!onDeleteOrder || isBusy || isError}
                                 onClick={() => setDeleteOrderState(order)}
                               >
                                 <XCircle className="w-4 h-4" />
@@ -478,6 +499,12 @@ export default function OrdersTable({
                                     </div>
                                   </div>
 
+                                  {isError && (
+                                    <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-right text-sm text-red-700">
+                                      ההזמנה נמצאת בסטטוס שגיאה. לא ניתן לבצע פעולות נוספות על הרשומה הזו, ויש ליצור רשומה חדשה.
+                                    </div>
+                                  )}
+
                                   {isCancelled && (
                                     <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-right text-sm text-red-700">
                                       ההזמנה בוטלה. קישור התשלום נשאר ברשומה לצורכי מעקב, אבל לא ניתן לשלוח אותו שוב בוואטסאפ.
@@ -534,7 +561,7 @@ export default function OrdersTable({
                                       </div>
 
                                       <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
-                                        <div className="mb-3 flex items-center justify-end gap-2">
+                                        <div className="mb-3 flex w-full items-center justify-end gap-2 text-right">
                                           <Package className="w-4 h-4 text-slate-400" />
                                           <span className="text-sm font-semibold text-slate-700">מוצרים</span>
                                         </div>
@@ -565,18 +592,8 @@ export default function OrdersTable({
                                     </div>
 
                                     <div className="space-y-3">
-                                      {order.checkoutLink && (
-                                        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 text-right">
-                                          <div className="mb-2 flex items-center justify-end gap-2">
-                                            <Link2 className="w-4 h-4 text-slate-400" />
-                                            <span className="text-sm font-semibold text-slate-700">קישור תשלום</span>
-                                          </div>
-                                          <p className="text-xs text-slate-500 break-all" dir="ltr">{order.checkoutLink}</p>
-                                        </div>
-                                      )}
-
                                       <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
-                                        <div className="mb-2 flex items-center justify-end gap-2">
+                                        <div className="mb-2 flex w-full items-center justify-end gap-2 text-right">
                                           <CreditCard className="w-4 h-4 text-slate-400" />
                                           <span className="text-sm font-semibold text-slate-700">פרטים נוספים</span>
                                         </div>
@@ -601,7 +618,7 @@ export default function OrdersTable({
                                       </div>
 
                                       <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
-                                        <div className="mb-3 flex items-center justify-end gap-2">
+                                        <div className="mb-3 flex w-full items-center justify-end gap-2 text-right">
                                           <Workflow className="w-4 h-4 text-slate-400" />
                                           <span className="text-sm font-semibold text-slate-700">תרשים זרימה</span>
                                         </div>
@@ -623,7 +640,9 @@ export default function OrdersTable({
                                                         {event.date ? moment(event.date).format("DD/MM/YY HH:mm") : "—"}
                                                       </span>
                                                       <Badge variant="outline" className="text-[10px] border-slate-200 text-slate-500">
-                                                        {event.by || "מערכת"}
+                                                        {event.actorType === "employee" && event.by
+                                                          ? `${getActorBadgeText(event)} · ${event.by}`
+                                                          : getActorBadgeText(event)}
                                                       </Badge>
                                                     </div>
                                                     <p className="text-sm text-slate-700">
@@ -637,6 +656,39 @@ export default function OrdersTable({
                                         ) : (
                                           <p className="text-sm text-slate-400 text-right">אין תרשים זרימה זמין להזמנה זו</p>
                                         )}
+                                      </div>
+
+                                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                                        <div className="mb-3 flex w-full items-center justify-end gap-2 text-right">
+                                          <MessageSquarePlus className="w-4 h-4 text-slate-400" />
+                                          <span className="text-sm font-semibold text-slate-700">הוספת הערה</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                          <Textarea
+                                            value={noteDrafts[order.rowId] || ""}
+                                            onChange={(event) =>
+                                              setNoteDrafts((prev) => ({ ...prev, [order.rowId]: event.target.value }))
+                                            }
+                                            placeholder="כתבי הערה שתתווסף לתרשים הזרימה..."
+                                            className="min-h-[76px] resize-none border-slate-200 bg-white text-right"
+                                            dir="rtl"
+                                            disabled={!onAddNote || isBusy || isError}
+                                          />
+                                          <div className="flex items-center justify-end">
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              onClick={(event) => {
+                                                event.stopPropagation();
+                                                handleSaveNote(order);
+                                              }}
+                                              disabled={!String(noteDrafts[order.rowId] || "").trim() || !onAddNote || isBusy || isError}
+                                              className="bg-slate-900 hover:bg-slate-800 text-white"
+                                            >
+                                              שמירת הערה
+                                            </Button>
+                                          </div>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>

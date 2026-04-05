@@ -13,7 +13,7 @@ import { products } from 'wix-stores.v2';
 export { searchContactsByQuery, searchStoreCoupons };
 
 const LOG_PREFIX = '[VELO-BE]';
-const UPDATABLE_ORDER_STATUSES = new Set(['sent', 'opened', 'paid', 'cancelled', 'error']);
+const UPDATABLE_ORDER_STATUSES = new Set(['sent', 'opened', 'paid_pending_details', 'paid_completed', 'paid', 'cancelled']);
 
 /** LeadConnector — אחרי יצירת checkout + רשומת CMS */
 const DASHBOARD_CHECKOUT_WEBHOOK_URL =
@@ -31,6 +31,19 @@ function safeParseJson(value, fallback) {
     }
 }
 
+function getStatusLabel(status) {
+    const labels = {
+        sent: 'נשלח',
+        opened: 'נפתח',
+        paid_pending_details: 'שולמה - לא הושלמה',
+        paid_completed: 'שולמה - הושלמה',
+        paid: 'שולם',
+        cancelled: 'בוטל',
+        error: 'שגיאה',
+    };
+    return labels[status] || status;
+}
+
 async function getEmployeeNameMap(employeeIds) {
     const ids = [...new Set((employeeIds || []).filter(Boolean))];
     if (ids.length === 0) return {};
@@ -44,8 +57,24 @@ async function getEmployeeNameMap(employeeIds) {
     }, {});
 }
 
+function normalizeTimelineEvent(event, employeeNameMap = {}) {
+    const rawBy = event?.by || '';
+    const resolvedBy = employeeNameMap[rawBy] || rawBy || 'מערכת';
+    const actorType = (() => {
+        if (resolvedBy === 'מערכת') return 'system';
+        if (String(resolvedBy).includes('לקוח')) return 'customer';
+        return 'employee';
+    })();
+
+    return {
+        ...event,
+        by: resolvedBy,
+        actorType,
+    };
+}
+
 function normalizeOrderRecord(item, employeeNameMap = {}) {
-    const changeChain = safeParseJson(item.changeChain, []);
+    const changeChain = safeParseJson(item.changeChain, []).map((event) => normalizeTimelineEvent(event, employeeNameMap));
     const productsList = safeParseJson(item.products, []);
     const couponDetails = safeParseJson(item.couponDetails, null);
     return {
@@ -90,13 +119,18 @@ export async function getOrderRecords(employeeId, canViewOthers) {
         .find({ suppressAuth: true });
 
     const items = (results.items || []).filter((item) => !item.deletedAt);
-    const employeeNameMap = await getEmployeeNameMap(items.map((item) => item.createdByRef));
+    const employeeIds = items.flatMap((item) => {
+        const chain = safeParseJson(item.changeChain, []);
+        return [item.createdByRef, ...chain.map((event) => event?.by)].filter(Boolean);
+    });
+    const employeeNameMap = await getEmployeeNameMap(employeeIds);
     return items.map((item) => normalizeOrderRecord(item, employeeNameMap));
 }
 
 export async function getOrderDetails(recordId) {
     const item = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
-    const employeeNameMap = await getEmployeeNameMap([item.createdByRef]);
+    const chain = safeParseJson(item.changeChain, []);
+    const employeeNameMap = await getEmployeeNameMap([item.createdByRef, ...chain.map((event) => event?.by)].filter(Boolean));
     return normalizeOrderRecord(item, employeeNameMap);
 }
 
@@ -261,10 +295,18 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
     } catch (err) {
         console.error(`${LOG_PREFIX} Checkout creation failed:`, err);
         const currentRecord = await wixData.get('DashboardOrders', inserted._id, { suppressAuth: true });
+        const chain = JSON.parse(currentRecord.changeChain || '[]');
+        chain.push({
+            action: 'error',
+            by: 'מערכת',
+            date: new Date().toISOString(),
+            detail: `אירעה תקלה בשליחת הקישור ללקוח: ${err.message || 'שגיאה לא ידועה'}`,
+        });
         await wixData.update('DashboardOrders', {
             ...currentRecord,
             errors: JSON.stringify({ checkout: err.message }),
             status: 'error',
+            changeChain: JSON.stringify(chain),
         }, { suppressAuth: true });
     }
 
@@ -299,6 +341,9 @@ export async function addOrderNote(recordId, noteText, employeeName) {
 
 export async function cancelOrderLink(recordId, employeeName) {
     const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
+    if (record.status === 'error') {
+        throw new Error('לא ניתן לבצע פעולות על הזמנה שבסטטוס שגיאה');
+    }
 
     const chain = JSON.parse(record.changeChain || '[]');
     chain.push({
@@ -317,7 +362,7 @@ export async function cancelOrderLink(recordId, employeeName) {
 
 export async function resendOrderWhatsapp(recordId, employeeName) {
     const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
-    if (record.status === 'cancelled') {
+    if (record.status === 'cancelled' || record.status === 'error') {
         throw new Error('לא ניתן לשלוח מחדש קישור להזמנה שבוטלה');
     }
     if (!record.checkoutId) {
@@ -350,12 +395,15 @@ export async function updateOrderStatus(recordId, nextStatus, employeeName) {
     }
 
     const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
+    if (record.status === 'error') {
+        throw new Error('לא ניתן לעדכן סטטוס של הזמנה שבסטטוס שגיאה');
+    }
     const chain = JSON.parse(record.changeChain || '[]');
     chain.push({
         action: 'status_updated',
         by: employeeName,
         date: new Date().toISOString(),
-        detail: `סטטוס ההזמנה עודכן ל-${nextStatus}`,
+        detail: `סטטוס ההזמנה עודכן ל-${getStatusLabel(nextStatus)}`,
     });
 
     await wixData.update('DashboardOrders', {
@@ -367,6 +415,9 @@ export async function updateOrderStatus(recordId, nextStatus, employeeName) {
 
 export async function deleteOrderRecord(recordId, employeeName) {
     const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
+    if (record.status === 'error') {
+        throw new Error('לא ניתן לבצע פעולות על הזמנה שבסטטוס שגיאה');
+    }
     const chain = JSON.parse(record.changeChain || '[]');
     chain.push({
         action: 'cancelled',
@@ -420,16 +471,17 @@ export async function handleOrderCompleted(ecomOrder) {
         console.log(`${LOG_PREFIX} Assigned order number on payment: ${orderNumber}`);
     }
 
+    const nextStatus = record.status === 'paid_pending_details' ? 'paid_completed' : 'paid';
     const updatedRecord = {
         ...record,
         orderNumber,
-        status: 'paid',
+        status: nextStatus,
         completedOrderData: JSON.stringify(ecomOrder),
         changeChain: JSON.stringify(chain),
     };
 
     await wixData.update('DashboardOrders', updatedRecord, { suppressAuth: true });
-    console.log(`${LOG_PREFIX} Order status updated to paid: ${record._id}`);
+    console.log(`${LOG_PREFIX} Order status updated to ${nextStatus}: ${record._id}`);
 
     // Shipping routing (Tapuz / ידני — ראו backend/events.js + tapuzApi.js)
     const hasOrderChanges = record.orderChangeNotes && record.orderChangeNotes.trim() !== '';

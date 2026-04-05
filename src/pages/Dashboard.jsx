@@ -243,6 +243,28 @@ export default function Dashboard() {
 
   const handleAddNote = async (orderId, noteText) => {
     if (isDemo) {
+      const nowIso = new Date().toISOString();
+      setOrders(prev => prev.map(order => {
+        if ((order.id || order._id) !== orderId) return order;
+        const nextTimeline = [...(order.timeline || []), {
+          type: "note",
+          text: `נוספה הערה: ${noteText}`,
+          by: user?.displayName || "משתמש/ת מורשה",
+          actorType: "employee",
+          date: nowIso,
+        }];
+        const nextOrderNotes = [...(order.orderNotes || []), {
+          id: `demo-note-${Date.now()}`,
+          text: noteText,
+          by: user?.displayName || "משתמש/ת מורשה",
+          date: nowIso,
+        }];
+        return {
+          ...order,
+          timeline: nextTimeline,
+          orderNotes: nextOrderNotes,
+        };
+      }));
       toast.success("(מצב דמו) הערה נוספה");
       return;
     }
@@ -714,6 +736,7 @@ export default function Dashboard() {
           onResendWhatsapp={handleResendWhatsapp}
           onUpdateStatus={handleUpdateOrderStatus}
           onDeleteOrder={handleDeleteOrder}
+          onAddNote={handleAddNote}
         />
       </div>
 
