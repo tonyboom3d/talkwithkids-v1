@@ -194,25 +194,22 @@ function getPublicStatusConfig(status, paymentLink) {
 }
 
 function resolvePublicPaymentLink(record) {
-    return record?.['link-dashboard-orders-checkoutId'] ||
-        record?.linkDashboardOrdersCheckoutId ||
-        record?.checkoutLink ||
-        '';
+    return record?.checkoutLink || '';
 }
 
-export async function getPublicOrderForIframe(checkoutId) {
-    const normalizedCheckoutId = String(checkoutId || '').trim();
-    if (!normalizedCheckoutId) {
+export async function getPublicOrderForIframe(dynamicLinkId) {
+    const normalizedId = String(dynamicLinkId || '').trim();
+    if (!normalizedId) {
         return {
             ok: false,
-            code: 'MISSING_CHECKOUT_ID',
+            code: 'MISSING_ORDER_ID',
             message: 'אופס... לא מצאתי את ההזמנה שלך',
         };
     }
 
     try {
         const results = await wixData.query('DashboardOrders')
-            .eq('checkoutId', normalizedCheckoutId)
+            .eq('dynamicLinkId', normalizedId)
             .limit(1)
             .find({ suppressAuth: true });
 
@@ -277,8 +274,10 @@ async function generateOrderNumber() {
     return `TWK-${maxN + 1}`;
 }
 
-function buildDashboardOrderUrl(recordId) {
-    return `${ORDER_LINK_BASE}/${encodeURIComponent(recordId)}`;
+function buildDashboardOrderUrl(dynamicLinkId) {
+    const id = String(dynamicLinkId || '').trim();
+    if (!id) return ORDER_LINK_BASE;
+    return `${ORDER_LINK_BASE}?id=${encodeURIComponent(id)}`;
 }
 
 /** שומר ב־couponDetails את סכום הסל לפני הנחה ואחרי הנחה (לתצוגה בדאשבורד) */
@@ -305,8 +304,8 @@ function enrichCouponDetailsWithTotals(couponDetailsObj, subtotal, existingStore
     couponDetailsObj.discountedTotal = Math.max(0, discountedTotal);
 }
 
-async function sendDashboardCheckoutWebhook({ customerName, customerPhone, recordId }) {
-    const paymentUrl = buildDashboardOrderUrl(recordId);
+async function sendDashboardCheckoutWebhook({ customerName, customerPhone, dynamicLinkId }) {
+    const paymentUrl = buildDashboardOrderUrl(dynamicLinkId);
     const payload = {
         customerName: customerName || '',
         customerPhone: customerPhone || '',
@@ -333,10 +332,13 @@ async function deliverOrderToWhatsapp(record, employeeName, { isResend = false }
         throw new Error('לא נמצא קישור תשלום לשליחה');
     }
 
+    const dyn =
+        String(record.dynamicLinkId || '').trim() ||
+        (record._id ? String(record._id).substring(0, 16) : '');
     await sendDashboardCheckoutWebhook({
         customerName: record.customerName || '',
         customerPhone: record.customerPhone || '',
-        recordId: record._id,
+        dynamicLinkId: dyn,
     });
 
     const chain = JSON.parse(record.changeChain || '[]');
@@ -414,8 +416,6 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
             contactId = existing[0].id;
         }
     }
-
-    const dynamicLinkId = null; // Will be set after insert from _id
 
     const record = {
         orderNumber: '',
@@ -497,7 +497,7 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
         recordId: inserted._id,
         orderNumber: '',
         checkoutLink: checkoutResult?.checkoutUrl || '',
-        orderUrl: buildDashboardOrderUrl(inserted._id),
+        orderUrl: buildDashboardOrderUrl(dynamicId),
         dynamicLinkId: dynamicId,
     };
 }

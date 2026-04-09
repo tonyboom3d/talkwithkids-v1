@@ -83,8 +83,20 @@ export function getCouponSummary(couponDetails) {
   return "קופון";
 }
 
-export function buildPublicOrderUrl(orderId) {
-  return orderId ? `${PUBLIC_ORDER_BASE_URL}/${encodeURIComponent(orderId)}` : "";
+/** מזהה לקישור הציבורי — שדה CMS `dynamicLinkId`; גיבוי: 16 תווים ראשונים מ־_id */
+export function resolveDynamicLinkId(order) {
+  const d = String(order?.dynamicLinkId ?? "").trim();
+  if (d) return d;
+  const id = order?._id || order?.id;
+  if (id && String(id).length >= 10) return String(id).substring(0, 16);
+  return "";
+}
+
+/** קישור לעמוד dashboard-orders עם פרמטר `id` (לא path) */
+export function buildPublicOrderUrl(dynamicLinkId) {
+  const id = String(dynamicLinkId ?? "").trim();
+  if (!id) return "";
+  return `${PUBLIC_ORDER_BASE_URL}?id=${encodeURIComponent(id)}`;
 }
 
 export function isPaidDisplayStatus(status) {
@@ -93,7 +105,7 @@ export function isPaidDisplayStatus(status) {
 
 /**
  * @param {object} order
- * @param {{ commissionRate?: number }} [options] — אחוז עמלה של העובדת מה־AuthorizedEmployees; רווח = סה״כ הזמנה × (אחוז / 100), רק כשההזמנה שולמה
+ * @param {{ commissionRate?: number }} [options] - עמלה: אחוז מה־AuthorizedEmployees; רווח = סכום הזמנה * (אחוז/100) להזמנות ששולמו
  */
 export function normalizeOrder(order, options = {}) {
   const timeline = Array.isArray(order.timeline)
@@ -134,7 +146,7 @@ export function normalizeOrder(order, options = {}) {
     orderNumber,
     creatorName,
     checkoutLink: order.checkoutLink || order.paymentLink || "",
-    publicOrderUrl: order.orderUrl || buildPublicOrderUrl(order._id || order.id),
+    publicOrderUrl: order.orderUrl || buildPublicOrderUrl(resolveDynamicLinkId(order)),
     subtotalAmount: rawSubtotal,
     totalAmount,
   };

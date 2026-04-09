@@ -127,20 +127,20 @@ function normalizePublicProducts(productsValue) {
     });
 }
 
-export async function getPublicOrderForIframe(checkoutId) {
-    const normalizedCheckoutId = String(checkoutId || '').trim();
-    console.log(`${LOG_PREFIX} lookup started checkoutId=${normalizedCheckoutId || '(empty)'}`);
-    if (!normalizedCheckoutId) {
+export async function getPublicOrderForIframe(dynamicLinkId) {
+    const normalizedId = String(dynamicLinkId || '').trim();
+    console.log(`${LOG_PREFIX} lookup started dynamicLinkId=${normalizedId || '(empty)'}`);
+    if (!normalizedId) {
         return {
             ok: false,
-            code: 'MISSING_CHECKOUT_ID',
+            code: 'MISSING_ORDER_ID',
             message: 'אופס... לא מצאתי את ההזמנה שלך',
         };
     }
 
     try {
         const results = await wixData.query('DashboardOrders')
-            .eq('checkoutId', normalizedCheckoutId)
+            .eq('dynamicLinkId', normalizedId)
             .limit(1)
             .find({ suppressAuth: true });
 

@@ -4,13 +4,18 @@ import { getPublicOrderForIframe } from 'backend/publicOrderApi.jsw';
 const MESSAGE_TYPE = 'TWK_PUBLIC_ORDER_IFRAME';
 const HTML_COMPONENT_ID = '#html1';
 
-function extractCheckoutIdFromCurrentUrl() {
+/** מזהה מהפרמטר ?id= ; תאימות לאחור: מקטע אחרון בנתיב */
+function extractPublicOrderIdFromCurrentUrl() {
     try {
         const currentUrl = new URL(wixLocation.url);
+        const fromQuery = currentUrl.searchParams.get('id');
+        if (fromQuery && String(fromQuery).trim()) {
+            return decodeURIComponent(String(fromQuery).trim());
+        }
         const segments = currentUrl.pathname.split('/').filter(Boolean);
         return segments.length ? decodeURIComponent(segments[segments.length - 1]) : '';
     } catch (err) {
-        console.error('[ORDER-IFRAME] Failed to parse checkoutId from URL:', err);
+        console.error('[ORDER-IFRAME] Failed to parse order id from URL:', err);
         return '';
     }
 }
@@ -24,18 +29,18 @@ function postToIframe(action, payload = {}) {
 }
 
 async function sendOrderToIframe() {
-    const checkoutId = extractCheckoutIdFromCurrentUrl();
-    console.log('[ORDER-IFRAME] extracted checkoutId from URL:', checkoutId);
+    const publicOrderId = extractPublicOrderIdFromCurrentUrl();
+    console.log('[ORDER-IFRAME] extracted public order id from URL:', publicOrderId);
 
-    if (!checkoutId) {
-        console.warn('[ORDER-IFRAME] missing checkoutId in URL');
+    if (!publicOrderId) {
+        console.warn('[ORDER-IFRAME] missing id in URL');
         postToIframe('ORDER_ERROR', {
             message: 'אופס... לא מצאתי את ההזמנה שלך',
         });
         return;
     }
 
-    const result = await getPublicOrderForIframe(checkoutId);
+    const result = await getPublicOrderForIframe(publicOrderId);
     console.log('[ORDER-IFRAME] backend result:', result);
 
     if (!result?.ok || !result.order) {

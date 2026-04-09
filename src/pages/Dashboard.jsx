@@ -23,6 +23,7 @@ import OrdersTable from "../components/dashboard/OrdersTable";
 import OrderDetailPanel from "../components/dashboard/OrderDetailPanel";
 import { useAuth } from "@/lib/IframeAuthContext";
 import { usePostMessage, usePostMessageListener } from "@/hooks/usePostMessage";
+import { buildPublicOrderUrl } from "@/utils/dashboardOrders";
 import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
 
 /** לוגיקה מזוהה ל־`wix-velo/backend/helpers/couponHelper.js` — computeDiscountForSubtotal */
@@ -67,12 +68,6 @@ function splitFullName(fullName) {
     .filter(Boolean);
   if (parts.length < 2) return null;
   return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
-}
-
-const PUBLIC_ORDER_BASE_URL = "https://www.talkwithkids.co.il/dashboard-orders";
-
-function buildPublicOrderUrl(recordId) {
-  return recordId ? `${PUBLIC_ORDER_BASE_URL}/${encodeURIComponent(recordId)}` : "";
 }
 
 export default function Dashboard() {
@@ -200,10 +195,11 @@ export default function Dashboard() {
       setTimeout(() => {
         resetForm();
         const demoRecordId = `demo-${Date.now()}`;
+        const demoDynamicId = demoRecordId.replace(/\W/g, "").slice(0, 16) || "demodynamicdemo";
         setCreatedOrderState({
           recordId: demoRecordId,
           orderNumber: "",
-          orderUrl: buildPublicOrderUrl(demoRecordId),
+          orderUrl: buildPublicOrderUrl(demoDynamicId),
           isDemo: true,
         });
         setIsSubmitting(false);
@@ -246,7 +242,7 @@ export default function Dashboard() {
       setCreatedOrderState({
         recordId: result.recordId,
         orderNumber: result.orderNumber || "",
-        orderUrl: result.orderUrl || buildPublicOrderUrl(result.recordId),
+        orderUrl: result.orderUrl || buildPublicOrderUrl(result.dynamicLinkId || ""),
         isDemo: false,
       });
       loadOrders();

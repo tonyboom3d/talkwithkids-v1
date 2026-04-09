@@ -19,7 +19,7 @@
 | payerContactId | מזהה Contact | Text | |
 | payerMemberRef | Member | Reference -> Members | Created after payment |
 | checkoutLink | קישור צ'קאאוט | URL | |
-| dynamicLinkId | מזהה דינמי | Text | 16 chars from _id |
+| dynamicLinkId | מזהה דינמי | Text | 16 תווים מ־\_id; קישור ציבורי: `…/dashboard-orders?id={dynamicLinkId}` |
 | errors | שגיאות | Text | JSON |
 | completedOrderData | נתוני הזמנה מושלמת | Text | JSON |
 | customerName | שם לקוח | Text | |
