@@ -407,6 +407,92 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#fafafa]" dir="rtl" aria-busy={isSubmitting}>
+      <AnimatePresence>
+        {isSubmitting && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            role="presentation"
+            aria-live="polite"
+            aria-busy="true"
+            className="fixed inset-0 z-[120] flex items-start justify-center pt-6 sm:pt-10 px-4 bg-slate-900/45 backdrop-blur-[2px] pointer-events-auto"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="rounded-2xl border border-white/20 bg-white/95 px-8 py-7 text-center shadow-2xl max-w-md w-full"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-600" />
+              </div>
+              <p className="text-base font-semibold text-slate-900">יוצרים את ההזמנה</p>
+              <p className="mt-1 text-sm text-slate-500">אנא המתן/י עד לסיום התהליך</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Dialog
+        open={Boolean(createdOrderState)}
+        onOpenChange={(open) => {
+          if (!open && !isConfirmingSend) setCreatedOrderState(null);
+        }}
+      >
+        <DialogContent
+          dir="rtl"
+          className="max-w-md top-4 left-[50%] z-[130] max-h-[min(90vh,calc(100dvh-1rem))] translate-x-[-50%] translate-y-0 overflow-y-auto sm:top-6 [&>button]:hidden"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader className="text-right">
+            <DialogTitle className="text-right">
+              {createdOrderState?.orderNumber
+                ? `ההזמנה ${createdOrderState.orderNumber} נוצרה בהצלחה`
+                : "ההזמנה נוצרה בהצלחה"}
+            </DialogTitle>
+            <DialogDescription className="text-right leading-relaxed">
+              ההזמנה נוצרה ונשמרה במערכת. פרטי ההזמנה עדיין לא נשלחו לוובהוק.
+              רק לאחר לחיצה על אישור, הקישור יישלח ללקוח.
+            </DialogDescription>
+          </DialogHeader>
+
+          {createdOrderState?.orderUrl && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-right">
+              <p className="mb-1 text-xs text-slate-400">הקישור שיישלח ללקוח</p>
+              <p className="break-all text-xs text-slate-700" dir="ltr">{createdOrderState.orderUrl}</p>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:justify-start sm:space-x-0">
+            <Button
+              type="button"
+              className="bg-[#30D46B] text-black hover:bg-[#28b85f] font-medium"
+              onClick={handleConfirmOrderSend}
+              disabled={isConfirmingSend}
+            >
+              {isConfirmingSend ? (
+                <span className="flex items-center gap-2 text-black">
+                  <Loader2 className="h-4 w-4 animate-spin text-black" />
+                  שולח...
+                </span>
+              ) : (
+                "אישור ושליחה לוואטסאפ"
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setCreatedOrderState(null)}
+              disabled={isConfirmingSend}
+            >
+              סגירה ללא שליחה
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         {/* Header */}
         <motion.div
@@ -808,73 +894,6 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {isSubmitting && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/45 backdrop-blur-[2px]"
-          >
-            <div className="rounded-2xl border border-white/20 bg-white/95 px-8 py-7 text-center shadow-2xl">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-600" />
-              </div>
-              <p className="text-base font-semibold text-slate-900">יוצרים את ההזמנה</p>
-              <p className="mt-1 text-sm text-slate-500">אנא המתן/י עד לסיום התהליך</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <Dialog open={Boolean(createdOrderState)} onOpenChange={(open) => !open && !isConfirmingSend && setCreatedOrderState(null)}>
-        <DialogContent dir="rtl" className="max-w-md">
-          <DialogHeader className="text-right">
-            <DialogTitle className="text-right">
-              {createdOrderState?.orderNumber
-                ? `ההזמנה ${createdOrderState.orderNumber} נוצרה בהצלחה`
-                : "ההזמנה נוצרה בהצלחה"}
-            </DialogTitle>
-            <DialogDescription className="text-right leading-relaxed">
-              ההזמנה נוצרה ונשמרה במערכת. פרטי ההזמנה עדיין לא נשלחו לוובהוק.
-              רק לאחר לחיצה על אישור, הקישור יישלח ללקוח.
-            </DialogDescription>
-          </DialogHeader>
-
-          {createdOrderState?.orderUrl && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-right">
-              <p className="mb-1 text-xs text-slate-400">הקישור שיישלח ללקוח</p>
-              <p className="break-all text-xs text-slate-700" dir="ltr">{createdOrderState.orderUrl}</p>
-            </div>
-          )}
-
-          <DialogFooter className="gap-2 sm:justify-start sm:space-x-0">
-            <Button
-              type="button"
-              className="bg-[#30D46B] text-black hover:bg-[#28b85f] font-medium"
-              onClick={handleConfirmOrderSend}
-              disabled={isConfirmingSend}
-            >
-              {isConfirmingSend ? (
-                <span className="flex items-center gap-2 text-black">
-                  <Loader2 className="h-4 w-4 animate-spin text-black" />
-                  שולח...
-                </span>
-              ) : (
-                "אישור ושליחה לוואטסאפ"
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setCreatedOrderState(null)}
-              disabled={isConfirmingSend}
-            >
-              סגירה ללא שליחה
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
