@@ -451,9 +451,11 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
     console.log(`${LOG_PREFIX} Order record inserted: ${inserted._id}`);
 
     const dynamicId = inserted._id.substring(0, 16);
+    const dynamicOrderUrl = buildDashboardOrderUrl(dynamicId);
     await wixData.update('DashboardOrders', {
         ...inserted,
         dynamicLinkId: dynamicId,
+        dynamicOrderUrl,
     }, { suppressAuth: true });
 
     let checkoutResult = null;
@@ -471,6 +473,7 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
             checkoutId: checkoutResult.checkoutId,
             checkoutLink: checkoutResult.checkoutUrl,
             dynamicLinkId: dynamicId,
+            dynamicOrderUrl,
         }, { suppressAuth: true });
 
         console.log(`${LOG_PREFIX} Checkout created: ${checkoutResult.checkoutId}`);
@@ -487,6 +490,8 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
         });
         await wixData.update('DashboardOrders', {
             ...currentRecord,
+            dynamicLinkId: dynamicId,
+            dynamicOrderUrl,
             errors: JSON.stringify({ checkout: err.message }),
             status: 'error',
             changeChain: JSON.stringify(chain),
