@@ -12,8 +12,11 @@ import {
   Pie,
   Cell,
   Legend,
+  ScatterChart,
+  Scatter,
+  CartesianGrid,
 } from "recharts";
-import { TrendingUp, ShoppingBag, CreditCard, Percent, Users, ChevronDown, Loader2 } from "lucide-react";
+import { TrendingUp, ShoppingBag, CreditCard, Percent, Users, ChevronDown, Loader2, CircleDot } from "lucide-react";
 import moment from "moment";
 import DateRangePicker from "../components/dashboard/DateRangePicker";
 import { useAuth } from "@/lib/IframeAuthContext";
@@ -73,6 +76,14 @@ function creatorKey(order) {
 function creatorLabel(order) {
   const name = String(order.creatorName || "").trim();
   return name || "לא ידוע";
+}
+
+/** מועד עדיף: אירוע תשלום בטיימליין; אחרת תאריך יצירה/שליחה */
+function resolvePaidSaleMoment(order) {
+  const timeline = order.timeline || [];
+  const paidEv = timeline.find((e) => (e.action || e.type) === "paid");
+  const raw = paidEv?.date || order.orderDate || order.sentDate;
+  return moment(raw);
 }
 
 export default function Statistics() {
@@ -195,6 +206,32 @@ export default function Statistics() {
     });
     return Object.values(map).sort((a, b) => b.value - a.value).slice(0, 5);
   }, [filteredOrders]);
+
+  /** נקודה לכל הזמנה ששולמה: ציר X = מועד, ציר Y = סכום ההזמנה */
+  const salesScatterPoints = useMemo(() => {
+    return paidOrders
+      .map((o) => {
+        const m = resolvePaidSaleMoment(o);
+        if (!m.isValid()) return null;
+        return {
+          x: m.valueOf(),
+          y: o.totalAmount,
+          orderNumber: o.orderNumber,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.x - b.x);
+  }, [paidOrders]);
+
+  const scatterTimeDomain = useMemo(() => {
+    if (!salesScatterPoints.length) return undefined;
+    const xs = salesScatterPoints.map((p) => p.x);
+    const minT = Math.min(...xs);
+    const maxT = Math.max(...xs);
+    const span = maxT - minT;
+    const pad = span > 0 ? span * 0.08 : 36e5 * 12;
+    return [minT - pad, maxT + pad];
+  }, [salesScatterPoints]);
 
   const unpaidCount = Math.max(0, filteredOrders.length - paidCount);
   const paymentPie = [
@@ -403,6 +440,74 @@ export default function Statistics() {
                         content={(props) => <PaymentStatusLegend {...props} />}
                       />
                     </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.13 }}
+                className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 md:col-span-2"
+              >
+                <div className="flex items-start gap-2 mb-1">
+                  <CircleDot className="w-5 h-5 text-violet-500 shrink-0 mt-0.5" aria-hidden />
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-700">מועדי מכירות (הזמנות ששולמו)</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      כל נקודה = הזמנה ששולמה. ציר אופקי: מועד התשלום (או תאריך ההזמנה אם אין רשומה בטיימליין); ציר אנכי: סכום
+                    </p>
+                  </div>
+                </div>
+                {salesScatterPoints.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-10">אין הזמנות ששולמו בטווח שנבחר</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <ScatterChart margin={{ top: 8, right: 8, left: 4, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis
+                        type="number"
+                        dataKey="x"
+                        domain={scatterTimeDomain}
+                        tickFormatter={(v) => moment(v).format("DD/MM")}
+                        tick={{ fontSize: 11, fill: "#94a3b8" }}
+                        height={36}
+                      />
+                      <YAxis
+                        type="number"
+                        dataKey="y"
+                        tickFormatter={(v) => `₪${Number(v).toLocaleString("he-IL")}`}
+                        tick={{ fontSize: 11, fill: "#94a3b8" }}
+                        width={64}
+                      />
+                      <Tooltip
+                        cursor={{ strokeDasharray: "4 4", stroke: "#c4b5fd" }}
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const p = payload[0].payload;
+                          return (
+                            <div
+                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-md text-right"
+                              dir="rtl"
+                            >
+                              <div className="font-medium text-slate-800">{p.orderNumber}</div>
+                              <div className="text-slate-500 mt-0.5">
+                                {moment(p.x).format("DD/MM/YYYY HH:mm")}
+                              </div>
+                              <div className="text-emerald-700 font-semibold tabular-nums mt-1">
+                                ₪{Number(p.y).toLocaleString("he-IL")}
+                              </div>
+                            </div>
+                          );
+                        }}
+                      />
+                      <Scatter
+                        name="מכירות"
+                        data={salesScatterPoints}
+                        fill="#7c3aed"
+                        fillOpacity={0.85}
+                      />
+                    </ScatterChart>
                   </ResponsiveContainer>
                 )}
               </motion.div>
