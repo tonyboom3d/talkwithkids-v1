@@ -79,6 +79,13 @@ function creatorLabel(order) {
   return name || "לא ידוע";
 }
 
+/** סכום שורת מוצר (מחיר יחידה × כמות) — לחלוקת רווח עמלה יחסית */
+function productLineSubtotal(p) {
+  const q = Number(p.quantity || 1);
+  const price = Number(p.price ?? 0);
+  return Math.max(0, price * q);
+}
+
 /** מועד עדיף: אירוע תשלום בטיימליין; אחרת תאריך יצירה/שליחה */
 function resolvePaidSaleMoment(order) {
   const timeline = order.timeline || [];
@@ -199,22 +206,41 @@ export default function Statistics() {
   const productStats = useMemo(() => {
     const map = {};
     filteredOrders.forEach((o) => {
-      (o.products || []).forEach((p) => {
+      const prods = o.products || [];
+      const orderProfit = isPaidDisplayStatus(o.displayStatus) ? Number(o.profitAmount || 0) : 0;
+      const linesSum = prods.reduce((s, p) => s + productLineSubtotal(p), 0);
+
+      prods.forEach((p) => {
         const name = String(p.name || "מוצר").trim() || "מוצר";
         const id = p.id != null && String(p.id).trim() !== "" ? String(p.id).trim() : "";
         const key = id ? `id:${id}` : `name:${name}`;
         const img = (p.image || p.imageUrl || "").trim();
         if (!map[key]) {
-          map[key] = { key, name, image: img, value: 0 };
+          map[key] = { key, name, image: img, value: 0, profitTotal: 0 };
         }
         map[key].value += Number(p.quantity || 1);
         if (!map[key].image && img) map[key].image = img;
+
+        const line = productLineSubtotal(p);
+        let allocated = 0;
+        if (orderProfit !== 0) {
+          if (linesSum > 0) {
+            allocated = (line / linesSum) * orderProfit;
+          } else if (prods.length > 0) {
+            allocated = orderProfit / prods.length;
+          }
+        }
+        map[key].profitTotal += allocated;
       });
     });
     return Object.values(map)
       .sort((a, b) => b.value - a.value)
       .slice(0, 5)
-      .map((row, index) => ({ ...row, rank: index + 1 }));
+      .map((row, index) => ({
+        ...row,
+        rank: index + 1,
+        profitTotal: Math.round(row.profitTotal * 100) / 100,
+      }));
   }, [filteredOrders]);
 
   /** נקודה לכל הזמנה ששולמה: ציר X = מועד, ציר Y = סכום ההזמנה */
@@ -535,7 +561,12 @@ export default function Statistics() {
                 transition={{ delay: 0.14 }}
                 className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 md:col-span-2"
               >
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">מוצרים מובילים (כמות)</h3>
+                <div className="mb-3">
+                  <h3 className="text-sm font-semibold text-slate-700">מוצרים מובילים (כמות)</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    עמודת רווח: סה״כ עמלה מההזמנות ששולמו, מחולק יחסית לפי סכום שורות המוצר בהזמנה
+                  </p>
+                </div>
                 {productStats.length === 0 ? (
                   <p className="text-sm text-slate-400 text-center py-8">אין נתונים בטווח שנבחר</p>
                 ) : (
@@ -547,6 +578,7 @@ export default function Statistics() {
                           <TableHead className="w-16 text-center text-slate-600 font-semibold">תמונה</TableHead>
                           <TableHead className="text-right text-slate-600 font-semibold">מוצר</TableHead>
                           <TableHead className="w-28 text-left tabular-nums text-slate-600 font-semibold">כמות</TableHead>
+                          <TableHead className="w-32 text-left tabular-nums text-slate-600 font-semibold">רווח (סה״כ)</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -574,6 +606,12 @@ export default function Statistics() {
                             </TableCell>
                             <TableCell className="text-right font-medium text-slate-800">{row.name}</TableCell>
                             <TableCell className="text-left tabular-nums text-slate-700">{row.value}</TableCell>
+                            <TableCell className="text-left tabular-nums text-emerald-700 font-medium">
+                              ₪{Number(row.profitTotal || 0).toLocaleString("he-IL", {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 2,
+                              })}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
