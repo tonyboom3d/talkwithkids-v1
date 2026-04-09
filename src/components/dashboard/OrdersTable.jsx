@@ -348,7 +348,10 @@ export default function OrdersTable({
                           </TableCell>
                         )}
                         <TableCell>
-                          <Badge className={`text-[11px] border-0 font-medium ${order.statusCfg.className}`}>
+                          <Badge
+                            variant="outline"
+                            className={`text-[11px] border-0 font-medium ${order.statusCfg.className}`}
+                          >
                             {order.statusCfg.label}
                           </Badge>
                         </TableCell>
@@ -478,7 +481,10 @@ export default function OrdersTable({
                                             <Workflow className="w-3.5 h-3.5" />
                                             <span>סטטוס</span>
                                           </div>
-                                          <Badge className={`text-[11px] border-0 font-medium ${order.statusCfg.className}`}>
+                                          <Badge
+                                            variant="outline"
+                                            className={`text-[11px] border-0 font-medium ${order.statusCfg.className}`}
+                                          >
                                             {order.statusCfg.label}
                                           </Badge>
                                         </div>
