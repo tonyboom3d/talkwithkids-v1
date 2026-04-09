@@ -12,7 +12,8 @@ import {
   Pie,
   Cell,
   Legend,
-  ScatterChart,
+  ComposedChart,
+  Line,
   Scatter,
   CartesianGrid,
 } from "recharts";
@@ -455,7 +456,7 @@ export default function Statistics() {
                   <div>
                     <h3 className="text-sm font-semibold text-slate-700">מועדי מכירות (הזמנות ששולמו)</h3>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      כל נקודה = הזמנה ששולמה. ציר אופקי: מועד התשלום (או תאריך ההזמנה אם אין רשומה בטיימליין); ציר אנכי: סכום
+                      כל נקודה = הזמנה ששולמה; קו סגול מחבר לפי סדר כרונולוגי. ציר אופקי: מועד התשלום (או תאריך ההזמנה); ציר אנכי: סכום
                     </p>
                   </div>
                 </div>
@@ -463,7 +464,7 @@ export default function Statistics() {
                   <p className="text-sm text-slate-400 text-center py-10">אין הזמנות ששולמו בטווח שנבחר</p>
                 ) : (
                   <ResponsiveContainer width="100%" height={280}>
-                    <ScatterChart margin={{ top: 8, right: 8, left: 4, bottom: 8 }}>
+                    <ComposedChart data={salesScatterPoints} margin={{ top: 8, right: 8, left: 4, bottom: 8 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis
                         type="number"
@@ -484,7 +485,10 @@ export default function Statistics() {
                         cursor={{ strokeDasharray: "4 4", stroke: "#c4b5fd" }}
                         content={({ active, payload }) => {
                           if (!active || !payload?.length) return null;
-                          const p = payload[0].payload;
+                          const p =
+                            payload.map((e) => e?.payload).find((row) => row?.orderNumber) ??
+                            payload[0]?.payload ??
+                            {};
                           return (
                             <div
                               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-md text-right"
@@ -501,13 +505,17 @@ export default function Statistics() {
                           );
                         }}
                       />
-                      <Scatter
-                        name="מכירות"
-                        data={salesScatterPoints}
-                        fill="#7c3aed"
-                        fillOpacity={0.85}
+                      <Line
+                        type="monotone"
+                        dataKey="y"
+                        stroke="#a78bfa"
+                        strokeWidth={2}
+                        dot={false}
+                        isAnimationActive={false}
+                        name="קו מגמה"
                       />
-                    </ScatterChart>
+                      <Scatter name="מכירות" dataKey="y" fill="#7c3aed" fillOpacity={0.85} />
+                    </ComposedChart>
                   </ResponsiveContainer>
                 )}
               </motion.div>
