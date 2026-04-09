@@ -124,7 +124,7 @@ export default function DateRangePicker({ value, onChange }) {
   const hasFilter = value?.from || value?.to;
 
   return (
-    <div className="relative" ref={ref} dir="rtl">
+    <div className="relative z-[60] overflow-visible" ref={ref} dir="rtl">
       <button
         onClick={() => setOpen(!open)}
         className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-colors
@@ -140,7 +140,10 @@ export default function DateRangePicker({ value, onChange }) {
       </button>
 
       {open && (
-        <div className="absolute top-full mt-2 right-0 z-50 bg-white rounded-2xl border border-slate-200 shadow-xl p-4 flex gap-4 min-w-[520px]">
+        <div
+          className="absolute top-full mt-2 left-0 z-50 bg-white rounded-2xl border border-slate-200 shadow-xl p-4 flex gap-4
+            w-max max-w-[calc(100vw-1.5rem)] sm:min-w-[520px] sm:max-w-none"
+        >
           {/* Presets */}
           <div className="flex flex-col gap-1 border-l border-slate-100 pl-4 min-w-[130px]">
             <p className="text-[10px] text-slate-400 font-semibold uppercase mb-1">קיצורים</p>

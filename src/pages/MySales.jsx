@@ -21,7 +21,7 @@ const DEMO_USER_NAME = "שרה מ.";
 
 function exportToCSV(orders, canViewOthers) {
   const rows = [
-    ["מספר הזמנה", "תאריך", "לקוח", "טלפון", "מוצרים", "סה\"כ", "סטטוס", "יוצר/ת", "רווח", "אחוז רווח"],
+    ["מספר הזמנה", "תאריך", "לקוח", "טלפון", "מוצרים", "סה\"כ", "סטטוס", "יוצר/ת", "רווח עמלה (₪)", "אחוז עמלה"],
     ...orders.map(o => [
       o.orderNumber,
       moment(o.orderDate || o.sentDate).format("DD/MM/YYYY HH:mm"),
@@ -31,8 +31,8 @@ function exportToCSV(orders, canViewOthers) {
       `₪${o.totalAmount.toLocaleString("he-IL")}`,
       o.statusCfg?.label || "",
       canViewOthers ? o.creatorName : "",
-      o.hasFullCostData ? `₪${o.profitAmount.toLocaleString("he-IL")}` : "",
-      o.hasFullCostData && o.profitPercent != null ? `${o.profitPercent.toFixed(1)}%` : "",
+      isPaidDisplayStatus(o.displayStatus) ? `₪${(o.profitAmount ?? 0).toLocaleString("he-IL")}` : "",
+      isPaidDisplayStatus(o.displayStatus) && o.profitPercent != null ? `${o.profitPercent}%` : "",
     ])
   ];
   const csv = "\uFEFF" + rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
@@ -46,7 +46,7 @@ function exportToCSV(orders, canViewOthers) {
 }
 
 export default function MySales() {
-  const { user, canViewOthers, isLoading: isAuthLoading } = useAuth();
+  const { user, canViewOthers, commissionRate, isLoading: isAuthLoading } = useAuth();
   const { request } = usePostMessage();
 
   const [dateRange, setDateRange] = useState({ from: null, to: null });
@@ -85,8 +85,8 @@ export default function MySales() {
   }, [loadOrders]);
 
   const normalizedOrders = useMemo(
-    () => (orders || []).map(normalizeOrder),
-    [orders]
+    () => (orders || []).map((order) => normalizeOrder(order, { commissionRate: commissionRate ?? 0 })),
+    [orders, commissionRate]
   );
 
   const filteredOrders = useMemo(() => {
@@ -109,9 +109,6 @@ export default function MySales() {
   const totalRevenue = paidOrders.reduce((sum, order) => sum + order.totalAmount, 0);
   const paidCount = paidOrders.length;
   const avgOrder = paidCount ? Math.round(totalRevenue / paidCount) : 0;
-  const missingCostForAllOrders =
-    filteredOrders.length > 0 && filteredOrders.every((order) => !order.hasFullCostData);
-
   const toggleStatusFilter = (statusKey) => {
     setSelectedStatuses((current) =>
       current.includes(statusKey)
@@ -268,7 +265,7 @@ export default function MySales() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.03 }}
-          className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 space-y-4"
+          className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 space-y-4 overflow-visible"
         >
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="text-right">
@@ -277,7 +274,7 @@ export default function MySales() {
                 סנני לפי טווח תאריכים וסטטוסים. החיפוש המלא זמין גם בתוך הטבלה.
               </p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
               <DateRangePicker value={dateRange} onChange={setDateRange} />
               <Button
                 type="button"
@@ -311,12 +308,6 @@ export default function MySales() {
               );
             })}
           </div>
-
-          {missingCostForAllOrders && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              לא נמצאו נתוני עלות ברשומות המוצרים של ההזמנות המסוננות, ולכן עמודת הרווח תוצג רק כאשר העלות נשמרה בתוך פרטי המוצר.
-            </div>
-          )}
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
@@ -348,6 +339,7 @@ export default function MySales() {
           onDeleteOrder={handleDeleteOrder}
           onAddNote={handleAddNote}
           showProfitColumn
+          commissionRate={commissionRate ?? 0}
         />
       </div>
     </div>

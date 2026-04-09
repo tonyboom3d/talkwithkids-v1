@@ -87,79 +87,15 @@ export function buildPublicOrderUrl(orderId) {
   return orderId ? `${PUBLIC_ORDER_BASE_URL}/${encodeURIComponent(orderId)}` : "";
 }
 
-function readNumericValue(value) {
-  const num = Number(value);
-  return Number.isFinite(num) ? num : null;
-}
-
-function getProductUnitCost(product) {
-  if (!product || typeof product !== "object") return null;
-
-  const candidateValues = [
-    product.costPrice,
-    product.cost,
-    product.purchasePrice,
-    product.unitCost,
-    product.productCost,
-    product.costPerUnit,
-    product.cost_price,
-  ];
-
-  for (const candidate of candidateValues) {
-    const numeric = readNumericValue(candidate);
-    if (numeric != null) {
-      return Math.max(0, numeric);
-    }
-  }
-
-  return null;
-}
-
-function getOrderCostSummary(products) {
-  if (!Array.isArray(products) || products.length === 0) {
-    return {
-      costAmount: null,
-      partialCostAmount: null,
-      hasAnyCostData: false,
-      hasFullCostData: false,
-    };
-  }
-
-  let total = 0;
-  let hasAnyCostData = false;
-  let hasMissingCost = false;
-
-  for (const product of products) {
-    const quantity = Math.max(1, Number(product?.quantity || 1));
-    const unitCost = getProductUnitCost(product);
-    if (unitCost == null) {
-      hasMissingCost = true;
-      continue;
-    }
-    hasAnyCostData = true;
-    total += unitCost * quantity;
-  }
-
-  return {
-    costAmount: hasAnyCostData && !hasMissingCost ? total : null,
-    partialCostAmount: hasAnyCostData ? total : null,
-    hasAnyCostData,
-    hasFullCostData: hasAnyCostData && !hasMissingCost,
-  };
-}
-
-function computeProfitPercent(profitAmount, costAmount) {
-  const profit = readNumericValue(profitAmount);
-  const cost = readNumericValue(costAmount);
-  if (profit == null || cost == null || cost <= 0) return null;
-  return (profit / cost) * 100;
-}
-
 export function isPaidDisplayStatus(status) {
   return status === "paid" || status === "paid_pending_details" || status === "paid_completed";
 }
 
-export function normalizeOrder(order) {
+/**
+ * @param {object} order
+ * @param {{ commissionRate?: number }} [options] — אחוז עמלה של העובדת מה־AuthorizedEmployees; רווח = סה״כ הזמנה × (אחוז / 100), רק כשההזמנה שולמה
+ */
+export function normalizeOrder(order, options = {}) {
   const timeline = Array.isArray(order.timeline)
     ? order.timeline
     : safeParseJson(order.changeChain, []);
@@ -183,11 +119,7 @@ export function normalizeOrder(order) {
 
   const rawSubtotal = Number(order.totalPrice ?? order.total ?? 0);
   const totalAmount = computeDisplayTotalAfterCoupon(rawSubtotal, couponDetails);
-  const costSummary = getOrderCostSummary(products);
-  const profitAmount = costSummary.hasFullCostData ? totalAmount - costSummary.costAmount : null;
-  const profitPercent = costSummary.hasFullCostData
-    ? computeProfitPercent(profitAmount, costSummary.costAmount)
-    : null;
+  const commissionRate = Math.max(0, Number(options.commissionRate) || 0);
 
   const normalized = {
     ...order,
@@ -205,16 +137,15 @@ export function normalizeOrder(order) {
     publicOrderUrl: order.orderUrl || buildPublicOrderUrl(order._id || order.id),
     subtotalAmount: rawSubtotal,
     totalAmount,
-    orderCostAmount: costSummary.costAmount,
-    partialOrderCostAmount: costSummary.partialCostAmount,
-    hasAnyCostData: costSummary.hasAnyCostData,
-    hasFullCostData: costSummary.hasFullCostData,
-    profitAmount,
-    profitPercent,
   };
 
   normalized.displayStatus = getDisplayStatus(normalized);
   normalized.statusCfg = STATUS_CONFIG[normalized.displayStatus] || STATUS_CONFIG.sent;
   normalized.couponSummary = getCouponSummary(couponDetails);
+
+  const paidForCommission = isPaidDisplayStatus(normalized.displayStatus);
+  normalized.profitPercent = paidForCommission ? commissionRate : null;
+  normalized.profitAmount = paidForCommission ? totalAmount * (commissionRate / 100) : null;
+
   return normalized;
 }

@@ -76,7 +76,7 @@ function buildPublicOrderUrl(recordId) {
 }
 
 export default function Dashboard() {
-  const { user, canViewOthers } = useAuth();
+  const { user, canViewOthers, commissionRate } = useAuth();
   const { request } = usePostMessage();
 
   const isDemo = !user;
@@ -797,6 +797,7 @@ export default function Dashboard() {
           onUpdateStatus={handleUpdateOrderStatus}
           onDeleteOrder={handleDeleteOrder}
           onAddNote={handleAddNote}
+          commissionRate={commissionRate ?? 0}
         />
       </div>
 

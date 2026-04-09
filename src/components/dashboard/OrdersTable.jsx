@@ -46,6 +46,7 @@ import {
   normalizeOrder,
   STATUS_CONFIG,
   STATUS_UPDATE_OPTIONS,
+  isPaidDisplayStatus,
 } from "@/utils/dashboardOrders";
 
 const PAGE_SIZE = 8;
@@ -102,6 +103,7 @@ export default function OrdersTable({
   onDeleteOrder,
   onAddNote,
   showProfitColumn = false,
+  commissionRate = 0,
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -114,8 +116,8 @@ export default function OrdersTable({
   const [resendConfirmOrder, setResendConfirmOrder] = useState(null);
 
   const normalizedOrders = useMemo(
-    () => (orders || []).map(normalizeOrder),
-    [orders]
+    () => (orders || []).map((order) => normalizeOrder(order, { commissionRate })),
+    [orders, commissionRate]
   );
 
   const filtered = useMemo(() => {
@@ -250,7 +252,7 @@ export default function OrdersTable({
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">טלפון</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">סה"כ הזמנה</TableHead>
                   {showProfitColumn && (
-                    <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">רווח</TableHead>
+                    <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">רווח עמלה</TableHead>
                   )}
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">סטטוס</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">מס׳ הזמנה</TableHead>
@@ -331,21 +333,17 @@ export default function OrdersTable({
                         </TableCell>
                         {showProfitColumn && (
                           <TableCell className="text-right whitespace-nowrap">
-                            {order.hasFullCostData ? (
+                            {isPaidDisplayStatus(order.displayStatus) ? (
                               <div>
-                                <div className={`text-sm font-semibold ${order.profitAmount >= 0 ? "text-emerald-700" : "text-red-600"}`}>
-                                  ₪{order.profitAmount.toLocaleString("he-IL")}
+                                <div className="text-sm font-semibold text-emerald-700">
+                                  ₪{(order.profitAmount ?? 0).toLocaleString("he-IL")}
                                 </div>
                                 <div className="text-[11px] text-slate-400">
-                                  {order.profitPercent != null
-                                    ? `${order.profitPercent.toFixed(1)}%`
-                                    : "—"}
+                                  {order.profitPercent != null ? `${order.profitPercent}%` : "—"}
                                 </div>
                               </div>
                             ) : (
-                              <div className="text-xs text-slate-400">
-                                אין נתון עלות
-                              </div>
+                              <span className="text-xs text-slate-400">לא שולם</span>
                             )}
                           </TableCell>
                         )}

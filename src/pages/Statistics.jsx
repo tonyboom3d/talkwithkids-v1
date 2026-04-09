@@ -52,12 +52,14 @@ export default function Statistics() {
   return (
     <div className="min-h-screen bg-[#f8f8f8] p-6" dir="rtl">
       <div className="max-w-6xl mx-auto space-y-6">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-xl font-bold text-slate-900">סטטיסטיקות</h1>
             <p className="text-sm text-slate-400 mt-0.5">סקירת ביצועי המכירות שלך</p>
           </div>
-          <DateRangePicker value={dateRange} onChange={setDateRange} />
+          <div className="shrink-0">
+            <DateRangePicker value={dateRange} onChange={setDateRange} />
+          </div>
         </motion.div>
 
         {/* KPIs */}
