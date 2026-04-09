@@ -65,19 +65,9 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
         ...product,
         quantity: 1,
         price: unitPrice,
-        priceInput: unitPrice > 0 ? String(unitPrice) : "",
       }]);
     }
     setIsOpen(false);
-  };
-
-  const updatePrice = (productId, value) => {
-    const raw = value.replace(/[^\d.]/g, "");
-    const num = parseFloat(raw);
-    setSelectedProducts(prev => prev.map(p => {
-      if (p.id !== productId) return p;
-      return { ...p, priceInput: raw, price: isNaN(num) ? 0 : num };
-    }));
   };
 
   const updateQuantity = (productId, delta) => {
@@ -232,6 +222,12 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                       סה״כ שורה: ₪{(product.price * product.quantity).toLocaleString()}
                     </span>
                   </div>
+                  <div className="flex flex-col items-end gap-0.5 shrink-0 text-left" dir="ltr">
+                    <span className="text-xs text-slate-500">מחיר ליחידה (מהקטלוג)</span>
+                    <span className="text-sm font-medium text-slate-700 tabular-nums">
+                      ₪{Number(product.price || 0).toLocaleString("he-IL")}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button type="button" onClick={() => updateQuantity(product.id, 1)} className="w-8 h-8 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors">
                       <Plus className="w-4 h-4 text-slate-600" />
@@ -240,21 +236,6 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                     <button type="button" onClick={() => updateQuantity(product.id, -1)} className="w-8 h-8 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors">
                       <Minus className="w-4 h-4 text-slate-600" />
                     </button>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className="text-xs text-slate-500">מחיר ליחידה (₪)</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm text-slate-500">₪</span>
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        value={product.priceInput ?? ""}
-                        onChange={(e) => updatePrice(product.id, e.target.value)}
-                        placeholder="0"
-                        className="h-9 w-28 text-base text-left border border-slate-200 bg-white"
-                        dir="ltr"
-                      />
-                    </div>
                   </div>
                   <button type="button" onClick={() => removeProduct(product.id)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0 p-1">
                     <X className="w-5 h-5" />

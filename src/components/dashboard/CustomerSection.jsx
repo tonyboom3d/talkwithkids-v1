@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, Search, AlertTriangle, Pencil, Phone, Mail, User, CreditCard } from "lucide-react";
+import { Search, AlertTriangle, Pencil, Phone, User } from "lucide-react";
 import { LoadingSpinner } from "./LoadingSkeleton";
 import { DEMO_CUSTOMERS } from "./DemoDataProvider";
 import { usePostMessage } from "@/hooks/usePostMessage";
@@ -49,7 +50,26 @@ function sanitizeIsraeliPhoneInput(value) {
   return String(value || "").replace(/\D/g, "").slice(0, 10);
 }
 
-export default function CustomerSection({ isDemo, customerData, setCustomerData, paymentStatus, setPaymentStatus, selectedContact, setSelectedContact }) {
+/** מספר בינלאומי: אופציונלי + בתחילה ואז ספרות בלבד */
+function sanitizeInternationalPhoneInput(value) {
+  const s = String(value || "").trim();
+  if (s.startsWith("+")) {
+    return "+" + s.slice(1).replace(/\D/g, "").slice(0, 15);
+  }
+  return s.replace(/\D/g, "").slice(0, 15);
+}
+
+export default function CustomerSection({
+  isDemo,
+  customerData,
+  setCustomerData,
+  paymentStatus,
+  setPaymentStatus,
+  selectedContact,
+  setSelectedContact,
+  allowNonIsraeliPhone,
+  setAllowNonIsraeliPhone,
+}) {
   const [isExisting, setIsExisting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -73,8 +93,7 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
       const timer = setTimeout(() => {
         const filtered = DEMO_CUSTOMERS.filter(c =>
           `${c.firstName} ${c.lastName}`.includes(searchQuery) ||
-          c.phone.includes(searchQuery) ||
-          c.email.includes(searchQuery)
+          c.phone.includes(searchQuery)
         );
         setSearchResults(filtered);
         setIsSearching(false);
@@ -100,11 +119,13 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
 
   const handleSelectCustomer = (customer) => {
     setSelectedContact(customer);
+    const full = [customer.firstName, customer.lastName].filter(Boolean).join(" ");
     setCustomerData({
-      firstName: customer.firstName,
-      lastName: customer.lastName,
-      email: customer.email,
-      phone: customer.phone,
+      firstName: full,
+      lastName: "",
+      phone: allowNonIsraeliPhone
+        ? sanitizeInternationalPhoneInput(String(customer.phone || ""))
+        : sanitizeIsraeliPhoneInput(String(customer.phone || "")),
     });
     setShowResults(false);
     setSearchQuery("");
@@ -116,13 +137,29 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
     setSelectedContact(null);
     setIsEditing(false);
     setSearchQuery("");
+    setAllowNonIsraeliPhone(false);
     if (!checked) {
-      setCustomerData({ firstName: "", lastName: "", email: "", phone: "" });
+      setCustomerData({ firstName: "", lastName: "", phone: "" });
     }
   };
 
   const handleFieldChange = (field, value) => {
     setCustomerData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const onPhoneChange = (raw) => {
+    const v = allowNonIsraeliPhone ? sanitizeInternationalPhoneInput(raw) : sanitizeIsraeliPhoneInput(raw);
+    setCustomerData(prev => ({ ...prev, phone: v }));
+  };
+
+  const onInternationalToggle = (checked) => {
+    setAllowNonIsraeliPhone(checked);
+    setCustomerData((prev) => ({
+      ...prev,
+      phone: checked
+        ? sanitizeInternationalPhoneInput(prev.phone)
+        : sanitizeIsraeliPhoneInput(prev.phone),
+    }));
   };
 
   return (
@@ -146,7 +183,7 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
-                  placeholder="חיפוש לפי שם, טלפון או אימייל..."
+                  placeholder="חיפוש לפי שם או טלפון..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pr-10 text-sm h-11 border-slate-200 focus:border-slate-400 focus:ring-slate-400/20"
@@ -178,7 +215,7 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-medium text-slate-700">{c.firstName} {c.lastName}</div>
-                                <div className="text-xs text-slate-400 truncate">{c.phone || c.email || "\u2014"}</div>
+                                <div className="text-xs text-slate-400 truncate">{c.phone || "—"}</div>
                               </div>
                             </button>
                           ))}
@@ -203,19 +240,13 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
                     ערוך
                   </Button>
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-slate-800">{customerData.firstName} {customerData.lastName}</div>
+                    <div className="text-sm font-semibold text-slate-800">{customerData.firstName}</div>
                   </div>
                 </div>
                 <div className="space-y-1.5 text-right">
-                  {customerData.email && (
-                    <div className="flex items-center gap-2 justify-end text-xs text-slate-500">
-                      <span>{customerData.email}</span>
-                      <Mail className="w-3.5 h-3.5" />
-                    </div>
-                  )}
                   {customerData.phone ? (
                     <div className="flex items-center gap-2 justify-end text-xs text-slate-500">
-                      <span>{customerData.phone}</span>
+                      <span dir="ltr">{customerData.phone}</span>
                       <Phone className="w-3.5 h-3.5" />
                     </div>
                   ) : (
@@ -240,37 +271,40 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
 
             {selectedContact && isEditing && (
               <motion.div {...fadeIn} className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-500 block text-right">אימייל</Label>
-                    <Input value={customerData.email} onChange={e => handleFieldChange("email", e.target.value)} className="h-10 text-sm border-slate-200 text-right" dir="rtl" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-500 block text-right">
-                      שם<span className="text-red-400 mr-0.5">*</span>
-                    </Label>
-                    <Input
-                      value={customerData.firstName}
-                      onChange={e => handleFieldChange("firstName", e.target.value)}
-                      placeholder="לפחות שם פרטי"
-                      className="h-10 text-sm border-slate-200 text-right"
-                      dir="rtl"
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-slate-500 block text-right">
+                    שם מלא<span className="text-red-400 mr-0.5">*</span>
+                  </Label>
+                  <Input
+                    value={customerData.firstName}
+                    onChange={e => handleFieldChange("firstName", e.target.value)}
+                    placeholder="שם פרטי ושם משפחה"
+                    className="h-10 text-sm border-slate-200 text-right"
+                    dir="rtl"
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
                   <div className="space-y-1.5 w-full" dir="rtl">
-                    <Label className="text-xs text-slate-500 block w-full text-right">טלפון</Label>
+                    <Label className="text-xs text-slate-500 block w-full text-right">
+                      טלפון<span className="text-red-400 mr-0.5">*</span>
+                    </Label>
                     <Input
                       value={customerData.phone}
-                      onChange={e => handleFieldChange("phone", sanitizeIsraeliPhoneInput(e.target.value))}
-                      placeholder="05XXXXXXXX"
-                      inputMode="numeric"
-                      maxLength={10}
+                      onChange={e => onPhoneChange(e.target.value)}
+                      placeholder={allowNonIsraeliPhone ? "+972..." : "05XXXXXXXX"}
+                      inputMode={allowNonIsraeliPhone ? "tel" : "numeric"}
+                      maxLength={allowNonIsraeliPhone ? 20 : 10}
                       className="h-10 text-sm border-slate-200 text-right"
                       dir="ltr"
                     />
+                    <label className="flex items-center justify-end gap-2 cursor-pointer text-xs text-slate-600 mt-1">
+                      <span>טלפון שאינו ישראלי</span>
+                      <Checkbox
+                        checked={allowNonIsraeliPhone}
+                        onCheckedChange={onInternationalToggle}
+                      />
+                    </label>
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
@@ -282,29 +316,17 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
           </motion.div>
         ) : (
           <motion.div key="new" {...fadeIn} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-slate-500 block text-right">אימייל</Label>
-                <Input
-                  value={customerData.email}
-                  onChange={e => setCustomerData(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="example@email.com"
-                  className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
-                  dir="rtl"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-slate-500 block text-right">
-                  שם<span className="text-red-400 mr-0.5">*</span>
-                </Label>
-                <Input
-                  value={customerData.firstName}
-                  onChange={e => setCustomerData(prev => ({ ...prev, firstName: e.target.value, lastName: "" }))}
-                  placeholder="לפחות שם פרטי"
-                  className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
-                  dir="rtl"
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-500 block text-right">
+                שם מלא<span className="text-red-400 mr-0.5">*</span>
+              </Label>
+              <Input
+                value={customerData.firstName}
+                onChange={e => setCustomerData(prev => ({ ...prev, firstName: e.target.value }))}
+                placeholder="שם פרטי ושם משפחה"
+                className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
+                dir="rtl"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
@@ -315,13 +337,20 @@ export default function CustomerSection({ isDemo, customerData, setCustomerData,
                 <Input
                   id="customer-phone-new"
                   value={customerData.phone}
-                  onChange={e => setCustomerData(prev => ({ ...prev, phone: sanitizeIsraeliPhoneInput(e.target.value) }))}
-                  placeholder="05XXXXXXXX"
-                  inputMode="numeric"
-                  maxLength={10}
+                  onChange={e => onPhoneChange(e.target.value)}
+                  placeholder={allowNonIsraeliPhone ? "+972..." : "05XXXXXXXX"}
+                  inputMode={allowNonIsraeliPhone ? "tel" : "numeric"}
+                  maxLength={allowNonIsraeliPhone ? 20 : 10}
                   className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
                   dir="ltr"
                 />
+                <label className="flex items-center justify-end gap-2 cursor-pointer text-xs text-slate-600">
+                  <span>טלפון שאינו ישראלי</span>
+                  <Checkbox
+                    checked={allowNonIsraeliPhone}
+                    onCheckedChange={onInternationalToggle}
+                  />
+                </label>
               </div>
             </div>
           </motion.div>

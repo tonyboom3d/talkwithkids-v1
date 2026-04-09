@@ -604,7 +604,7 @@ export default function OrdersTable({
                                           </div>
                                           {order.orderChangeNotes && (
                                             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                                              <p className="text-xs text-amber-700 mb-1">שינויים להזמנה</p>
+                                              <p className="text-xs text-amber-700 mb-1">שינויים בערכה</p>
                                               <p className="text-sm text-amber-900">{order.orderChangeNotes}</p>
                                             </div>
                                           )}

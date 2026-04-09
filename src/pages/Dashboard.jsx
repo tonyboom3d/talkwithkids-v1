@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, MessageSquare, Tag, Percent, DollarSign, Ticket } from "lucide-react";
+import { Send, Loader2, MessageSquare, Tag, Ticket } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -46,13 +46,29 @@ function isValidIsraeliPhone(phone) {
   return /^05\d{8}$/.test(String(phone || "").trim());
 }
 
+function isValidInternationalPhone(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  return digits.length >= 8 && digits.length <= 15;
+}
+
+/** מפרק שם מלא לשם פרטי ושם משפחה (לפחות שתי מילים) */
+function splitFullName(fullName) {
+  const parts = String(fullName || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length < 2) return null;
+  return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+}
+
 export default function Dashboard() {
   const { user, canViewOthers } = useAuth();
   const { send, request } = usePostMessage();
 
   const isDemo = !user;
 
-  const [customerData, setCustomerData] = useState({ firstName: "", lastName: "", email: "", phone: "" });
+  const [customerData, setCustomerData] = useState({ firstName: "", lastName: "", phone: "" });
+  const [allowNonIsraeliPhone, setAllowNonIsraeliPhone] = useState(false);
   const [selectedContact, setSelectedContact] = useState(null);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [paymentStatus, setPaymentStatus] = useState("unpaid");
@@ -67,7 +83,6 @@ export default function Dashboard() {
   /** "create" = יצירת קופון חדש; "existing" = בחירת קופון מהחנות (רק אחד) */
   const [couponMode, setCouponMode] = useState("create");
   const [selectedStoreCoupon, setSelectedStoreCoupon] = useState(null);
-  const [couponType, setCouponType] = useState("percent");
   const [couponValue, setCouponValue] = useState("");
   const [validationError, setValidationError] = useState("");
 
@@ -110,12 +125,23 @@ export default function Dashboard() {
   };
 
   const handleSubmit = async () => {
-    if (!customerData.firstName.trim()) {
-      showError("יש למלא שם לקוח");
+    const nameParts = splitFullName(customerData.firstName);
+    if (!nameParts) {
+      showError("יש למלא שם מלא הכולל לפחות שם פרטי ושם משפחה");
       return;
     }
-    if (!isValidIsraeliPhone(customerData.phone)) {
-      showError("יש למלא מספר פלאפון ישראלי תקין שמתחיל ב-05 ומכיל 10 ספרות");
+    const phoneTrim = String(customerData.phone || "").trim();
+    if (!phoneTrim) {
+      showError("יש למלא מספר טלפון");
+      return;
+    }
+    if (!allowNonIsraeliPhone) {
+      if (!isValidIsraeliPhone(customerData.phone)) {
+        showError("יש למלא מספר פלאפון ישראלי תקין שמתחיל ב-05 ומכיל 10 ספרות");
+        return;
+      }
+    } else if (!isValidInternationalPhone(customerData.phone)) {
+      showError("יש למלא מספר טלפון בינלאומי תקין (8–15 ספרות)");
       return;
     }
     if (selectedProducts.length === 0) {
@@ -145,7 +171,7 @@ export default function Dashboard() {
           showError("נא למלא ערך להנחה");
           return;
         }
-        if (couponType === "percent" ? val >= 100 : val >= sub) {
+        if (val >= sub) {
           showError("ערך ההנחה לא תקין");
           return;
         }
@@ -156,7 +182,7 @@ export default function Dashboard() {
 
     if (isDemo) {
       setTimeout(() => {
-        toast.success("(מצב דמו) קישור תשלום נוצר!");
+        toast.success("(מצב דמו) ההזמנה נוצרה בהצלחה", { duration: 4500 });
         resetForm();
         setIsSubmitting(false);
       }, 1500);
@@ -170,16 +196,15 @@ export default function Dashboard() {
         if (couponMode === "existing" && selectedStoreCoupon) {
           existingCoupon = { id: selectedStoreCoupon.id, code: selectedStoreCoupon.code };
         } else if (couponMode === "create") {
-          coupon = { type: couponType, value: parseFloat(couponValue) };
+          coupon = { type: "fixed", value: parseFloat(couponValue) };
         }
       }
 
       const result = await request('CREATE_ORDER', {
         customer: {
-          ...customerData,
-          firstName: customerData.firstName.trim(),
-          lastName: customerData.lastName.trim(),
-          phone: customerData.phone.trim(),
+          firstName: nameParts.firstName,
+          lastName: nameParts.lastName,
+          phone: phoneTrim,
           contactId: selectedContact?.id || null,
         },
         products: selectedProducts.map(p => ({
@@ -197,8 +222,9 @@ export default function Dashboard() {
       console.log('[UI] Order created:', result.recordId, result.checkoutLink);
       toast.success(
         result.orderNumber
-          ? `הזמנה ${result.orderNumber} נוצרה בהצלחה!`
-          : 'קישור תשלום נוצר בהצלחה. מספר הזמנה יוקצה לאחר תשלום הלקוח.'
+          ? `ההזמנה ${result.orderNumber} נוצרה בהצלחה`
+          : "ההזמנה נוצרה בהצלחה",
+        { duration: 4500 }
       );
       resetForm();
       loadOrders();
@@ -211,7 +237,8 @@ export default function Dashboard() {
   };
 
   const resetForm = () => {
-    setCustomerData({ firstName: "", lastName: "", email: "", phone: "" });
+    setCustomerData({ firstName: "", lastName: "", phone: "" });
+    setAllowNonIsraeliPhone(false);
     setSelectedContact(null);
     setSelectedProducts([]);
     setPaymentStatus("unpaid");
@@ -221,7 +248,6 @@ export default function Dashboard() {
     setCouponEnabled(false);
     setCouponMode("create");
     setSelectedStoreCoupon(null);
-    setCouponType("percent");
     setCouponValue("");
   };
 
@@ -375,6 +401,8 @@ export default function Dashboard() {
             setPaymentStatus={setPaymentStatus}
             selectedContact={selectedContact}
             setSelectedContact={setSelectedContact}
+            allowNonIsraeliPhone={allowNonIsraeliPhone}
+            setAllowNonIsraeliPhone={setAllowNonIsraeliPhone}
           />
 
           <div className="border-t border-slate-100" />
@@ -458,50 +486,38 @@ export default function Dashboard() {
                         />
                       ) : (
                         <>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => { setCouponType("percent"); setCouponValue(""); }}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                                couponType === "percent" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200"
-                              }`}
+                          <div className="flex items-center justify-end gap-2 text-right">
+                            <span className="text-xs font-medium text-slate-700">הנחה בשקלים</span>
+                            <span
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-violet-200 bg-violet-50 text-sm font-bold text-violet-800"
+                              aria-hidden
                             >
-                              <Percent className="w-3 h-3" />
-                              אחוזים
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => { setCouponType("fixed"); setCouponValue(""); }}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                                couponType === "fixed" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200"
-                              }`}
-                            >
-                              <DollarSign className="w-3 h-3" />
-                              מחיר קבוע
-                            </button>
+                              ₪
+                            </span>
                           </div>
                           {(() => {
                             const total = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
                             const val = parseFloat(couponValue) || 0;
-                            const isInvalid = couponType === "percent" ? val >= 100 : val >= total;
+                            const isInvalid = val >= total;
                             return (
                               <>
                                 <div className="flex items-center gap-2">
                                   <Input
                                     type="number"
                                     min="0"
-                                    max={couponType === "percent" ? 99 : Math.max(0, total - 1)}
+                                    max={Math.max(0, total - 1)}
+                                    step="0.01"
                                     value={couponValue}
                                     onChange={(e) => setCouponValue(e.target.value)}
-                                    placeholder={couponType === "percent" ? "% הנחה" : "סכום הנחה (₪)"}
+                                    placeholder="סכום ההנחה"
                                     className="h-9 text-sm border-slate-200 bg-white"
                                     dir="ltr"
                                   />
-                                  <span className="text-sm text-slate-500">{couponType === "percent" ? "%" : "₪"}</span>
+                                  <span className="text-sm font-semibold text-slate-600 tabular-nums">₪</span>
                                 </div>
                                 {isInvalid && couponValue !== "" && (
                                   <p className="text-xs text-red-500">
-                                    ההנחה לא יכולה להיות גדולה מ-{couponType === "percent" ? "99%" : `₪${(total - 1).toLocaleString()}`}
+                                    ההנחה לא יכולה להיות גדולה מ-₪{(total - 1).toLocaleString()}
                                   </p>
                                 )}
                               </>
@@ -545,9 +561,9 @@ export default function Dashboard() {
 
                         if (couponMode === "create") {
                           const val = parseFloat(couponValue) || 0;
-                          const discountAmount = couponType === "percent" ? (total * val) / 100 : val;
+                          const discountAmount = val;
                           const discountedTotal = total - discountAmount;
-                          const isInvalid = couponType === "percent" ? val >= 100 : val >= total;
+                          const isInvalid = val >= total;
                           if (val <= 0 || isInvalid) return null;
                           return (
                             <div className="bg-white rounded-lg p-3 space-y-1.5 border border-violet-100" dir="rtl">
@@ -650,7 +666,7 @@ export default function Dashboard() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-[18px] h-[18px] text-slate-400" />
-                  <Label className="text-sm font-medium text-slate-700">שינויים להזמנה</Label>
+                  <Label className="text-sm font-medium text-slate-700">שינויים בערכה</Label>
                   <div className="relative group">
                     <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-500 text-[10px] flex items-center justify-center cursor-help font-bold">?</span>
                     <div className="absolute bottom-full right-0 mb-1.5 w-64 bg-slate-800 text-white text-xs rounded-lg p-2.5 hidden group-hover:block z-10 text-right leading-relaxed shadow-lg">
