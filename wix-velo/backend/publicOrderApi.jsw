@@ -1,0 +1,211 @@
+import wixData from 'wix-data';
+
+const LOG_PREFIX = '[VELO-PUBLIC-ORDER]';
+
+function safeParseJson(value, fallback) {
+    if (!value) return fallback;
+    if (typeof value !== 'string') return value;
+    try {
+        return JSON.parse(value);
+    } catch (err) {
+        return fallback;
+    }
+}
+
+function formatPublicCouponDetails(couponDetails) {
+    if (!couponDetails) return '';
+    if (couponDetails.source === 'auto_paid') {
+        return '100% הנחה - ההזמנה כבר שולמה';
+    }
+    if (couponDetails.source === 'existing') {
+        return couponDetails.code ? `קוד קופון: ${couponDetails.code}` : 'קופון הנחה קיים';
+    }
+    if (couponDetails.source === 'create') {
+        const value = Number(couponDetails.value || 0);
+        if (couponDetails.type === 'percent') {
+            return couponDetails.code ? `${value}% הנחה (${couponDetails.code})` : `${value}% הנחה`;
+        }
+        return couponDetails.code
+            ? `₪${value.toLocaleString('he-IL')} הנחה (${couponDetails.code})`
+            : `₪${value.toLocaleString('he-IL')} הנחה`;
+    }
+    return '';
+}
+
+function getPublicStatusConfig(status, paymentLink) {
+    switch (status) {
+    case 'paid_pending_details':
+        return {
+            text: 'הזמנה שולמה ממתין להשלמת פרטי לקוח',
+            tone: 'info',
+            ctaLabel: paymentLink ? 'השלימי את הפרטים שלך >>' : '',
+            canContinue: !!paymentLink,
+        };
+    case 'paid_completed':
+        return {
+            text: 'ההזמנה שולמה בהצלחה.',
+            tone: 'success',
+            ctaLabel: '',
+            canContinue: false,
+        };
+    case 'cancelled':
+    case 'error':
+        return {
+            text: 'ההזמנה בוטלה יש לפנות לשירות לקוחות',
+            tone: 'danger',
+            ctaLabel: '',
+            canContinue: false,
+        };
+    case 'opened':
+    case 'sent':
+    default:
+        return {
+            text: 'ממתין לתשלום',
+            tone: 'waiting',
+            ctaLabel: paymentLink ? 'המשיכי לתשלום >>' : '',
+            canContinue: !!paymentLink,
+        };
+    }
+}
+
+function resolvePublicPaymentLink(record) {
+    return record.checkoutLink || '';
+}
+
+function computePublicPriceDisplay(record, couponDetails) {
+    const subtotal = Math.max(0, Number(record.totalPrice) || 0);
+    let payPrice = subtotal;
+    let originalPrice = subtotal;
+
+    if (couponDetails) {
+        if (couponDetails.discountedTotal != null && Number.isFinite(Number(couponDetails.discountedTotal))) {
+            payPrice = Math.max(0, Number(couponDetails.discountedTotal));
+            originalPrice = couponDetails.subtotal != null
+                ? Math.max(0, Number(couponDetails.subtotal))
+                : subtotal;
+        } else if (couponDetails.source === 'auto_paid') {
+            payPrice = 0;
+            originalPrice = subtotal;
+        } else if (couponDetails.source === 'create') {
+            if (couponDetails.type === 'percent') {
+                const pct = Math.min(100, Math.max(0, Number(couponDetails.value) || 0));
+                payPrice = subtotal * (1 - pct / 100);
+            } else if (couponDetails.type === 'fixed') {
+                const off = Math.min(subtotal, Math.max(0, Number(couponDetails.value) || 0));
+                payPrice = Math.max(0, subtotal - off);
+            }
+            originalPrice = subtotal;
+        }
+    }
+
+    const showCompare = !!couponDetails && Math.abs(originalPrice - payPrice) > 0.009;
+    return {
+        originalPrice,
+        payPrice,
+        showCompare,
+    };
+}
+
+function isPaidOrderStatus(status) {
+    return status === 'paid_completed' || status === 'paid';
+}
+
+function normalizePublicProducts(productsValue) {
+    const rawProducts = safeParseJson(productsValue, []);
+    if (!Array.isArray(rawProducts)) return [];
+    return rawProducts.map((product, index) => {
+        const quantity = Math.max(1, Number(product?.quantity) || 1);
+        const unitPrice = Math.max(0, Number(product?.price) || 0);
+        return {
+            id: product?.id || `product-${index}`,
+            name: product?.name || 'מוצר',
+            image: product?.image || '',
+            quantity,
+            unitPrice,
+            lineTotal: unitPrice * quantity,
+        };
+    });
+}
+
+export async function getPublicOrderForIframe(checkoutId) {
+    const normalizedCheckoutId = String(checkoutId || '').trim();
+    console.log(`${LOG_PREFIX} lookup started checkoutId=${normalizedCheckoutId || '(empty)'}`);
+    if (!normalizedCheckoutId) {
+        return {
+            ok: false,
+            code: 'MISSING_CHECKOUT_ID',
+            message: 'אופס... לא מצאתי את ההזמנה שלך',
+        };
+    }
+
+    try {
+        const results = await wixData.query('DashboardOrders')
+            .eq('checkoutId', normalizedCheckoutId)
+            .limit(1)
+            .find({ suppressAuth: true });
+
+        console.log(`${LOG_PREFIX} query finished matches=${results.items.length}`);
+
+        if (!results.items.length) {
+            return {
+                ok: false,
+                code: 'ORDER_NOT_FOUND',
+                message: 'אופס... לא מצאתי את ההזמנה שלך',
+            };
+        }
+
+        const record = results.items[0];
+        const couponDetails = safeParseJson(record.couponDetails, null);
+        const paymentLink = resolvePublicPaymentLink(record);
+        const statusConfig = getPublicStatusConfig(record.status, paymentLink);
+        const products = normalizePublicProducts(record.products);
+        const priceDisplay = computePublicPriceDisplay(record, couponDetails);
+        const showHeroPrice = !isPaidOrderStatus(record.status);
+        console.log(`${LOG_PREFIX} CMS record`, {
+            id: record._id,
+            checkoutId: record.checkoutId,
+            customerName: record.customerName,
+            customerPhone: record.customerPhone,
+            totalPrice: record.totalPrice,
+            status: record.status,
+            checkoutLink: record.checkoutLink || '',
+            resolvedPaymentLink: paymentLink,
+            hasCoupon: !!couponDetails,
+            createdDate: record._createdDate || null,
+            productsCount: products.length,
+            products,
+            priceDisplay,
+            showHeroPrice,
+        });
+
+        return {
+            ok: true,
+            order: {
+                customerName: record.customerName || '',
+                createdDate: record._createdDate || null,
+                customerPhone: record.customerPhone || '',
+                totalPrice: Number(record.totalPrice || 0),
+                originalPrice: priceDisplay.originalPrice,
+                payPrice: priceDisplay.payPrice,
+                showCouponPriceCompare: priceDisplay.showCompare,
+                showHeroPrice,
+                couponDetailsText: formatPublicCouponDetails(couponDetails),
+                hasCoupon: !!couponDetails,
+                status: record.status || 'sent',
+                statusText: statusConfig.text,
+                statusTone: statusConfig.tone,
+                paymentLink,
+                canContinue: statusConfig.canContinue,
+                ctaLabel: statusConfig.ctaLabel,
+                products,
+            },
+        };
+    } catch (err) {
+        console.error(`${LOG_PREFIX} getPublicOrderForIframe failed:`, err);
+        return {
+            ok: false,
+            code: 'ORDER_LOOKUP_FAILED',
+            message: 'אופס... לא מצאתי את ההזמנה שלך',
+        };
+    }
+}

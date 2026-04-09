@@ -42,130 +42,13 @@ import {
   XCircle,
 } from "lucide-react";
 import { TableSkeleton } from "./LoadingSkeleton";
-import { computeDisplayTotalAfterCoupon } from "@/utils/orderTotals";
+import {
+  normalizeOrder,
+  STATUS_CONFIG,
+  STATUS_UPDATE_OPTIONS,
+} from "@/utils/dashboardOrders";
 
 const PAGE_SIZE = 8;
-const PUBLIC_ORDER_BASE_URL = "https://www.talkwithkids.co.il/dashboard-orders";
-
-const STATUS_CONFIG = {
-  sent: { label: "נשלח", className: "bg-slate-100 text-slate-600" },
-  opened: { label: "נפתח", className: "bg-orange-100 text-orange-700" },
-  unpaid: { label: "לא שולם", className: "bg-red-100 text-red-700" },
-  cancelled: { label: "בוטל", className: "bg-red-100 text-red-700" },
-  error: { label: "שגיאה", className: "bg-red-100 text-red-700" },
-  paid_pending_details: { label: "שולמה - לא הושלמה", className: "bg-violet-100 text-violet-700" },
-  paid_completed: { label: "שולמה - הושלמה", className: "bg-emerald-100 text-emerald-700" },
-  paid: { label: "שולם", className: "bg-emerald-100 text-emerald-700" },
-};
-
-const STATUS_UPDATE_OPTIONS = ["sent", "opened", "paid_pending_details", "paid_completed", "paid", "cancelled"];
-
-function safeParseJson(value, fallback) {
-  if (value == null || value === "") return fallback;
-  if (typeof value !== "string") return value;
-  try {
-    return JSON.parse(value);
-  } catch (err) {
-    return fallback;
-  }
-}
-
-function getDisplayStatus(order) {
-  if (order.status && STATUS_CONFIG[order.status]) {
-    return order.status;
-  }
-
-  if (order.linkCancelled) return "cancelled";
-  if (order.errors) return "error";
-  if (order.paymentStatus === "paid") return "paid";
-
-  if (order.status === "opened" || order.timeline.some((event) => (event.action || event.type) === "link_opened")) {
-    return "opened";
-  }
-
-  if (order.orderDate) {
-    const daysSinceCreation = moment().diff(moment(order.orderDate), "days");
-    if (daysSinceCreation >= 3 && order.paymentStatus !== "paid") {
-      return "unpaid";
-    }
-  }
-
-  return "sent";
-}
-
-function getCouponSummary(couponDetails) {
-  if (!couponDetails) return "ללא קופון";
-  if (couponDetails.source === "auto_paid") {
-    return "שולם מראש - קופון 100% להשלמת פרטים";
-  }
-  if (couponDetails.source === "existing") {
-    return couponDetails.code ? `קופון קיים: ${couponDetails.code}` : "קופון קיים מהחנות";
-  }
-
-  if (couponDetails.source === "create") {
-    const isPercent = couponDetails.type === "percent";
-    const valueText = isPercent
-      ? `${Number(couponDetails.value || 0)}%`
-      : `₪${Number(couponDetails.value || 0).toLocaleString("he-IL")}`;
-    return couponDetails.code
-      ? `קופון חדש: ${valueText} (${couponDetails.code})`
-      : `קופון חדש: ${valueText}`;
-  }
-
-  return "קופון";
-}
-
-function buildPublicOrderUrl(orderId) {
-  return orderId ? `${PUBLIC_ORDER_BASE_URL}/${encodeURIComponent(orderId)}` : "";
-}
-
-function normalizeOrder(order) {
-  const timeline = Array.isArray(order.timeline)
-    ? order.timeline
-    : safeParseJson(order.changeChain, []);
-  const products = Array.isArray(order.products)
-    ? order.products
-    : safeParseJson(order.products, []);
-  const couponDetails = safeParseJson(order.couponDetails, null);
-  const customerName = order.customer
-    ? `${order.customer.firstName || ""} ${order.customer.lastName || ""}`.trim()
-    : (order.customerName || "").trim();
-  const customerPhone = order.customer?.phone || order.customerPhone || "";
-  const orderDate = order._createdDate || order.date || "";
-  const sentDate = timeline.find((event) => (event.action || event.type) === "sent")?.date || orderDate;
-  const orderNumber = order.orderNumber && String(order.orderNumber).trim()
-    ? String(order.orderNumber).trim()
-    : "ממתין לתשלום";
-  const creatorName =
-    order.createdByName ||
-    timeline.find((event) => (event.action || event.type) === "created")?.by ||
-    "—";
-
-  const rawSubtotal = Number(order.totalPrice ?? order.total ?? 0);
-  const normalized = {
-    ...order,
-    rowId: order._id || order.id,
-    timeline,
-    products,
-    couponDetails,
-    customerName,
-    customerPhone,
-    orderDate,
-    sentDate,
-    orderNumber,
-    creatorName,
-    checkoutLink: order.checkoutLink || order.paymentLink || "",
-    publicOrderUrl: order.orderUrl || buildPublicOrderUrl(order._id || order.id),
-    subtotalAmount: rawSubtotal,
-    totalAmount: computeDisplayTotalAfterCoupon(rawSubtotal, couponDetails),
-  };
-
-  normalized.displayStatus = getDisplayStatus(normalized);
-  normalized.statusCfg = STATUS_CONFIG[normalized.displayStatus] || STATUS_CONFIG.sent;
-  normalized.couponSummary = getCouponSummary(couponDetails);
-  return normalized;
-}
-
 function timelineDotClass(action) {
   switch (action) {
     case "paid":
@@ -218,6 +101,7 @@ export default function OrdersTable({
   onUpdateStatus,
   onDeleteOrder,
   onAddNote,
+  showProfitColumn = false,
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -364,7 +248,10 @@ export default function OrdersTable({
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">תאריך שליחה</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[160px]">שם לקוח</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">טלפון</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">עלות הזמנה</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">סה"כ הזמנה</TableHead>
+                  {showProfitColumn && (
+                    <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">רווח</TableHead>
+                  )}
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">סטטוס</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">מס׳ הזמנה</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">מי יצר/ה</TableHead>
@@ -442,6 +329,26 @@ export default function OrdersTable({
                         <TableCell className="text-sm font-semibold text-slate-800 whitespace-nowrap">
                           ₪{order.totalAmount.toLocaleString("he-IL")}
                         </TableCell>
+                        {showProfitColumn && (
+                          <TableCell className="text-right whitespace-nowrap">
+                            {order.hasFullCostData ? (
+                              <div>
+                                <div className={`text-sm font-semibold ${order.profitAmount >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                                  ₪{order.profitAmount.toLocaleString("he-IL")}
+                                </div>
+                                <div className="text-[11px] text-slate-400">
+                                  {order.profitPercent != null
+                                    ? `${order.profitPercent.toFixed(1)}%`
+                                    : "—"}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-slate-400">
+                                אין נתון עלות
+                              </div>
+                            )}
+                          </TableCell>
+                        )}
                         <TableCell>
                           <Badge className={`text-[11px] border-0 font-medium ${order.statusCfg.className}`}>
                             {order.statusCfg.label}
@@ -480,7 +387,7 @@ export default function OrdersTable({
 
                       {isExpanded && (
                         <TableRow className="bg-slate-50/60 hover:bg-slate-50/60">
-                          <TableCell colSpan={9} className="p-4">
+                          <TableCell colSpan={showProfitColumn ? 10 : 9} className="p-4">
                             <AnimatePresence initial={false}>
                               <motion.div
                                 initial={{ opacity: 0, height: 0, y: -4, scale: 0.985 }}
