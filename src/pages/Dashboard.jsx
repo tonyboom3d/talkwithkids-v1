@@ -3,6 +3,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Send, Loader2, MessageSquare, Tag, Ticket } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +23,7 @@ import OrdersTable from "../components/dashboard/OrdersTable";
 import OrderDetailPanel from "../components/dashboard/OrderDetailPanel";
 import { useAuth } from "@/lib/IframeAuthContext";
 import { usePostMessage, usePostMessageListener } from "@/hooks/usePostMessage";
-import { DEMO_ORDERS, DEMO_PRODUCTS, DEMO_CUSTOMERS } from "../components/dashboard/DemoDataProvider";
+import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
 
 /** לוגיקה מזוהה ל־`wix-velo/backend/helpers/couponHelper.js` — computeDiscountForSubtotal */
 function computeDiscountForSubtotal(subtotal, coupon) {
@@ -61,9 +69,15 @@ function splitFullName(fullName) {
   return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
 }
 
+const PUBLIC_ORDER_BASE_URL = "https://www.talkwithkids.co.il/dashboard-orders";
+
+function buildPublicOrderUrl(recordId) {
+  return recordId ? `${PUBLIC_ORDER_BASE_URL}/${encodeURIComponent(recordId)}` : "";
+}
+
 export default function Dashboard() {
   const { user, canViewOthers } = useAuth();
-  const { send, request } = usePostMessage();
+  const { request } = usePostMessage();
 
   const isDemo = !user;
 
@@ -85,6 +99,8 @@ export default function Dashboard() {
   const [selectedStoreCoupon, setSelectedStoreCoupon] = useState(null);
   const [couponValue, setCouponValue] = useState("");
   const [validationError, setValidationError] = useState("");
+  const [createdOrderState, setCreatedOrderState] = useState(null);
+  const [isConfirmingSend, setIsConfirmingSend] = useState(false);
 
   const loadOrders = useCallback(async () => {
     setIsLoadingOrders(true);
@@ -182,8 +198,14 @@ export default function Dashboard() {
 
     if (isDemo) {
       setTimeout(() => {
-        toast.success("(מצב דמו) ההזמנה נוצרה בהצלחה", { duration: 4500 });
         resetForm();
+        const demoRecordId = `demo-${Date.now()}`;
+        setCreatedOrderState({
+          recordId: demoRecordId,
+          orderNumber: "",
+          orderUrl: buildPublicOrderUrl(demoRecordId),
+          isDemo: true,
+        });
         setIsSubmitting(false);
       }, 1500);
       return;
@@ -220,13 +242,13 @@ export default function Dashboard() {
       });
 
       console.log('[UI] Order created:', result.recordId, result.checkoutLink);
-      toast.success(
-        result.orderNumber
-          ? `ההזמנה ${result.orderNumber} נוצרה בהצלחה`
-          : "ההזמנה נוצרה בהצלחה",
-        { duration: 4500 }
-      );
       resetForm();
+      setCreatedOrderState({
+        recordId: result.recordId,
+        orderNumber: result.orderNumber || "",
+        orderUrl: result.orderUrl || buildPublicOrderUrl(result.recordId),
+        isDemo: false,
+      });
       loadOrders();
     } catch (err) {
       console.error('[UI] Create order failed:', err);
@@ -249,6 +271,28 @@ export default function Dashboard() {
     setCouponMode("create");
     setSelectedStoreCoupon(null);
     setCouponValue("");
+  };
+
+  const handleConfirmOrderSend = async () => {
+    if (!createdOrderState?.recordId) return;
+
+    if (createdOrderState.isDemo) {
+      toast.success("(מצב דמו) פרטי ההזמנה נשלחו לוובהוק", { duration: 4500 });
+      setCreatedOrderState(null);
+      return;
+    }
+
+    try {
+      setIsConfirmingSend(true);
+      await request("SEND_ORDER_WHATSAPP", { recordId: createdOrderState.recordId });
+      toast.success("פרטי ההזמנה נשלחו בהצלחה", { duration: 4500 });
+      setCreatedOrderState(null);
+      loadOrders();
+    } catch (err) {
+      toast.error(err.message || "שגיאה בשליחת פרטי ההזמנה");
+    } finally {
+      setIsConfirmingSend(false);
+    }
   };
 
   const handleCancelLink = async (orderId) => {
@@ -366,7 +410,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fafafa]" dir="rtl">
+    <div className="min-h-screen bg-[#fafafa]" dir="rtl" aria-busy={isSubmitting}>
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         {/* Header */}
         <motion.div
@@ -486,7 +530,7 @@ export default function Dashboard() {
                         />
                       ) : (
                         <>
-                          <div className="flex items-center justify-end gap-2 text-right">
+                          <div dir="rtl" className="flex w-full items-center justify-start gap-2 text-right">
                             <span className="text-xs font-medium text-slate-700">הנחה בשקלים</span>
                             <span
                               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-violet-200 bg-violet-50 text-sm font-bold text-violet-800"
@@ -501,7 +545,7 @@ export default function Dashboard() {
                             const isInvalid = val >= total;
                             return (
                               <>
-                                <div className="flex items-center gap-2">
+                                <div dir="rtl" className="flex w-full items-center justify-start gap-2">
                                   <Input
                                     type="number"
                                     min="0"
@@ -510,10 +554,10 @@ export default function Dashboard() {
                                     value={couponValue}
                                     onChange={(e) => setCouponValue(e.target.value)}
                                     placeholder="סכום ההנחה"
-                                    className="h-9 text-sm border-slate-200 bg-white"
-                                    dir="ltr"
+                                    className="h-9 max-w-xs flex-1 text-sm border-slate-200 bg-white text-right"
+                                    dir="rtl"
                                   />
-                                  <span className="text-sm font-semibold text-slate-600 tabular-nums">₪</span>
+                                  <span className="shrink-0 text-sm font-semibold text-slate-600 tabular-nums">₪</span>
                                 </div>
                                 {isInvalid && couponValue !== "" && (
                                   <p className="text-xs text-red-500">
@@ -732,12 +776,12 @@ export default function Dashboard() {
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  יוצר קישור תשלום...
+                  יוצר הזמנה...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
                   <Send className="w-4 h-4" />
-                 יצירת קישור לתשלום ושליחה לוואטסאפ
+                 יצירת הזמנה
                 </span>
               )}
             </Button>
@@ -766,6 +810,74 @@ export default function Dashboard() {
           />
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {isSubmitting && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/45 backdrop-blur-[2px]"
+          >
+            <div className="rounded-2xl border border-white/20 bg-white/95 px-8 py-7 text-center shadow-2xl">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-600" />
+              </div>
+              <p className="text-base font-semibold text-slate-900">יוצרים את ההזמנה</p>
+              <p className="mt-1 text-sm text-slate-500">אנא המתן/י עד לסיום התהליך</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Dialog open={Boolean(createdOrderState)} onOpenChange={(open) => !open && !isConfirmingSend && setCreatedOrderState(null)}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader className="text-right">
+            <DialogTitle className="text-right">
+              {createdOrderState?.orderNumber
+                ? `ההזמנה ${createdOrderState.orderNumber} נוצרה בהצלחה`
+                : "ההזמנה נוצרה בהצלחה"}
+            </DialogTitle>
+            <DialogDescription className="text-right leading-relaxed">
+              ההזמנה נוצרה ונשמרה במערכת. פרטי ההזמנה עדיין לא נשלחו לוובהוק.
+              רק לאחר לחיצה על אישור, הקישור יישלח ללקוח.
+            </DialogDescription>
+          </DialogHeader>
+
+          {createdOrderState?.orderUrl && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-right">
+              <p className="mb-1 text-xs text-slate-400">הקישור שיישלח ללקוח</p>
+              <p className="break-all text-xs text-slate-700" dir="ltr">{createdOrderState.orderUrl}</p>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:justify-start sm:space-x-0">
+            <Button
+              type="button"
+              className="bg-slate-900 hover:bg-slate-800 text-white"
+              onClick={handleConfirmOrderSend}
+              disabled={isConfirmingSend}
+            >
+              {isConfirmingSend ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  שולח...
+                </span>
+              ) : (
+                "אישור ושליחה לוובהוק"
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setCreatedOrderState(null)}
+              disabled={isConfirmingSend}
+            >
+              סגירה ללא שליחה
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

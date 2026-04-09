@@ -19,7 +19,7 @@ const UPDATABLE_ORDER_STATUSES = new Set(['sent', 'opened', 'paid_pending_detail
 const DASHBOARD_CHECKOUT_WEBHOOK_URL =
     'https://services.leadconnectorhq.com/hooks/Qt9lEQiyh8wgVPJM4d6Q/webhook-trigger/387433a5-66c1-4a3c-8aec-797419749654';
 
-const PAYMENT_PAGE_BASE = 'https://www.talkwithkids.co.il/payment-page';
+const ORDER_LINK_BASE = 'https://www.talkwithkids.co.il/dashboard-orders';
 
 function safeParseJson(value, fallback) {
     if (!value) return fallback;
@@ -155,8 +155,12 @@ async function generateOrderNumber() {
     return `TWK-${maxN + 1}`;
 }
 
-async function sendDashboardCheckoutWebhook({ customerName, customerPhone, checkoutId }) {
-    const paymentUrl = `${PAYMENT_PAGE_BASE}?id=${encodeURIComponent(checkoutId)}`;
+function buildDashboardOrderUrl(recordId) {
+    return `${ORDER_LINK_BASE}/${encodeURIComponent(recordId)}`;
+}
+
+async function sendDashboardCheckoutWebhook({ customerName, customerPhone, recordId }) {
+    const paymentUrl = buildDashboardOrderUrl(recordId);
     const payload = {
         customerName: customerName || '',
         customerPhone: customerPhone || '',
@@ -173,6 +177,36 @@ async function sendDashboardCheckoutWebhook({ customerName, customerPhone, check
     } catch (err) {
         console.error(`${LOG_PREFIX} Checkout webhook failed:`, err.message || err);
     }
+}
+
+async function deliverOrderToWhatsapp(record, employeeName, { isResend = false } = {}) {
+    if (record.status === 'cancelled' || record.status === 'error') {
+        throw new Error('לא ניתן לשלוח קישור להזמנה שבוטלה או נמצאת בסטטוס שגיאה');
+    }
+    if (!record.checkoutId) {
+        throw new Error('לא נמצא קישור תשלום לשליחה');
+    }
+
+    await sendDashboardCheckoutWebhook({
+        customerName: record.customerName || '',
+        customerPhone: record.customerPhone || '',
+        recordId: record._id,
+    });
+
+    const chain = JSON.parse(record.changeChain || '[]');
+    chain.push({
+        action: 'sent',
+        by: employeeName,
+        date: new Date().toISOString(),
+        detail: isResend
+            ? 'קישור התשלום נשלח מחדש ללקוח בוואטסאפ'
+            : 'פרטי ההזמנה נשלחו ללקוח בוואטסאפ',
+    });
+
+    await wixData.update('DashboardOrders', {
+        ...record,
+        changeChain: JSON.stringify(chain),
+    }, { suppressAuth: true });
 }
 
 export async function createOrderRecord(orderData, employeeId, employeeName = '') {
@@ -287,11 +321,6 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
 
         console.log(`${LOG_PREFIX} Checkout created: ${checkoutResult.checkoutId}`);
 
-        await sendDashboardCheckoutWebhook({
-            customerName: record.customerName || '',
-            customerPhone: record.customerPhone || '',
-            checkoutId: checkoutResult.checkoutId,
-        });
     } catch (err) {
         console.error(`${LOG_PREFIX} Checkout creation failed:`, err);
         const currentRecord = await wixData.get('DashboardOrders', inserted._id, { suppressAuth: true });
@@ -300,7 +329,7 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
             action: 'error',
             by: 'מערכת',
             date: new Date().toISOString(),
-            detail: `אירעה תקלה בשליחת הקישור ללקוח: ${err.message || 'שגיאה לא ידועה'}`,
+            detail: `אירעה תקלה ביצירת קישור התשלום: ${err.message || 'שגיאה לא ידועה'}`,
         });
         await wixData.update('DashboardOrders', {
             ...currentRecord,
@@ -314,6 +343,7 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
         recordId: inserted._id,
         orderNumber: '',
         checkoutLink: checkoutResult?.checkoutUrl || '',
+        orderUrl: buildDashboardOrderUrl(inserted._id),
         dynamicLinkId: dynamicId,
     };
 }
@@ -335,6 +365,17 @@ export async function addOrderNote(recordId, noteText, employeeName) {
         ...record,
         changeChain: JSON.stringify(chain),
     }, { suppressAuth: true });
+}
+
+export async function sendOrderWhatsapp(recordId, employeeName) {
+    const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
+    const chain = JSON.parse(record.changeChain || '[]');
+    const wasAlreadySent = chain.some((event) => (event.action || event.type) === 'sent');
+    if (wasAlreadySent) {
+        throw new Error('הקישור כבר נשלח בעבר. ניתן להשתמש בשליחה חוזרת לוואטסאפ.');
+    }
+
+    await deliverOrderToWhatsapp(record, employeeName, { isResend: false });
 }
 
 // ─── Cancel Link ───
@@ -362,31 +403,7 @@ export async function cancelOrderLink(recordId, employeeName) {
 
 export async function resendOrderWhatsapp(recordId, employeeName) {
     const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
-    if (record.status === 'cancelled' || record.status === 'error') {
-        throw new Error('לא ניתן לשלוח מחדש קישור להזמנה שבוטלה');
-    }
-    if (!record.checkoutId) {
-        throw new Error('לא נמצא קישור תשלום לשליחה חוזרת');
-    }
-
-    await sendDashboardCheckoutWebhook({
-        customerName: record.customerName || '',
-        customerPhone: record.customerPhone || '',
-        checkoutId: record.checkoutId,
-    });
-
-    const chain = JSON.parse(record.changeChain || '[]');
-    chain.push({
-        action: 'sent',
-        by: employeeName,
-        date: new Date().toISOString(),
-        detail: 'קישור התשלום נשלח מחדש ללקוח בוואטסאפ',
-    });
-
-    await wixData.update('DashboardOrders', {
-        ...record,
-        changeChain: JSON.stringify(chain),
-    }, { suppressAuth: true });
+    await deliverOrderToWhatsapp(record, employeeName, { isResend: true });
 }
 
 export async function updateOrderStatus(recordId, nextStatus, employeeName) {

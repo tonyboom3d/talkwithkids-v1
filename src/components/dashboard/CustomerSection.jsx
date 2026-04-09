@@ -271,7 +271,7 @@ export default function CustomerSection({
 
             {selectedContact && isEditing && (
               <motion.div {...fadeIn} className="space-y-3">
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 w-full max-w-[50%] min-w-0">
                   <Label className="text-xs text-slate-500 block text-right">
                     שם מלא<span className="text-red-400 mr-0.5">*</span>
                   </Label>
@@ -279,7 +279,7 @@ export default function CustomerSection({
                     value={customerData.firstName}
                     onChange={e => handleFieldChange("firstName", e.target.value)}
                     placeholder="שם פרטי ושם משפחה"
-                    className="h-10 text-sm border-slate-200 text-right"
+                    className="h-10 w-full text-sm border-slate-200 text-right"
                     dir="rtl"
                   />
                 </div>
@@ -298,8 +298,11 @@ export default function CustomerSection({
                       className="h-10 text-sm border-slate-200 text-right"
                       dir="ltr"
                     />
-                    <label className="flex items-center justify-end gap-2 cursor-pointer text-xs text-slate-600 mt-1">
-                      <span>טלפון שאינו ישראלי</span>
+                    <label
+                      dir="rtl"
+                      className="mt-1 flex w-full cursor-pointer items-center justify-start gap-2 text-xs text-slate-600"
+                    >
+                      <span className="text-right">טלפון שאינו ישראלי</span>
                       <Checkbox
                         checked={allowNonIsraeliPhone}
                         onCheckedChange={onInternationalToggle}
@@ -316,7 +319,7 @@ export default function CustomerSection({
           </motion.div>
         ) : (
           <motion.div key="new" {...fadeIn} className="space-y-3">
-            <div className="space-y-1.5">
+            <div className="w-full max-w-[50%] min-w-0 space-y-1.5">
               <Label className="text-xs text-slate-500 block text-right">
                 שם מלא<span className="text-red-400 mr-0.5">*</span>
               </Label>
@@ -324,7 +327,7 @@ export default function CustomerSection({
                 value={customerData.firstName}
                 onChange={e => setCustomerData(prev => ({ ...prev, firstName: e.target.value }))}
                 placeholder="שם פרטי ושם משפחה"
-                className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
+                className="h-10 w-full text-sm border-slate-200 focus:border-slate-400 text-right"
                 dir="rtl"
               />
             </div>
@@ -344,8 +347,11 @@ export default function CustomerSection({
                   className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
                   dir="ltr"
                 />
-                <label className="flex items-center justify-end gap-2 cursor-pointer text-xs text-slate-600">
-                  <span>טלפון שאינו ישראלי</span>
+                <label
+                  dir="rtl"
+                  className="flex w-full cursor-pointer items-center justify-start gap-2 text-xs text-slate-600"
+                >
+                  <span className="text-right">טלפון שאינו ישראלי</span>
                   <Checkbox
                     checked={allowNonIsraeliPhone}
                     onCheckedChange={onInternationalToggle}

@@ -10,6 +10,7 @@ import {
   getOrderRecords,
   getOrderDetails,
   createOrderRecord,
+  sendOrderWhatsapp,
   addOrderNote,
   cancelOrderLink,
   resendOrderWhatsapp,
@@ -116,6 +117,12 @@ async function handleIframeMessage(data) {
       case 'CREATE_ORDER': {
         const result = await createOrderRecord(payload, currentEmployee._id, currentEmployee.displayName);
         sendToIframe('ORDER_CREATED', result, requestId);
+        break;
+      }
+
+      case 'SEND_ORDER_WHATSAPP': {
+        await sendOrderWhatsapp(payload.recordId, currentEmployee.displayName);
+        sendToIframe('ORDER_WHATSAPP_SENT', { success: true }, requestId);
         break;
       }
 

@@ -44,6 +44,7 @@ import {
 import { TableSkeleton } from "./LoadingSkeleton";
 
 const PAGE_SIZE = 8;
+const PUBLIC_ORDER_BASE_URL = "https://www.talkwithkids.co.il/dashboard-orders";
 
 const STATUS_CONFIG = {
   sent: { label: "נשלח", className: "bg-slate-100 text-slate-600" },
@@ -113,6 +114,10 @@ function getCouponSummary(couponDetails) {
   return "קופון";
 }
 
+function buildPublicOrderUrl(orderId) {
+  return orderId ? `${PUBLIC_ORDER_BASE_URL}/${encodeURIComponent(orderId)}` : "";
+}
+
 function normalizeOrder(order) {
   const timeline = Array.isArray(order.timeline)
     ? order.timeline
@@ -148,6 +153,7 @@ function normalizeOrder(order) {
     orderNumber,
     creatorName,
     checkoutLink: order.checkoutLink || order.paymentLink || "",
+    publicOrderUrl: order.orderUrl || buildPublicOrderUrl(order._id || order.id),
     totalAmount: Number(order.totalPrice ?? order.total ?? 0),
   };
 
@@ -251,11 +257,11 @@ export default function OrdersTable({
   };
 
   const handleCopyLink = async (order) => {
-    if (!order.checkoutLink) {
+    if (!order.publicOrderUrl) {
       toast.error("אין קישור זמין להעתקה");
       return;
     }
-    await onCopyToClipboard?.(order.checkoutLink);
+    await onCopyToClipboard?.(order.publicOrderUrl);
   };
 
   const runRowAction = async (type, order, action) => {
@@ -386,7 +392,7 @@ export default function OrdersTable({
                                 שליחה חוזרת לוואטסאפ
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                disabled={!order.checkoutLink || isError}
+                                disabled={!order.publicOrderUrl || isError}
                                 onClick={() => handleCopyLink(order)}
                               >
                                 <Copy className="w-4 h-4" />
@@ -431,8 +437,18 @@ export default function OrdersTable({
                         <TableCell className="text-xs font-mono text-slate-500 whitespace-nowrap">
                           {order.orderNumber}
                         </TableCell>
-                        <TableCell className="text-sm text-slate-600">
-                          {order.creatorName || "—"}
+                        <TableCell className="text-right">
+                          {order.creatorName && order.creatorName !== "—" ? (
+                            <span
+                              className="inline-flex max-w-full items-center gap-1 rounded-full border border-slate-200 bg-slate-50 py-0.5 pl-1.5 pr-2 text-[11px] font-medium text-slate-700"
+                              dir="ltr"
+                            >
+                              <span className="min-w-0 truncate">{order.creatorName}</span>
+                              <UserRound className="h-3 w-3 shrink-0 text-slate-500" aria-hidden />
+                            </span>
+                          ) : (
+                            <span className="text-sm text-slate-400">—</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-left">
                           <button
@@ -480,7 +496,7 @@ export default function OrdersTable({
                                       <ActionButton
                                         icon={Copy}
                                         label="העתקת קישור"
-                                        disabled={!order.checkoutLink || !onCopyToClipboard}
+                                        disabled={!order.publicOrderUrl || !onCopyToClipboard}
                                         onClick={() => handleCopyLink(order)}
                                       />
                                       <ActionButton
