@@ -6,6 +6,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { IframeAuthProvider, useAuth } from '@/lib/IframeAuthContext';
 import { Loader2 } from 'lucide-react';
+import { APP_VERSION } from '@/config/appVersion';
 
 /** GitHub project site uses /repo-name/; custom domain uses /. Detect at runtime. */
 function routerBasename() {
@@ -77,6 +78,18 @@ function App() {
     <IframeAuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router basename={routerBasename()}>
+          <div
+            className="pointer-events-none fixed left-2.5 top-2.5 z-[200] select-none"
+            aria-hidden
+          >
+            <span
+              className="inline-block rounded-md border border-slate-700/20 bg-slate-900/90 px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-white shadow-md backdrop-blur-sm"
+              dir="ltr"
+              title={`גרסה ${APP_VERSION}`}
+            >
+              v{APP_VERSION}
+            </span>
+          </div>
           <AuthenticatedApp />
         </Router>
         <Toaster />
