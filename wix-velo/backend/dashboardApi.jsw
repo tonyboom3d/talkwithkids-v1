@@ -45,7 +45,7 @@ function getStatusLabel(status) {
     return labels[status] || status;
 }
 
-async function getEmployeeNameMap(employeeIds) {
+async function getEmployeeMetaMap(employeeIds) {
     const ids = [...new Set((employeeIds || []).filter(Boolean))];
     if (ids.length === 0) return {};
     const result = await wixData.query('AuthorizedEmployees')
@@ -53,14 +53,19 @@ async function getEmployeeNameMap(employeeIds) {
         .limit(Math.min(ids.length, 100))
         .find({ suppressAuth: true });
     return (result.items || []).reduce((acc, item) => {
-        acc[item._id] = item.displayName || '';
+        const colorRaw = item.color != null ? String(item.color).trim() : '';
+        acc[item._id] = {
+            displayName: item.displayName || '',
+            color: colorRaw,
+        };
         return acc;
     }, {});
 }
 
-function normalizeTimelineEvent(event, employeeNameMap = {}) {
+function normalizeTimelineEvent(event, employeeMetaMap = {}) {
     const rawBy = event?.by || '';
-    const resolvedBy = employeeNameMap[rawBy] || rawBy || 'מערכת';
+    const meta = employeeMetaMap[rawBy];
+    const resolvedBy = meta?.displayName || rawBy || 'מערכת';
     const actorType = (() => {
         if (resolvedBy === 'מערכת') return 'system';
         if (String(resolvedBy).includes('לקוח')) return 'customer';
@@ -74,16 +79,18 @@ function normalizeTimelineEvent(event, employeeNameMap = {}) {
     };
 }
 
-function normalizeOrderRecord(item, employeeNameMap = {}) {
-    const changeChain = safeParseJson(item.changeChain, []).map((event) => normalizeTimelineEvent(event, employeeNameMap));
+function normalizeOrderRecord(item, employeeMetaMap = {}) {
+    const changeChain = safeParseJson(item.changeChain, []).map((event) => normalizeTimelineEvent(event, employeeMetaMap));
     const productsList = safeParseJson(item.products, []);
     const couponDetails = safeParseJson(item.couponDetails, null);
+    const creatorMeta = employeeMetaMap[item.createdByRef];
     return {
         ...item,
         changeChain,
         products: productsList,
         couponDetails,
-        createdByName: item.createdByName || employeeNameMap[item.createdByRef] || '',
+        createdByName: item.createdByName || creatorMeta?.displayName || '',
+        creatorTagColor: creatorMeta?.color || '',
     };
 }
 
@@ -99,11 +106,13 @@ export async function getEmployeePermissions(memberId) {
     }
 
     const emp = result.items[0];
+    const color = emp.color != null ? String(emp.color).trim() : '';
     return {
         _id: emp._id,
         displayName: emp.displayName,
         canViewOtherRecords: !!emp.canViewOtherRecords,
         commissionRate: emp.commissionRate || 0,
+        color,
     };
 }
 
@@ -124,15 +133,15 @@ export async function getOrderRecords(employeeId, canViewOthers) {
         const chain = safeParseJson(item.changeChain, []);
         return [item.createdByRef, ...chain.map((event) => event?.by)].filter(Boolean);
     });
-    const employeeNameMap = await getEmployeeNameMap(employeeIds);
-    return items.map((item) => normalizeOrderRecord(item, employeeNameMap));
+    const employeeMetaMap = await getEmployeeMetaMap(employeeIds);
+    return items.map((item) => normalizeOrderRecord(item, employeeMetaMap));
 }
 
 export async function getOrderDetails(recordId) {
     const item = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
     const chain = safeParseJson(item.changeChain, []);
-    const employeeNameMap = await getEmployeeNameMap([item.createdByRef, ...chain.map((event) => event?.by)].filter(Boolean));
-    return normalizeOrderRecord(item, employeeNameMap);
+    const employeeMetaMap = await getEmployeeMetaMap([item.createdByRef, ...chain.map((event) => event?.by)].filter(Boolean));
+    return normalizeOrderRecord(item, employeeMetaMap);
 }
 
 function formatPublicCouponDetails(couponDetails) {

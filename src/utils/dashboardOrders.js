@@ -145,6 +145,7 @@ export function normalizeOrder(order, options = {}) {
     sentDate,
     orderNumber,
     creatorName,
+    creatorTagColor: order.creatorTagColor || "",
     checkoutLink: order.checkoutLink || order.paymentLink || "",
     publicOrderUrl: order.orderUrl || buildPublicOrderUrl(resolveDynamicLinkId(order)),
     subtotalAmount: rawSubtotal,
