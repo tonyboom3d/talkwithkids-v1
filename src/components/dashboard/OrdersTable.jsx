@@ -36,7 +36,6 @@ import {
   Package,
   Phone,
   Search,
-  Tag,
   UserRound,
   Workflow,
   XCircle,
@@ -473,13 +472,6 @@ export default function OrdersTable({
                                             <span>תאריך יצירה</span>
                                           </div>
                                           <p className="text-sm text-slate-700">{order.orderDate ? moment(order.orderDate).format("DD/MM/YYYY HH:mm") : "—"}</p>
-                                        </div>
-                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
-                                          <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
-                                            <Tag className="w-3.5 h-3.5" />
-                                            <span>קופון</span>
-                                          </div>
-                                          <p className="text-sm text-slate-700">{order.couponSummary}</p>
                                         </div>
                                         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
                                           <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
