@@ -28,10 +28,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 const DEMO_USER_NAME = "שרה מ.";
-const COLORS = ["#6366f1", "#f59e0b", "#10b981", "#3b82f6", "#ec4899"];
 
 /** מקרא מתחת לעוגה — בלי תוויות על הפרוסות (מונע חפיפה וחיתוך) */
 function PaymentStatusLegend({ payload }) {
@@ -200,12 +200,21 @@ export default function Statistics() {
     const map = {};
     filteredOrders.forEach((o) => {
       (o.products || []).forEach((p) => {
-        const name = p.name || "מוצר";
-        if (!map[name]) map[name] = { name, value: 0 };
-        map[name].value += Number(p.quantity || 1);
+        const name = String(p.name || "מוצר").trim() || "מוצר";
+        const id = p.id != null && String(p.id).trim() !== "" ? String(p.id).trim() : "";
+        const key = id ? `id:${id}` : `name:${name}`;
+        const img = (p.image || p.imageUrl || "").trim();
+        if (!map[key]) {
+          map[key] = { key, name, image: img, value: 0 };
+        }
+        map[key].value += Number(p.quantity || 1);
+        if (!map[key].image && img) map[key].image = img;
       });
     });
-    return Object.values(map).sort((a, b) => b.value - a.value).slice(0, 5);
+    return Object.values(map)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5)
+      .map((row, index) => ({ ...row, rank: index + 1 }));
   }, [filteredOrders]);
 
   /** נקודה לכל הזמנה ששולמה: ציר X = מועד, ציר Y = סכום ההזמנה */
@@ -526,22 +535,50 @@ export default function Statistics() {
                 transition={{ delay: 0.14 }}
                 className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 md:col-span-2"
               >
-                <h3 className="text-sm font-semibold text-slate-700 mb-4">מוצרים מובילים (כמות)</h3>
+                <h3 className="text-sm font-semibold text-slate-700 mb-3">מוצרים מובילים (כמות)</h3>
                 {productStats.length === 0 ? (
                   <p className="text-sm text-slate-400 text-center py-8">אין נתונים בטווח שנבחר</p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={productStats} layout="vertical">
-                      <XAxis type="number" tick={{ fontSize: 11, fill: "#94a3b8" }} />
-                      <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 11, fill: "#94a3b8" }} />
-                      <Tooltip />
-                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                        {productStats.map((_, i) => (
-                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  <div dir="rtl" className="rounded-xl border border-slate-100 overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+                          <TableHead className="w-12 text-center text-slate-600 font-semibold">#</TableHead>
+                          <TableHead className="w-16 text-center text-slate-600 font-semibold">תמונה</TableHead>
+                          <TableHead className="text-right text-slate-600 font-semibold">מוצר</TableHead>
+                          <TableHead className="w-28 text-left tabular-nums text-slate-600 font-semibold">כמות</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {productStats.map((row) => (
+                          <TableRow key={row.key}>
+                            <TableCell className="text-center tabular-nums text-slate-500 font-medium">
+                              {row.rank}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {row.image ? (
+                                <img
+                                  src={row.image}
+                                  alt=""
+                                  className="w-11 h-11 rounded-lg object-cover border border-slate-100 mx-auto"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div
+                                  className="w-11 h-11 rounded-lg bg-slate-100 border border-slate-100 mx-auto flex items-center justify-center"
+                                  aria-hidden
+                                >
+                                  <ShoppingBag className="w-5 h-5 text-slate-300" />
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-slate-800">{row.name}</TableCell>
+                            <TableCell className="text-left tabular-nums text-slate-700">{row.value}</TableCell>
+                          </TableRow>
                         ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
               </motion.div>
             </div>
