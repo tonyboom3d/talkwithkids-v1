@@ -86,12 +86,18 @@ function productLineSubtotal(p) {
   return Math.max(0, price * q);
 }
 
-/** מועד עדיף: אירוע תשלום בטיימליין; אחרת תאריך יצירה/שליחה */
+/** מועד עדיף: אירוע תשלום בטיימליין; אחרת תאריכי הזמנה / יצירה */
 function resolvePaidSaleMoment(order) {
   const timeline = order.timeline || [];
   const paidEv = timeline.find((e) => (e.action || e.type) === "paid");
-  const raw = paidEv?.date || order.orderDate || order.sentDate;
-  return moment(raw);
+  const raw =
+    paidEv?.date ||
+    order.orderDate ||
+    order.sentDate ||
+    order._createdDate ||
+    order.date;
+  const m = moment(raw);
+  return m.isValid() ? m : moment.invalid();
 }
 
 export default function Statistics() {
@@ -243,20 +249,33 @@ export default function Statistics() {
       }));
   }, [filteredOrders]);
 
-  /** נקודה לכל הזמנה ששולמה: ציר X = מועד, ציר Y = סכום ההזמנה */
+  /**
+   * נקודה לכל הזמנה ששולמה: ציר X = מועד, ציר Y = סכום.
+   * `x` — מועד להצגה (עם הפרדה קלה כשנקודות חולקות אותו timestamp — Recharts מתקשה ב-monotone על כפילויות).
+   * `xActual` — המועד האמיתי לטולטיפ.
+   */
   const salesScatterPoints = useMemo(() => {
-    return paidOrders
+    const raw = paidOrders
       .map((o) => {
         const m = resolvePaidSaleMoment(o);
         if (!m.isValid()) return null;
         return {
-          x: m.valueOf(),
+          xActual: m.valueOf(),
           y: o.totalAmount,
           orderNumber: o.orderNumber,
         };
       })
       .filter(Boolean)
-      .sort((a, b) => a.x - b.x);
+      .sort((a, b) => a.xActual - b.xActual);
+
+    const dupAt = new Map();
+    return raw.map((p) => {
+      const n = (dupAt.get(p.xActual) || 0) + 1;
+      dupAt.set(p.xActual, n);
+      const dupIdx = n - 1;
+      const x = p.xActual + dupIdx * 9000;
+      return { ...p, x };
+    });
   }, [paidOrders]);
 
   const scatterTimeDomain = useMemo(() => {
@@ -265,8 +284,18 @@ export default function Statistics() {
     const minT = Math.min(...xs);
     const maxT = Math.max(...xs);
     const span = maxT - minT;
-    const pad = span > 0 ? span * 0.08 : 36e5 * 12;
+    const pad = span > 0 ? Math.max(span * 0.08, 36e5 * 0.25) : 36e5 * 12;
     return [minT - pad, maxT + pad];
+  }, [salesScatterPoints]);
+
+  const scatterYDomain = useMemo(() => {
+    if (!salesScatterPoints.length) return undefined;
+    const ys = salesScatterPoints.map((p) => Number(p.y) || 0);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const span = maxY - minY;
+    const pad = span > 0 ? Math.max(span * 0.06, maxY * 0.02) : Math.max(maxY * 0.08, 50);
+    return [Math.max(0, minY - pad), maxY + pad];
   }, [salesScatterPoints]);
 
   const unpaidCount = Math.max(0, filteredOrders.length - paidCount);
@@ -491,67 +520,81 @@ export default function Statistics() {
                   <div>
                     <h3 className="text-sm font-semibold text-slate-700">מועדי מכירות (הזמנות ששולמו)</h3>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      כל נקודה = הזמנה ששולמה; קו סגול מחבר לפי סדר כרונולוגי. ציר אופקי: מועד התשלום (או תאריך ההזמנה); ציר אנכי: סכום
+                      כל נקודה = הזמנה ששולמה; קו סגול מחבר לפי סדר כרונולוגי. ציר אופקי: מועד התשלום (או תאריך ההזמנה); ציר אנכי: סכום. הזמנות באותו מועד מפורקות מעט לצורך תצוגה.
                     </p>
                   </div>
                 </div>
                 {salesScatterPoints.length === 0 ? (
                   <p className="text-sm text-slate-400 text-center py-10">אין הזמנות ששולמו בטווח שנבחר</p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <ComposedChart data={salesScatterPoints} margin={{ top: 8, right: 8, left: 4, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis
-                        type="number"
-                        dataKey="x"
-                        domain={scatterTimeDomain}
-                        tickFormatter={(v) => moment(v).format("DD/MM")}
-                        tick={{ fontSize: 11, fill: "#94a3b8" }}
-                        height={36}
-                      />
-                      <YAxis
-                        type="number"
-                        dataKey="y"
-                        tickFormatter={(v) => `₪${Number(v).toLocaleString("he-IL")}`}
-                        tick={{ fontSize: 11, fill: "#94a3b8" }}
-                        width={64}
-                      />
-                      <Tooltip
-                        cursor={{ strokeDasharray: "4 4", stroke: "#c4b5fd" }}
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          const p =
-                            payload.map((e) => e?.payload).find((row) => row?.orderNumber) ??
-                            payload[0]?.payload ??
-                            {};
-                          return (
-                            <div
-                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-md text-right"
-                              dir="rtl"
-                            >
-                              <div className="font-medium text-slate-800">{p.orderNumber}</div>
-                              <div className="text-slate-500 mt-0.5">
-                                {moment(p.x).format("DD/MM/YYYY HH:mm")}
+                  <div className="w-full min-h-[300px]" dir="ltr">
+                    <ResponsiveContainer width="100%" height={320}>
+                      <ComposedChart data={salesScatterPoints} margin={{ top: 8, right: 12, left: 8, bottom: 12 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis
+                          type="number"
+                          dataKey="x"
+                          domain={scatterTimeDomain}
+                          scale="time"
+                          tickFormatter={(v) => moment(v).format("DD/MM")}
+                          minTickGap={28}
+                          tick={{ fontSize: 11, fill: "#94a3b8" }}
+                          height={40}
+                        />
+                        <YAxis
+                          type="number"
+                          dataKey="y"
+                          domain={scatterYDomain}
+                          tickFormatter={(v) => `₪${Number(v).toLocaleString("he-IL")}`}
+                          tick={{ fontSize: 11, fill: "#94a3b8" }}
+                          width={72}
+                        />
+                        <Tooltip
+                          cursor={{ strokeDasharray: "4 4", stroke: "#c4b5fd" }}
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const p =
+                              payload.map((e) => e?.payload).find((row) => row?.orderNumber) ??
+                              payload[0]?.payload ??
+                              {};
+                            const t = p.xActual != null ? moment(p.xActual) : moment(p.x);
+                            return (
+                              <div
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-md text-right"
+                                dir="rtl"
+                              >
+                                <div className="font-medium text-slate-800">{p.orderNumber}</div>
+                                <div className="text-slate-500 mt-0.5">
+                                  {t.isValid() ? t.format("DD/MM/YYYY HH:mm") : "—"}
+                                </div>
+                                <div className="text-emerald-700 font-semibold tabular-nums mt-1">
+                                  ₪{Number(p.y).toLocaleString("he-IL")}
+                                </div>
                               </div>
-                              <div className="text-emerald-700 font-semibold tabular-nums mt-1">
-                                ₪{Number(p.y).toLocaleString("he-IL")}
-                              </div>
-                            </div>
-                          );
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="y"
-                        stroke="#a78bfa"
-                        strokeWidth={2}
-                        dot={false}
-                        isAnimationActive={false}
-                        name="קו מגמה"
-                      />
-                      <Scatter name="מכירות" dataKey="y" fill="#7c3aed" fillOpacity={0.85} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
+                            );
+                          }}
+                        />
+                        <Line
+                          type="linear"
+                          dataKey="y"
+                          stroke="#a78bfa"
+                          strokeWidth={2}
+                          dot={false}
+                          isAnimationActive={false}
+                          connectNulls
+                          name="קו מגמה"
+                        />
+                        <Scatter
+                          name="מכירות"
+                          dataKey="y"
+                          fill="#7c3aed"
+                          fillOpacity={0.9}
+                          isAnimationActive={false}
+                          r={5}
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
                 )}
               </motion.div>
 
