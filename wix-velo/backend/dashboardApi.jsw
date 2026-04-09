@@ -194,13 +194,14 @@ async function deliverOrderToWhatsapp(record, employeeName, { isResend = false }
     });
 
     const chain = JSON.parse(record.changeChain || '[]');
+    const phoneLabel = record.customerPhone || 'לא ידוע';
     chain.push({
         action: 'sent',
         by: employeeName,
         date: new Date().toISOString(),
         detail: isResend
-            ? 'קישור התשלום נשלח מחדש ללקוח בוואטסאפ'
-            : 'פרטי ההזמנה נשלחו ללקוח בוואטסאפ',
+            ? `נשלחה הודעת וואטסאפ חוזרת ללקוח/ה למספר ${phoneLabel}`
+            : `פרטי ההזמנה נשלחו ללקוח/ה בוואטסאפ (למספר ${phoneLabel})`,
     });
 
     await wixData.update('DashboardOrders', {

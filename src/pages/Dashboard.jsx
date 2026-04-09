@@ -854,17 +854,17 @@ export default function Dashboard() {
           <DialogFooter className="gap-2 sm:justify-start sm:space-x-0">
             <Button
               type="button"
-              className="bg-slate-900 hover:bg-slate-800 text-white"
+              className="bg-[#30D46B] text-black hover:bg-[#28b85f] font-medium"
               onClick={handleConfirmOrderSend}
               disabled={isConfirmingSend}
             >
               {isConfirmingSend ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="flex items-center gap-2 text-black">
+                  <Loader2 className="h-4 w-4 animate-spin text-black" />
                   שולח...
                 </span>
               ) : (
-                "אישור ושליחה לוובהוק"
+                "אישור ושליחה לוואטסאפ"
               )}
             </Button>
             <Button

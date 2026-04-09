@@ -188,11 +188,11 @@ function getActorBadgeText(event) {
   return "משתמש/ת מורשה";
 }
 
-function ActionButton({ icon: Icon, label, onClick, className = "", disabled = false }) {
+function ActionButton({ icon: Icon, label, onClick, className = "", variant = "outline", disabled = false }) {
   return (
     <Button
       type="button"
-      variant="outline"
+      variant={variant}
       size="sm"
       onClick={(event) => {
         event.stopPropagation();
@@ -224,6 +224,7 @@ export default function OrdersTable({
   const [pendingStatus, setPendingStatus] = useState("sent");
   const [busyAction, setBusyAction] = useState({ type: "", rowId: "" });
   const [noteDrafts, setNoteDrafts] = useState({});
+  const [resendConfirmOrder, setResendConfirmOrder] = useState(null);
 
   const normalizedOrders = useMemo(
     () => (orders || []).map(normalizeOrder),
@@ -294,6 +295,14 @@ export default function OrdersTable({
         setExpandedRowId(null);
       }
       setDeleteOrderState(null);
+    });
+  };
+
+  const handleConfirmResendWhatsapp = async () => {
+    if (!resendConfirmOrder || !onResendWhatsapp) return;
+    await runRowAction("resend", resendConfirmOrder, async () => {
+      await onResendWhatsapp(resendConfirmOrder.rowId);
+      setResendConfirmOrder(null);
     });
   };
 
@@ -386,7 +395,8 @@ export default function OrdersTable({
                             <DropdownMenuContent align="start" className="w-52" dir="rtl">
                               <DropdownMenuItem
                                 disabled={!order.checkoutLink || !onResendWhatsapp || isBusy || isCancelled || isError}
-                                onClick={() => runRowAction("resend", order, () => onResendWhatsapp(order.rowId))}
+                                className="bg-[#30D46B] text-black hover:bg-[#28b85f] focus:bg-[#28b85f] focus:text-black data-[highlighted]:bg-[#28b85f] data-[highlighted]:text-black"
+                                onClick={() => setResendConfirmOrder(order)}
                               >
                                 <MessageCircleMore className="w-4 h-4" />
                                 שליחה חוזרת לוואטסאפ
@@ -491,7 +501,8 @@ export default function OrdersTable({
                                         icon={MessageCircleMore}
                                         label="שליחה חוזרת לוואטסאפ"
                                         disabled={!order.checkoutLink || !onResendWhatsapp || isBusy || isCancelled}
-                                        onClick={() => runRowAction("resend", order, () => onResendWhatsapp(order.rowId))}
+                                        className="border-[#30D46B] bg-[#30D46B] text-black hover:bg-[#28b85f] hover:text-black"
+                                        onClick={() => setResendConfirmOrder(order)}
                                       />
                                       <ActionButton
                                         icon={Copy}
@@ -789,6 +800,51 @@ export default function OrdersTable({
               שמירת סטטוס
             </Button>
             <Button type="button" variant="ghost" onClick={() => setStatusOrder(null)}>
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(resendConfirmOrder)}
+        onOpenChange={(open) => !open && busyAction.type !== "resend" && setResendConfirmOrder(null)}
+      >
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader className="text-right">
+            <DialogTitle className="text-right">שליחה חוזרת לוואטסאפ</DialogTitle>
+            <DialogDescription className="text-right leading-relaxed">
+              האם לשלוח שוב הודעת וואטסאפ עם פרטי ההזמנה והקישור ללקוח/ה?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 text-right">
+            <p className="mb-1 text-xs text-slate-500">ההודעה תישלח למספר הטלפון של הלקוח/ה</p>
+            <p className="font-mono text-base tabular-nums" dir="ltr">
+              {resendConfirmOrder?.customerPhone || "—"}
+            </p>
+          </div>
+          <p className="text-xs text-slate-500 text-right">
+            לאחר האישור תתווסף רשומה לתרשים הזרימה.
+          </p>
+          <DialogFooter className="sm:justify-start sm:space-x-0 gap-2">
+            <Button
+              type="button"
+              className="bg-[#30D46B] text-black hover:bg-[#28b85f] font-medium"
+              onClick={handleConfirmResendWhatsapp}
+              disabled={busyAction.type === "resend" || !onResendWhatsapp}
+            >
+              {busyAction.type === "resend" ? (
+                <span className="text-black">שולח...</span>
+              ) : (
+                "אישור שליחה"
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setResendConfirmOrder(null)}
+              disabled={busyAction.type === "resend"}
+            >
               ביטול
             </Button>
           </DialogFooter>
