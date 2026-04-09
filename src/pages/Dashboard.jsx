@@ -664,10 +664,10 @@ export default function Dashboard() {
                         key={tag}
                         type="button"
                         onClick={() => setPaymentTag(paymentTag === tag ? "" : tag)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
                           paymentTag === tag
-                            ? "bg-slate-900 text-white border-slate-900"
-                            : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
+                            ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-900 hover:text-white hover:border-slate-900"
+                            : "bg-white text-slate-600 border-slate-200 hover:bg-white hover:text-slate-600 hover:border-slate-200"
                         }`}
                       >
                         {tag}

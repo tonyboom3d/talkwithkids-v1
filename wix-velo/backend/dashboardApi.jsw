@@ -6,6 +6,7 @@ import {
     createOrderCoupon,
     searchStoreCoupons,
     validateExistingStoreCoupon,
+    computeDiscountForSubtotal,
 } from 'backend/helpers/couponHelper';
 import { createDashboardCheckout } from 'backend/helpers/checkoutHelper';
 import { products } from 'wix-stores.v2';
@@ -134,6 +135,127 @@ export async function getOrderDetails(recordId) {
     return normalizeOrderRecord(item, employeeNameMap);
 }
 
+function formatPublicCouponDetails(couponDetails) {
+    if (!couponDetails) return '';
+    if (couponDetails.source === 'auto_paid') {
+        return '100% הנחה - ההזמנה כבר שולמה';
+    }
+    if (couponDetails.source === 'existing') {
+        return couponDetails.code ? `קוד קופון: ${couponDetails.code}` : 'קופון הנחה קיים';
+    }
+    if (couponDetails.source === 'create') {
+        const value = Number(couponDetails.value || 0);
+        if (couponDetails.type === 'percent') {
+            return couponDetails.code
+                ? `${value}% הנחה (${couponDetails.code})`
+                : `${value}% הנחה`;
+        }
+        return couponDetails.code
+            ? `₪${value.toLocaleString('he-IL')} הנחה (${couponDetails.code})`
+            : `₪${value.toLocaleString('he-IL')} הנחה`;
+    }
+    return '';
+}
+
+function getPublicStatusConfig(status, paymentLink) {
+    switch (status) {
+    case 'paid_pending_details':
+        return {
+            text: 'הזמנה שולמה ממתין להשלמת פרטי לקוח',
+            tone: 'info',
+            ctaLabel: paymentLink ? 'השלימי את הפרטים שלך >>' : '',
+            canContinue: !!paymentLink,
+        };
+    case 'paid_completed':
+        return {
+            text: 'ההזמנה שולמה בהצלחה.',
+            tone: 'success',
+            ctaLabel: '',
+            canContinue: false,
+        };
+    case 'cancelled':
+    case 'error':
+        return {
+            text: 'ההזמנה בוטלה יש לפנות לשירות לקוחות',
+            tone: 'danger',
+            ctaLabel: '',
+            canContinue: false,
+        };
+    case 'opened':
+    case 'sent':
+    default:
+        return {
+            text: 'ממתין לתשלום',
+            tone: 'waiting',
+            ctaLabel: paymentLink ? 'המשיכי לתשלום >>' : '',
+            canContinue: !!paymentLink,
+        };
+    }
+}
+
+function resolvePublicPaymentLink(record) {
+    return record?.['link-dashboard-orders-checkoutId'] ||
+        record?.linkDashboardOrdersCheckoutId ||
+        record?.checkoutLink ||
+        '';
+}
+
+export async function getPublicOrderForIframe(checkoutId) {
+    const normalizedCheckoutId = String(checkoutId || '').trim();
+    if (!normalizedCheckoutId) {
+        return {
+            ok: false,
+            code: 'MISSING_CHECKOUT_ID',
+            message: 'אופס... לא מצאתי את ההזמנה שלך',
+        };
+    }
+
+    try {
+        const results = await wixData.query('DashboardOrders')
+            .eq('checkoutId', normalizedCheckoutId)
+            .limit(1)
+            .find({ suppressAuth: true });
+
+        if (!results.items.length) {
+            return {
+                ok: false,
+                code: 'ORDER_NOT_FOUND',
+                message: 'אופס... לא מצאתי את ההזמנה שלך',
+            };
+        }
+
+        const record = results.items[0];
+        const couponDetails = safeParseJson(record.couponDetails, null);
+        const paymentLink = resolvePublicPaymentLink(record);
+        const statusConfig = getPublicStatusConfig(record.status, paymentLink);
+
+        return {
+            ok: true,
+            order: {
+                customerName: record.customerName || '',
+                createdDate: record._createdDate || null,
+                customerPhone: record.customerPhone || '',
+                totalPrice: Number(record.totalPrice || 0),
+                couponDetailsText: formatPublicCouponDetails(couponDetails),
+                hasCoupon: !!couponDetails,
+                status: record.status || 'sent',
+                statusText: statusConfig.text,
+                statusTone: statusConfig.tone,
+                paymentLink,
+                canContinue: statusConfig.canContinue,
+                ctaLabel: statusConfig.ctaLabel,
+            },
+        };
+    } catch (err) {
+        console.error(`${LOG_PREFIX} getPublicOrderForIframe failed:`, err);
+        return {
+            ok: false,
+            code: 'ORDER_LOOKUP_FAILED',
+            message: 'אופס... לא מצאתי את ההזמנה שלך',
+        };
+    }
+}
+
 // ─── Create Order ───
 
 async function generateOrderNumber() {
@@ -157,6 +279,30 @@ async function generateOrderNumber() {
 
 function buildDashboardOrderUrl(recordId) {
     return `${ORDER_LINK_BASE}/${encodeURIComponent(recordId)}`;
+}
+
+/** שומר ב־couponDetails את סכום הסל לפני הנחה ואחרי הנחה (לתצוגה בדאשבורד) */
+function enrichCouponDetailsWithTotals(couponDetailsObj, subtotal, existingStoreCouponMapped) {
+    if (!couponDetailsObj) return;
+    const s = Math.max(0, Number(subtotal) || 0);
+    let discountedTotal = s;
+
+    if (couponDetailsObj.source === 'auto_paid') {
+        discountedTotal = 0;
+    } else if (couponDetailsObj.source === 'create') {
+        if (couponDetailsObj.type === 'percent') {
+            const pct = Math.min(100, Math.max(0, Number(couponDetailsObj.value) || 0));
+            discountedTotal = s * (1 - pct / 100);
+        } else {
+            const off = Math.min(s, Math.max(0, Number(couponDetailsObj.value) || 0));
+            discountedTotal = s - off;
+        }
+    } else if (couponDetailsObj.source === 'existing' && existingStoreCouponMapped) {
+        discountedTotal = computeDiscountForSubtotal(s, existingStoreCouponMapped).discountedTotal;
+    }
+
+    couponDetailsObj.subtotal = s;
+    couponDetailsObj.discountedTotal = Math.max(0, discountedTotal);
 }
 
 async function sendDashboardCheckoutWebhook({ customerName, customerPhone, recordId }) {
@@ -215,6 +361,7 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
 
     let couponResult = null;
     let couponDetailsObj = null;
+    let existingStoreCouponMapped = null;
     const isMarkedPaid = orderData.paymentStatus === 'paid';
     const initialStatus = isMarkedPaid ? 'paid_pending_details' : 'sent';
 
@@ -235,6 +382,7 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
         if (!validated) {
             throw new Error('הקופון לא נמצא, אינו פעיל לחנות, או שאינו תואם');
         }
+        existingStoreCouponMapped = validated;
         couponResult = { couponId: validated.id, code: validated.code };
         couponDetailsObj = {
             source: 'existing',
@@ -251,6 +399,11 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
             code: couponResult.code,
         };
         console.log(`${LOG_PREFIX} Coupon created: ${couponResult.code}`);
+    }
+
+    const orderSubtotal = Number(orderData.totalPrice) || 0;
+    if (couponDetailsObj) {
+        enrichCouponDetailsWithTotals(couponDetailsObj, orderSubtotal, existingStoreCouponMapped);
     }
 
     const normalizedPhone = await normalizeIsraeliPhone(orderData.customer.phone || "");

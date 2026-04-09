@@ -42,6 +42,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { TableSkeleton } from "./LoadingSkeleton";
+import { computeDisplayTotalAfterCoupon } from "@/utils/orderTotals";
 
 const PAGE_SIZE = 8;
 const PUBLIC_ORDER_BASE_URL = "https://www.talkwithkids.co.il/dashboard-orders";
@@ -140,6 +141,7 @@ function normalizeOrder(order) {
     timeline.find((event) => (event.action || event.type) === "created")?.by ||
     "—";
 
+  const rawSubtotal = Number(order.totalPrice ?? order.total ?? 0);
   const normalized = {
     ...order,
     rowId: order._id || order.id,
@@ -154,7 +156,8 @@ function normalizeOrder(order) {
     creatorName,
     checkoutLink: order.checkoutLink || order.paymentLink || "",
     publicOrderUrl: order.orderUrl || buildPublicOrderUrl(order._id || order.id),
-    totalAmount: Number(order.totalPrice ?? order.total ?? 0),
+    subtotalAmount: rawSubtotal,
+    totalAmount: computeDisplayTotalAfterCoupon(rawSubtotal, couponDetails),
   };
 
   normalized.displayStatus = getDisplayStatus(normalized);

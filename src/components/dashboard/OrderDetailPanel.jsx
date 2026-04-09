@@ -10,6 +10,17 @@ import {
 } from "lucide-react";
 import moment from "moment";
 import { toast } from "sonner";
+import { computeDisplayTotalAfterCoupon } from "@/utils/orderTotals";
+
+function safeParseJson(value, fallback) {
+  if (value == null || value === "") return fallback;
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
 
 const timelineIcons = {
   created: { icon: Link2, color: "bg-blue-100 text-blue-600" },
@@ -72,7 +83,12 @@ export default function OrderDetailPanel({ order, onClose, onAddNote, onCancelLi
   const customerPhone = order.customer?.phone || order.customerPhone || '';
   const customerEmail = order.customer?.email || order.customerEmail || '';
   const orderProducts = order.products ? (typeof order.products === 'string' ? JSON.parse(order.products) : order.products) : [];
-  const orderTotal = order.totalPrice ?? order.total ?? 0;
+  const couponDetails = safeParseJson(order.couponDetails, null);
+  const rawSubtotal = Number(order.totalPrice ?? order.total ?? 0);
+  const orderTotal =
+    order.totalAmount != null && Number.isFinite(Number(order.totalAmount))
+      ? Number(order.totalAmount)
+      : computeDisplayTotalAfterCoupon(rawSubtotal, couponDetails && typeof couponDetails === "object" ? couponDetails : null);
   const timeline = order.changeChain || order.timeline || [];
   const orderNotes = order.orderNotes || [];
   const checkoutLink = order.checkoutLink || order.paymentLink || '';
