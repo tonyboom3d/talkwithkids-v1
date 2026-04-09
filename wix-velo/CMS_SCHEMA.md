@@ -35,7 +35,7 @@
 |----------|-------------|------|-------|
 | connectedMembers | משתמש מחובר | Reference -> Members (פריט אחד) | גישה לדאשבורד כש־memberId של המשתמש המחובר תואם לרפרנס |
 | displayName | שם להצגה | Text | חן/חני/לני |
-| color | צבע תגית | Text | לרוב `#RRGGBB` — תגית "נוצרה על ידי" בטבלת הזמנות |
+| color (או Color) | צבע תגית | Text / Color | מומלץ `#RRGGBB` או `#RGB` — מוצג בטבלה; אם השדה בוויקס נקרא אחרת, לעדכן בקוד או לשמור גם כ־`color` |
 | canViewOtherRecords | צפייה ברשומות אחרות | Boolean | |
 | commissionRate | אחוז עמלה | Number | For profit calculations |
 

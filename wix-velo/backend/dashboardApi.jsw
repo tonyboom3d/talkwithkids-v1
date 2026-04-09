@@ -45,18 +45,46 @@ function getStatusLabel(status) {
     return labels[status] || status;
 }
 
+/** מזהה רפרנס/עובד מה־CMS — מחרוזת או אובייקט { _id } (נפוץ בוויקס) */
+function unwrapCmsRef(value) {
+    if (value == null || value === '') return '';
+    if (typeof value === 'object' && value._id != null) return String(value._id).trim();
+    return String(value).trim();
+}
+
+/**
+ * שדה צבע מרשומת AuthorizedEmployees — מפתח יכול להיות color / Color;
+ * בוחר צבע בוויקס לעיתים מחזיר אובייקט עם hex.
+ */
+function colorFromEmployeeItem(item) {
+    if (!item || typeof item !== 'object') return '';
+    const keys = ['color', 'Color', 'tagColor', 'TagColor'];
+    for (const k of keys) {
+        const v = item[k];
+        if (v == null) continue;
+        if (typeof v === 'string' && v.trim()) return v.trim();
+        if (typeof v === 'object') {
+            if (v.hex != null && String(v.hex).trim()) return String(v.hex).trim();
+            if (v.color != null && String(v.color).trim()) return String(v.color).trim();
+            if (v.value != null && String(v.value).trim()) return String(v.value).trim();
+        }
+    }
+    return '';
+}
+
 async function getEmployeeMetaMap(employeeIds) {
-    const ids = [...new Set((employeeIds || []).filter(Boolean))];
+    const rawIds = (employeeIds || []).map(unwrapCmsRef).filter(Boolean);
+    const ids = [...new Set(rawIds)];
     if (ids.length === 0) return {};
     const result = await wixData.query('AuthorizedEmployees')
         .hasSome('_id', ids)
         .limit(Math.min(ids.length, 100))
         .find({ suppressAuth: true });
     return (result.items || []).reduce((acc, item) => {
-        const colorRaw = item.color != null ? String(item.color).trim() : '';
-        acc[item._id] = {
+        const id = String(item._id).trim();
+        acc[id] = {
             displayName: item.displayName || '',
-            color: colorRaw,
+            color: colorFromEmployeeItem(item),
         };
         return acc;
     }, {});
@@ -64,7 +92,8 @@ async function getEmployeeMetaMap(employeeIds) {
 
 function normalizeTimelineEvent(event, employeeMetaMap = {}) {
     const rawBy = event?.by || '';
-    const meta = employeeMetaMap[rawBy];
+    const byKey = unwrapCmsRef(rawBy) || String(rawBy).trim();
+    const meta = employeeMetaMap[byKey] || employeeMetaMap[String(rawBy).trim()];
     const resolvedBy = meta?.displayName || rawBy || 'מערכת';
     const actorType = (() => {
         if (resolvedBy === 'מערכת') return 'system';
@@ -83,7 +112,8 @@ function normalizeOrderRecord(item, employeeMetaMap = {}) {
     const changeChain = safeParseJson(item.changeChain, []).map((event) => normalizeTimelineEvent(event, employeeMetaMap));
     const productsList = safeParseJson(item.products, []);
     const couponDetails = safeParseJson(item.couponDetails, null);
-    const creatorMeta = employeeMetaMap[item.createdByRef];
+    const refKey = unwrapCmsRef(item.createdByRef);
+    const creatorMeta = employeeMetaMap[refKey] || employeeMetaMap[String(item.createdByRef || '').trim()];
     return {
         ...item,
         changeChain,
@@ -106,13 +136,12 @@ export async function getEmployeePermissions(memberId) {
     }
 
     const emp = result.items[0];
-    const color = emp.color != null ? String(emp.color).trim() : '';
     return {
         _id: emp._id,
         displayName: emp.displayName,
         canViewOtherRecords: !!emp.canViewOtherRecords,
         commissionRate: emp.commissionRate || 0,
-        color,
+        color: colorFromEmployeeItem(emp),
     };
 }
 
@@ -131,7 +160,9 @@ export async function getOrderRecords(employeeId, canViewOthers) {
     const items = (results.items || []).filter((item) => !item.deletedAt);
     const employeeIds = items.flatMap((item) => {
         const chain = safeParseJson(item.changeChain, []);
-        return [item.createdByRef, ...chain.map((event) => event?.by)].filter(Boolean);
+        return [item.createdByRef, ...chain.map((event) => event?.by)]
+            .filter(Boolean)
+            .map(unwrapCmsRef);
     });
     const employeeMetaMap = await getEmployeeMetaMap(employeeIds);
     return items.map((item) => normalizeOrderRecord(item, employeeMetaMap));
@@ -140,7 +171,11 @@ export async function getOrderRecords(employeeId, canViewOthers) {
 export async function getOrderDetails(recordId) {
     const item = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
     const chain = safeParseJson(item.changeChain, []);
-    const employeeMetaMap = await getEmployeeMetaMap([item.createdByRef, ...chain.map((event) => event?.by)].filter(Boolean));
+    const employeeMetaMap = await getEmployeeMetaMap(
+        [item.createdByRef, ...chain.map((event) => event?.by)]
+            .filter(Boolean)
+            .map(unwrapCmsRef)
+    );
     return normalizeOrderRecord(item, employeeMetaMap);
 }
 
