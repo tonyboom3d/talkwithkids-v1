@@ -14,7 +14,7 @@ import {
     getPublicDashboardOrder,
     isExpiredPublicOrderStatus,
     syncApprovedOrderToDashboard,
-} from 'backend/services/orderService';
+} from 'backend/orderService.jsw';
 import { products } from 'wix-stores.v2';
 
 export { searchContactsByQuery, searchStoreCoupons };
@@ -463,22 +463,6 @@ async function deliverOrderToWhatsapp(record, employeeName, { isResend = false }
         customerPhone: record.customerPhone || '',
         dynamicLinkId: dyn,
     });
-
-    const chain = JSON.parse(record.changeChain || '[]');
-    const phoneLabel = record.customerPhone || 'לא ידוע';
-    chain.push({
-        action: 'sent',
-        by: employeeName,
-        date: new Date().toISOString(),
-        detail: isResend
-            ? `נשלחה הודעת וואטסאפ חוזרת ללקוח/ה למספר ${phoneLabel}`
-            : `פרטי ההזמנה נשלחו ללקוח/ה בוואטסאפ (למספר ${phoneLabel})`,
-    });
-
-    await wixData.update('DashboardOrders', {
-        ...record,
-        changeChain: JSON.stringify(chain),
-    }, { suppressAuth: true });
 }
 
 export async function createOrderRecord(orderData, employeeId, employeeName = '') {

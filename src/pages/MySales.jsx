@@ -18,6 +18,17 @@ import {
 } from "@/utils/dashboardOrders";
 
 const DEMO_USER_NAME = "שרה מ.";
+const MY_SALES_REFRESH_KEY = "twk_my_sales_last_refresh";
+
+function readSessionRefresh(key) {
+  if (typeof window === "undefined") return "";
+  return window.sessionStorage.getItem(key) || "";
+}
+
+function saveSessionRefresh(key, value) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(key, value);
+}
 
 function exportToCSV(orders, canViewOthers) {
   const rows = [
@@ -53,6 +64,7 @@ export default function MySales() {
   const [selectedStatuses, setSelectedStatuses] = useState([]);
   const [orders, setOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(() => readSessionRefresh(MY_SALES_REFRESH_KEY));
 
   const isDemo = !user;
 
@@ -65,6 +77,9 @@ export default function MySales() {
         order.timeline.some((event) => event.by === DEMO_USER_NAME && event.type === "created")
       );
       setOrders(demoOrders);
+      const nowIso = new Date().toISOString();
+      setLastRefreshedAt(nowIso);
+      saveSessionRefresh(MY_SALES_REFRESH_KEY, nowIso);
       setIsLoadingOrders(false);
       return;
     }
@@ -72,6 +87,9 @@ export default function MySales() {
     try {
       const result = await request("GET_ORDERS");
       setOrders(result.orders || []);
+      const nowIso = new Date().toISOString();
+      setLastRefreshedAt(nowIso);
+      saveSessionRefresh(MY_SALES_REFRESH_KEY, nowIso);
     } catch (err) {
       console.error("[MySales] Failed to load orders:", err);
       toast.error("שגיאה בטעינת ההזמנות");
@@ -161,13 +179,13 @@ export default function MySales() {
 
   const handleResendWhatsapp = async (orderId) => {
     if (isDemo) {
-      toast.success("(מצב דמו) הקישור נשלח שוב לוואטסאפ");
+      toast.success("(מצב דמו) בקשת השליחה החוזרת נשלחה");
       return;
     }
 
     try {
       await request("RESEND_ORDER_WHATSAPP", { recordId: orderId });
-      toast.success("הקישור נשלח שוב ללקוח בוואטסאפ");
+      toast.success("בקשת השליחה החוזרת נשלחה. רענני את הרשימה כדי לראות את תוצאת הוובהוק.");
       loadOrders();
     } catch (err) {
       toast.error(err.message || "שגיאה בשליחה חוזרת לוואטסאפ");
@@ -333,6 +351,8 @@ export default function MySales() {
         <OrdersTable
           orders={filteredOrders}
           isLoading={isLoadingOrders || isAuthLoading}
+          onRefresh={loadOrders}
+          lastRefreshedAt={lastRefreshedAt}
           onCopyToClipboard={handleCopyToClipboard}
           onResendWhatsapp={handleResendWhatsapp}
           onUpdateStatus={handleUpdateOrderStatus}

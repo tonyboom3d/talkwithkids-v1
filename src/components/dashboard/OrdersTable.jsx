@@ -35,6 +35,7 @@ import {
   MoreHorizontal,
   Package,
   Phone,
+  RefreshCw,
   Search,
   UserRound,
   Workflow,
@@ -102,6 +103,8 @@ export default function OrdersTable({
   onUpdateStatus,
   onDeleteOrder,
   onAddNote,
+  onRefresh,
+  lastRefreshedAt,
   showProfitColumn = false,
   commissionRate = 0,
 }) {
@@ -213,11 +216,31 @@ export default function OrdersTable({
       className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden"
     >
       <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap" dir="rtl">
-        <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2 shrink-0">
-          <CreditCard className="w-4 h-4 text-slate-400" />
-          הזמנות אחרונות
-        </h3>
+        <div className="flex items-center gap-3 flex-wrap shrink-0">
+          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2 shrink-0">
+            <CreditCard className="w-4 h-4 text-slate-400" />
+            הזמנות אחרונות
+          </h3>
+          {lastRefreshedAt && (
+            <span className="text-[11px] text-slate-400 whitespace-nowrap">
+              עודכן לאחרונה: {moment(lastRefreshedAt).format("DD/MM/YY HH:mm:ss")}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-3 flex-1 min-w-0 justify-end">
+          {onRefresh && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onRefresh}
+              disabled={isLoading}
+              className="h-9 gap-2 border-slate-200 text-slate-600"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+              ריענון
+            </Button>
+          )}
           <Badge variant="outline" className="text-slate-500 border-slate-200 text-xs shrink-0">
             {filtered.length} הזמנות
           </Badge>

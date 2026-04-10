@@ -9,7 +9,7 @@ import { getProductById, notifyOwner } from 'backend/tapuzUtils';
 import { processTapuzDelivery, processManualDelivery } from 'backend/tapuzApi';
 import { normalizeIsraeliPhone } from 'backend/helpers/phoneUtils';
 import { findContactByEmail } from 'backend/helpers/contactHelper';
-import { syncApprovedOrderToDashboard } from 'backend/services/orderService';
+import { syncApprovedOrderToDashboard } from 'backend/orderService.jsw';
 
 // =========================================================
 // פונקציות עזר למנויים

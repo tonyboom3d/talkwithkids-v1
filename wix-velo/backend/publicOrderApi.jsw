@@ -2,7 +2,7 @@ import {
     EXPIRED_PUBLIC_ORDER_MESSAGE,
     getPublicDashboardOrder,
     isExpiredPublicOrderStatus,
-} from 'backend/services/orderService';
+} from 'backend/orderService.jsw';
 
 const LOG_PREFIX = '[VELO-PUBLIC-ORDER]';
 

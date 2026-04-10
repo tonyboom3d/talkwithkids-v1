@@ -3,7 +3,7 @@ import wixData from 'wix-data';
 import wixStoresBackend from 'wix-stores-backend';
 import { notifyOwner } from 'backend/tapuzUtils';
 import { normalizeIsraeliPhone } from 'backend/helpers/phoneUtils';
-import { updateDashboardOrderDeliveryNumber } from 'backend/services/orderService';
+import { updateDashboardOrderDeliveryNumber } from 'backend/orderService.jsw';
 
 // כתובת מוצא: מחסן / עסק (משלוח תפוז רגיל)
 const SENDER_INFO_TAPUZ = {

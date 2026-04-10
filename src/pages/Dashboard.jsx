@@ -26,6 +26,18 @@ import { usePostMessage, usePostMessageListener } from "@/hooks/usePostMessage";
 import { buildPublicOrderUrl } from "@/utils/dashboardOrders";
 import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
 
+const DASHBOARD_ORDERS_REFRESH_KEY = "twk_dashboard_orders_last_refresh";
+
+function readSessionRefresh(key) {
+  if (typeof window === "undefined") return "";
+  return window.sessionStorage.getItem(key) || "";
+}
+
+function saveSessionRefresh(key, value) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(key, value);
+}
+
 /** לוגיקה מזוהה ל־`wix-velo/backend/helpers/couponHelper.js` — computeDiscountForSubtotal */
 function computeDiscountForSubtotal(subtotal, coupon) {
   if (!coupon || subtotal <= 0) {
@@ -109,6 +121,7 @@ export default function Dashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orders, setOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(() => readSessionRefresh(DASHBOARD_ORDERS_REFRESH_KEY));
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [paymentTag, setPaymentTag] = useState("");
   const [couponEnabled, setCouponEnabled] = useState(false);
@@ -123,12 +136,21 @@ export default function Dashboard() {
   const loadOrders = useCallback(async () => {
     setIsLoadingOrders(true);
     if (isDemo) {
-      setTimeout(() => { setOrders(DEMO_ORDERS); setIsLoadingOrders(false); }, 800);
+      setTimeout(() => {
+        const nowIso = new Date().toISOString();
+        setOrders(DEMO_ORDERS);
+        setLastRefreshedAt(nowIso);
+        saveSessionRefresh(DASHBOARD_ORDERS_REFRESH_KEY, nowIso);
+        setIsLoadingOrders(false);
+      }, 800);
       return;
     }
     try {
       const result = await request('GET_ORDERS');
       setOrders(result.orders || []);
+      const nowIso = new Date().toISOString();
+      setLastRefreshedAt(nowIso);
+      saveSessionRefresh(DASHBOARD_ORDERS_REFRESH_KEY, nowIso);
     } catch (err) {
       console.error('[UI] Failed to load orders:', err);
       toast.error("שגיאה בטעינת ההזמנות");
@@ -296,7 +318,7 @@ export default function Dashboard() {
     if (!createdOrderState?.recordId) return;
 
     if (createdOrderState.isDemo) {
-      toast.success("(מצב דמו) פרטי ההזמנה נשלחו לוובהוק", { duration: 4500 });
+      toast.success("(מצב דמו) בקשת השליחה נשלחה. רענני את הרשימה כדי לראות עדכון וובהוק.", { duration: 4500 });
       setCreatedOrderState(null);
       return;
     }
@@ -304,7 +326,7 @@ export default function Dashboard() {
     try {
       setIsConfirmingSend(true);
       await request("SEND_ORDER_WHATSAPP", { recordId: createdOrderState.recordId });
-      toast.success("פרטי ההזמנה נשלחו בהצלחה", { duration: 4500 });
+      toast.success("בקשת השליחה נשלחה. רענני את הרשימה כדי לראות אם הוובהוק חזר בהצלחה.", { duration: 4500 });
       setCreatedOrderState(null);
       loadOrders();
     } catch (err) {
@@ -338,14 +360,14 @@ export default function Dashboard() {
         const nextTimeline = [...(order.timeline || []), {
           type: "note",
           text: `נוספה הערה: ${noteText}`,
-          by: user?.displayName || "משתמש/ת מורשה",
+          by: user?.displayName ,
           actorType: "employee",
           date: nowIso,
         }];
         const nextOrderNotes = [...(order.orderNotes || []), {
           id: `demo-note-${Date.now()}`,
           text: noteText,
-          by: user?.displayName || "משתמש/ת מורשה",
+          by: user?.displayName,
           date: nowIso,
         }];
         return {
@@ -368,12 +390,12 @@ export default function Dashboard() {
 
   const handleResendWhatsapp = async (orderId) => {
     if (isDemo) {
-      toast.success("(מצב דמו) הקישור נשלח שוב לוואטסאפ");
+      toast.success("(מצב דמו) בקשת השליחה החוזרת נשלחה");
       return;
     }
     try {
       await request('RESEND_ORDER_WHATSAPP', { recordId: orderId });
-      toast.success("הקישור נשלח שוב ללקוח בוואטסאפ");
+      toast.success("בקשת השליחה החוזרת נשלחה. רענני את הרשימה כדי לראות את תוצאת הוובהוק.");
       loadOrders();
     } catch (err) {
       toast.error(err.message || "שגיאה בשליחה חוזרת לוואטסאפ");
@@ -895,6 +917,8 @@ export default function Dashboard() {
         <OrdersTable
           orders={orders}
           isLoading={isLoadingOrders}
+          onRefresh={loadOrders}
+          lastRefreshedAt={lastRefreshedAt}
           onCopyToClipboard={handleCopyToClipboard}
           onResendWhatsapp={handleResendWhatsapp}
           onUpdateStatus={handleUpdateOrderStatus}
