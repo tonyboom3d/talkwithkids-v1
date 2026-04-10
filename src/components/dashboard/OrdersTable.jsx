@@ -361,14 +361,19 @@ export default function OrdersTable({
                         <TableCell className="text-right">
                           {order.creatorName && order.creatorName !== "—" ? (
                             <span
-                              className={`inline-flex max-w-full items-center gap-1 rounded-full border py-0.5 pl-1.5 pr-2 text-[11px] font-medium text-slate-700 ${
-                                order.creatorTagColor ? "" : "border-slate-200 bg-slate-50"
+                              className={`inline-flex max-w-full items-center gap-1 rounded-full border py-0.5 pl-1.5 pr-2 text-[11px] font-medium ${
+                                order.creatorTagColor
+                                  ? ""
+                                  : "border-slate-200 bg-slate-50 text-slate-700"
                               }`}
                               dir="ltr"
                               style={creatorTagStyleFromColor(order.creatorTagColor)}
                             >
                               <span className="min-w-0 truncate">{order.creatorName}</span>
-                              <UserRound className="h-3 w-3 shrink-0 text-slate-500" aria-hidden />
+                              <UserRound
+                                className={`h-3 w-3 shrink-0 ${order.creatorTagColor ? "text-current opacity-90" : "text-slate-500"}`}
+                                aria-hidden
+                              />
                             </span>
                           ) : (
                             <span className="text-sm text-slate-400">—</span>
@@ -495,14 +500,19 @@ export default function OrdersTable({
                                           </div>
                                           {order.creatorName && order.creatorName !== "—" ? (
                                             <span
-                                              className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-medium text-slate-800 ${
-                                                order.creatorTagColor ? "" : "border-slate-200 bg-slate-50"
+                                              className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-medium ${
+                                                order.creatorTagColor
+                                                  ? ""
+                                                  : "border-slate-200 bg-slate-50 text-slate-800"
                                               }`}
                                               dir="ltr"
                                               style={creatorTagStyleFromColor(order.creatorTagColor)}
                                             >
                                               <span className="min-w-0 truncate">{order.creatorName}</span>
-                                              <UserRound className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden />
+                                              <UserRound
+                                                className={`h-3.5 w-3.5 shrink-0 ${order.creatorTagColor ? "text-current opacity-90" : "text-slate-500"}`}
+                                                aria-hidden
+                                              />
                                             </span>
                                           ) : (
                                             <p className="text-sm text-slate-700">—</p>

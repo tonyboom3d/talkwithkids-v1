@@ -53,22 +53,46 @@ function unwrapCmsRef(value) {
 }
 
 /**
- * שדה צבע מרשומת AuthorizedEmployees — מפתח יכול להיות color / Color;
- * בוחר צבע בוויקס לעיתים מחזיר אובייקט עם hex.
+ * שדה צבע מרשומת AuthorizedEmployees — Text / Color ב-CMS;
+ * בוויקס Color לעיתים נשמר כמחרוזת #hex או כאובייקט { hex } / RGB וכו'.
  */
-function colorFromEmployeeItem(item) {
-    if (!item || typeof item !== 'object') return '';
-    const keys = ['color', 'Color', 'tagColor', 'TagColor'];
-    for (const k of keys) {
-        const v = item[k];
-        if (v == null) continue;
-        if (typeof v === 'string' && v.trim()) return v.trim();
-        if (typeof v === 'object') {
-            if (v.hex != null && String(v.hex).trim()) return String(v.hex).trim();
-            if (v.color != null && String(v.color).trim()) return String(v.color).trim();
-            if (v.value != null && String(v.value).trim()) return String(v.value).trim();
+function extractColorFromValue(v) {
+    if (v == null) return '';
+    if (typeof v === 'string') {
+        const t = v.trim();
+        if (/^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?$/i.test(t)) return t;
+        if (/^rgba?\(/i.test(t)) return t;
+        return '';
+    }
+    if (typeof v === 'object') {
+        if (v.hex != null) return extractColorFromValue(v.hex);
+        if (v.color != null && v !== v.color) return extractColorFromValue(v.color);
+        if (typeof v.value === 'string') return extractColorFromValue(v.value);
+        if (typeof v.value === 'object' && v.value != null) return extractColorFromValue(v.value);
+        if (
+            typeof v.red === 'number' &&
+            typeof v.green === 'number' &&
+            typeof v.blue === 'number'
+        ) {
+            const r = Math.max(0, Math.min(255, Math.round(v.red)));
+            const g = Math.max(0, Math.min(255, Math.round(v.green)));
+            const b = Math.max(0, Math.min(255, Math.round(v.blue)));
+            return `#${[r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('')}`;
         }
     }
+    return '';
+}
+
+function colorFromEmployeeItem(item) {
+    if (!item || typeof item !== 'object') return '';
+    const keys = ['color', 'Color', 'tagColor', 'TagColor', 'colour', 'Colour'];
+    for (const k of keys) {
+        if (item[k] == null) continue;
+        const c = extractColorFromValue(item[k]);
+        if (c) return c;
+    }
+    const fromStringify = JSON.stringify(item).match(/#[0-9A-Fa-f]{6}\b|#[0-9A-Fa-f]{3}\b/);
+    if (fromStringify) return fromStringify[0];
     return '';
 }
 

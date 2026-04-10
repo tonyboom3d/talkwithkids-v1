@@ -32,12 +32,22 @@ export function creatorTagStyleFromColor(color) {
   if (canonicalHex) {
     const bg = hexToRgbaBackground(canonicalHex, 0.2);
     if (bg) backgroundColor = bg;
-  } else if (/^rgba?\(/i.test(raw)) {
+    return {
+      borderColor: canonicalHex,
+      borderWidth: 1,
+      borderStyle: "solid",
+      backgroundColor,
+      color: canonicalHex,
+    };
+  }
+
+  if (/^rgba?\(/i.test(raw)) {
     return {
       borderColor: raw,
       borderWidth: 1,
       borderStyle: "solid",
       backgroundColor: "rgb(248 250 252)",
+      color: raw,
     };
   }
 
@@ -46,5 +56,6 @@ export function creatorTagStyleFromColor(color) {
     borderWidth: 1,
     borderStyle: "solid",
     backgroundColor,
+    color: raw,
   };
 }
