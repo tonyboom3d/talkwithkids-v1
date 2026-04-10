@@ -326,7 +326,7 @@ export default function Dashboard() {
     try {
       setIsConfirmingSend(true);
       await request("SEND_ORDER_WHATSAPP", { recordId: createdOrderState.recordId });
-      toast.success("בקשת השליחה נשלחה. רענני את הרשימה כדי לראות אם הוובהוק חזר בהצלחה.", { duration: 4500 });
+      toast.success("הודעת הוואטסאפ נשלחה. יש לרענן לקבל עדכון סטטוס.", { duration: 4500 });
       setCreatedOrderState(null);
       loadOrders();
     } catch (err) {
@@ -395,7 +395,7 @@ export default function Dashboard() {
     }
     try {
       await request('RESEND_ORDER_WHATSAPP', { recordId: orderId });
-      toast.success("בקשת השליחה החוזרת נשלחה. רענני את הרשימה כדי לראות את תוצאת הוובהוק.");
+      toast.success("הודעת הוואטסאפ נשלחה מחדש. יש לרענן לקבל עדכון סטטוס.");
       loadOrders();
     } catch (err) {
       toast.error(err.message || "שגיאה בשליחה חוזרת לוואטסאפ");

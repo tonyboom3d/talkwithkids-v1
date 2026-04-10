@@ -13,6 +13,7 @@ import {
     EXPIRED_PUBLIC_ORDER_MESSAGE,
     getPublicDashboardOrder,
     isExpiredPublicOrderRecord,
+    normalizeOrderStatus,
     syncApprovedOrderToDashboard,
 } from 'backend/orderService.jsw';
 import { products } from 'wix-stores.v2';
@@ -36,6 +37,43 @@ function safeParseJson(value, fallback) {
     } catch (err) {
         return fallback;
     }
+}
+
+function appendWhatsappPendingEvent(changeChain, employeeName, { isResend = false } = {}) {
+    const chain = Array.isArray(changeChain) ? [...changeChain] : [];
+    chain.push({
+        action: 'whatsapp_pending',
+        by: employeeName || 'מערכת',
+        date: new Date().toISOString(),
+        detail: isResend
+            ? 'נשלחה בקשה לשליחה חוזרת בוואטסאפ - יש לרענן לקבל עדכון סטטוס'
+            : 'נשלחה בקשה לשליחת הודעת וואטסאפ - יש לרענן לקבל עדכון סטטוס',
+    });
+    return chain;
+}
+
+function buildWhatsappData({
+    status = '',
+    messageId = '',
+    error = '',
+    paymentLink = '',
+    dynamicLinkId = '',
+    contact = {},
+} = {}) {
+    return {
+        status,
+        messageId,
+        error,
+        updatedAt: new Date().toISOString(),
+        paymentLink,
+        dynamicLinkId,
+        contact: {
+            id: String(contact.id || '').trim(),
+            name: String(contact.name || '').trim(),
+            email: String(contact.email || '').trim(),
+            phone: String(contact.phone || '').trim(),
+        },
+    };
 }
 
 function getStatusLabel(status) {
@@ -233,7 +271,7 @@ function formatPublicCouponDetails(couponDetails) {
 }
 
 function getPublicStatusConfig(status, paymentLink) {
-    switch (status) {
+    switch (normalizeOrderStatus(status)) {
     case 'paid_pending_details':
         return {
             text: 'הזמנה שולמה ממתין להשלמת פרטי לקוח',
@@ -314,7 +352,7 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
                 totalPrice: Number(record.totalPrice || 0),
                 couponDetailsText: formatPublicCouponDetails(couponDetails),
                 hasCoupon: !!couponDetails,
-                status: record.status || 'sent',
+                status: normalizeOrderStatus(record.status) || 'sent',
                 statusText: statusConfig.text,
                 statusTone: statusConfig.tone,
                 paymentLink,
@@ -433,6 +471,10 @@ async function sendDashboardCheckoutWebhook({ customerName, customerPhone, dynam
         customerName: customerName || '',
         customerPhone: customerPhone || '',
         paymentUrl,
+        paymentLink: paymentUrl,
+        payment_url: paymentUrl,
+        dynamic_payment_link: paymentUrl,
+        dynamicLinkId: String(dynamicLinkId || '').trim(),
     };
     try {
         const res = await fetch(DASHBOARD_CHECKOUT_WEBHOOK_URL, {
@@ -464,21 +506,23 @@ async function deliverOrderToWhatsapp(record, employeeName, { isResend = false }
         dynamicLinkId: dyn,
     });
 
-    // Avoid false "opened" transitions from WhatsApp link previews.
-    // Mark as "requested" so public link open within a few seconds won't flip sent->opened.
-    const nowIso = new Date().toISOString();
     const paymentUrl = buildDashboardOrderUrl(dyn);
+    const chain = appendWhatsappPendingEvent(
+        safeParseJson(record.changeChain, []),
+        employeeName,
+        { isResend }
+    );
+
     await wixData.update('DashboardOrders', {
         ...record,
-        whatsappData: JSON.stringify({
+        changeChain: JSON.stringify(chain),
+        // Avoid false "opened" transitions from WhatsApp link previews.
+        // Mark as "requested" so public link open within a few seconds won't flip sent->opened.
+        whatsappData: JSON.stringify(buildWhatsappData({
             status: 'requested',
-            messageId: '',
-            error: '',
-            updatedAt: nowIso,
             paymentLink: paymentUrl,
             dynamicLinkId: dyn,
-            contact: {},
-        }),
+        })),
     }, { suppressAuth: true });
 }
 
@@ -660,7 +704,18 @@ export async function addOrderNote(recordId, noteText, employeeName) {
 export async function sendOrderWhatsapp(recordId, employeeName) {
     const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
     const chain = JSON.parse(record.changeChain || '[]');
-    const wasAlreadySent = chain.some((event) => (event.action || event.type) === 'sent');
+    const whatsappStatus = String(safeParseJson(record.whatsappData, null)?.status || '').trim().toLowerCase();
+    const wasAlreadySent = (
+        whatsappStatus === 'requested'
+        || whatsappStatus === 'success'
+        || whatsappStatus === 'failed'
+        || chain.some((event) => {
+            const action = event.action || event.type;
+            return action === 'whatsapp_pending'
+                || action === 'whatsapp_sent_success'
+                || action === 'whatsapp_sent_failed';
+        })
+    );
     if (wasAlreadySent) {
         throw new Error('הקישור כבר נשלח בעבר. ניתן להשתמש בשליחה חוזרת לוואטסאפ.');
     }

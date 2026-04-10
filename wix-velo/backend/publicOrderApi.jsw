@@ -2,6 +2,7 @@ import {
     EXPIRED_PUBLIC_ORDER_MESSAGE,
     getPublicDashboardOrder,
     isExpiredPublicOrderRecord,
+    normalizeOrderStatus,
 } from 'backend/orderService.jsw';
 
 const LOG_PREFIX = '[VELO-PUBLIC-ORDER]';
@@ -37,7 +38,8 @@ function formatPublicCouponDetails(couponDetails) {
 }
 
 function getPublicStatusConfig(status, paymentLink) {
-    switch (status) {
+    const normalizedStatus = normalizeOrderStatus(status);
+    switch (normalizedStatus) {
     case 'paid_pending_details':
         return {
             text: 'הזמנה שולמה ממתין להשלמת פרטי לקוח',
@@ -111,7 +113,8 @@ function computePublicPriceDisplay(record, couponDetails) {
 }
 
 function isPaidOrderStatus(status) {
-    return status === 'paid_completed' || status === 'paid';
+    const normalizedStatus = normalizeOrderStatus(status);
+    return normalizedStatus === 'paid_completed' || normalizedStatus === 'paid';
 }
 
 function normalizePublicProducts(productsValue) {
@@ -198,7 +201,7 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
                 showHeroPrice,
                 couponDetailsText: formatPublicCouponDetails(couponDetails),
                 hasCoupon: !!couponDetails,
-                status: record.status || 'sent',
+                status: normalizeOrderStatus(record.status) || 'sent',
                 statusText: statusConfig.text,
                 statusTone: statusConfig.tone,
                 paymentLink,

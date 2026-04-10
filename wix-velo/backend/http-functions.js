@@ -66,6 +66,32 @@ function normalizeWhatsappResult(payload) {
     };
 }
 
+function overwriteLatestWhatsappPendingEvent(changeChain, resultStatus, nowIso) {
+    const chain = Array.isArray(changeChain) ? [...changeChain] : [];
+    const pendingIdx = (() => {
+        for (let i = chain.length - 1; i >= 0; i -= 1) {
+            const action = chain[i]?.action || chain[i]?.type;
+            if (action === 'whatsapp_pending') return i;
+        }
+        return -1;
+    })();
+
+    const nextEvent = {
+        action: resultStatus === 'success' ? 'whatsapp_sent_success' : 'whatsapp_sent_failed',
+        by: 'מערכת',
+        date: nowIso,
+        detail: resultStatus === 'success' ? 'שליחת וואטסאפ נשלחה' : 'שליחת וואטסאפ נכשלה',
+    };
+
+    if (pendingIdx >= 0) {
+        chain[pendingIdx] = nextEvent;
+        return chain;
+    }
+
+    chain.push(nextEvent);
+    return chain;
+}
+
 /** Query params are always strings; normalize booleans */
 function parseQueryBool(value) {
     if (value === true || value === false) return value;
@@ -200,34 +226,12 @@ async function processWhatsappCallback(payload) {
         },
     };
 
-    if (result.status === 'success') {
-        chain.push({
-            action: 'whatsapp_sent_success',
-            by: 'מערכת',
-            date: nowIso,
-            detail: 'שליחת וואטסאפ צלחה',
-        });
-    } else {
-        chain.push({
-            action: 'whatsapp_sent_failed',
-            by: 'מערכת',
-            date: nowIso,
-            detail: 'שליחת וואטסאפ נכשלה',
-        });
-    }
+    const nextChain = overwriteLatestWhatsappPendingEvent(chain, result.status, nowIso);
 
     await wixData.update('DashboardOrders', {
         ...record,
-        changeChain: JSON.stringify(chain),
+        changeChain: JSON.stringify(nextChain),
         whatsappData: JSON.stringify(whatsappData),
-        whatsappLastStatus: '',
-        whatsappLastMessageId: '',
-        whatsappLastError: '',
-        whatsappLastUpdatedAt: '',
-        whatsappContactId: '',
-        whatsappContactName: '',
-        whatsappContactEmail: '',
-        whatsappContactPhone: '',
     }, { suppressAuth: true });
 
     console.log(`${LOG_PREFIX} updated record ${record._id} dynamicLinkId=${dynamicLinkId} status=${result.status}`);

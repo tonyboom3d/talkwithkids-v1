@@ -3,8 +3,49 @@ import { normalizeIsraeliPhone } from 'backend/helpers/phoneUtils';
 
 const LOG_PREFIX = '[ORDER-SERVICE]';
 const EXPIRED_PUBLIC_ORDER_STATUSES = new Set(['paid', 'paid_completed']);
+const STATUS_ALIASES = new Map([
+    ['sent', 'sent'],
+    ['נשלח', 'sent'],
+    ['opened', 'opened'],
+    ['נפתח', 'opened'],
+    ['paid', 'paid'],
+    ['שולם', 'paid'],
+    ['שולמה', 'paid'],
+    ['paid_pending_details', 'paid_pending_details'],
+    ['paid-pending-details', 'paid_pending_details'],
+    ['שולמה - לא הושלמה', 'paid_pending_details'],
+    ['שולמה-לא הושלמה', 'paid_pending_details'],
+    ['שולמה-לא-הושלמה', 'paid_pending_details'],
+    ['paid_completed', 'paid_completed'],
+    ['paid-completed', 'paid_completed'],
+    ['שולמה - הושלמה', 'paid_completed'],
+    ['שולמה-הושלמה', 'paid_completed'],
+    ['הושלמה - שולמה', 'paid_completed'],
+    ['הושלמה-שולמה', 'paid_completed'],
+    ['cancelled', 'cancelled'],
+    ['canceled', 'cancelled'],
+    ['בוטל', 'cancelled'],
+    ['מבוטל', 'cancelled'],
+    ['error', 'error'],
+    ['שגיאה', 'error'],
+]);
 
 export const EXPIRED_PUBLIC_ORDER_MESSAGE = 'הקישור פג תוקף. למידע נוסף פנו לשירות הלקוחות';
+
+export function normalizeOrderStatus(status) {
+    const raw = String(status || '').trim();
+    if (!raw) return '';
+    const lowered = raw.toLowerCase();
+    const normalizedSpacing = lowered.replace(/\s+/g, ' ');
+    const normalizedHyphen = normalizedSpacing.replace(/\s*-\s*/g, '-');
+    return (
+        STATUS_ALIASES.get(raw)
+        || STATUS_ALIASES.get(lowered)
+        || STATUS_ALIASES.get(normalizedSpacing)
+        || STATUS_ALIASES.get(normalizedHyphen)
+        || raw
+    );
+}
 
 function safeParseJson(value, fallback) {
     if (!value) return fallback;
@@ -136,15 +177,12 @@ async function ensureShippingRoutingRecord(record) {
 }
 
 export function isExpiredPublicOrderStatus(status) {
-    return EXPIRED_PUBLIC_ORDER_STATUSES.has(String(status || '').trim());
+    return EXPIRED_PUBLIC_ORDER_STATUSES.has(normalizeOrderStatus(status));
 }
 
-/** חסימה ציבורית רק כשהסטטוס שולם/הושלם וגם יש נתוני הזמנה מושלמת (מונע false-positive) */
 export function isExpiredPublicOrderRecord(record) {
     if (!record) return false;
-    if (!isExpiredPublicOrderStatus(record.status)) return false;
-    const completed = String(record.completedOrderData || '').trim();
-    return completed.length > 0;
+    return isExpiredPublicOrderStatus(record.status);
 }
 
 export async function getDashboardOrderByCheckoutId(checkoutId) {
@@ -158,7 +196,7 @@ export async function getDashboardOrderByDynamicLinkId(dynamicLinkId) {
 export async function markOrderLinkOpened(dynamicLinkId) {
     const record = await getDashboardOrderByDynamicLinkId(dynamicLinkId);
     if (!record) return null;
-    if (record.status !== 'sent') return record;
+    if (normalizeOrderStatus(record.status) !== 'sent') return record;
 
     // Prevent WhatsApp / social previews from flipping the status immediately after send.
     const wa = safeParseJson(record.whatsappData, null);
@@ -185,7 +223,7 @@ export async function markOrderLinkOpened(dynamicLinkId) {
 export async function getPublicDashboardOrder(dynamicLinkId) {
     const record = await getDashboardOrderByDynamicLinkId(dynamicLinkId);
     if (!record) return null;
-    if (record.status === 'sent') {
+    if (normalizeOrderStatus(record.status) === 'sent') {
         return markOrderLinkOpened(dynamicLinkId);
     }
     return record;

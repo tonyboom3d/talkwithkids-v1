@@ -105,14 +105,13 @@ export function isPaidDisplayStatus(status) {
 
 export function resolveWhatsappDeliveryStatus(order) {
   const whatsappData = safeParseJson(order?.whatsappData, null);
-  const direct = String(
-    whatsappData?.status || order?.whatsappLastStatus || ""
-  ).trim().toLowerCase();
-  if (direct === "success" || direct === "failed") return direct;
+  const direct = String(whatsappData?.status || "").trim().toLowerCase();
+  if (direct === "success" || direct === "failed" || direct === "requested") return direct;
 
   const timeline = Array.isArray(order?.timeline) ? order.timeline : safeParseJson(order?.changeChain, []);
   if (timeline.some((event) => (event.action || event.type) === "whatsapp_sent_success")) return "success";
   if (timeline.some((event) => (event.action || event.type) === "whatsapp_sent_failed")) return "failed";
+  if (timeline.some((event) => (event.action || event.type) === "whatsapp_pending")) return "requested";
   return "";
 }
 

@@ -56,6 +56,12 @@ function timelineDotClass(action) {
   switch (action) {
     case "paid":
       return "bg-emerald-500";
+    case "whatsapp_pending":
+      return "bg-sky-500";
+    case "whatsapp_sent_success":
+      return "bg-emerald-500";
+    case "whatsapp_sent_failed":
+      return "bg-red-500";
     case "cancelled":
     case "deleted":
     case "error":
@@ -360,6 +366,11 @@ export default function OrdersTable({
                             <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
                               <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
                               נשלח
+                            </span>
+                          ) : order.whatsappDeliveryStatus === "requested" ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-sky-700">
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              ממתין לעדכון
                             </span>
                           ) : order.whatsappDeliveryStatus === "failed" ? (
                             <span className="inline-flex items-center gap-1 text-xs text-red-700">

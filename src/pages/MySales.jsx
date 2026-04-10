@@ -185,7 +185,7 @@ export default function MySales() {
 
     try {
       await request("RESEND_ORDER_WHATSAPP", { recordId: orderId });
-      toast.success("בקשת השליחה החוזרת נשלחה. רענני את הרשימה כדי לראות את תוצאת הוובהוק.");
+      toast.success("הודעת הוואטסאפ נשלחה מחדש. יש לרענן לקבל עדכון סטטוס.");
       loadOrders();
     } catch (err) {
       toast.error(err.message || "שגיאה בשליחה חוזרת לוואטסאפ");
