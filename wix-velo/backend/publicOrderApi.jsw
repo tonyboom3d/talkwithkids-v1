@@ -1,7 +1,7 @@
 import {
     EXPIRED_PUBLIC_ORDER_MESSAGE,
     getPublicDashboardOrder,
-    isExpiredPublicOrderStatus,
+    isExpiredPublicOrderRecord,
 } from 'backend/orderService.jsw';
 
 const LOG_PREFIX = '[VELO-PUBLIC-ORDER]';
@@ -154,7 +154,7 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
             };
         }
 
-        if (isExpiredPublicOrderStatus(record.status)) {
+        if (isExpiredPublicOrderRecord(record)) {
             return {
                 ok: false,
                 code: 'ORDER_LINK_EXPIRED',

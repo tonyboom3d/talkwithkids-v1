@@ -12,7 +12,7 @@ import { createDashboardCheckout } from 'backend/helpers/checkoutHelper';
 import {
     EXPIRED_PUBLIC_ORDER_MESSAGE,
     getPublicDashboardOrder,
-    isExpiredPublicOrderStatus,
+    isExpiredPublicOrderRecord,
     syncApprovedOrderToDashboard,
 } from 'backend/orderService.jsw';
 import { products } from 'wix-stores.v2';
@@ -293,7 +293,7 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
             };
         }
 
-        if (isExpiredPublicOrderStatus(record.status)) {
+        if (isExpiredPublicOrderRecord(record)) {
             return {
                 ok: false,
                 code: 'ORDER_LINK_EXPIRED',

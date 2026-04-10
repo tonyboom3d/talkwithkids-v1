@@ -139,6 +139,14 @@ export function isExpiredPublicOrderStatus(status) {
     return EXPIRED_PUBLIC_ORDER_STATUSES.has(String(status || '').trim());
 }
 
+/** חסימה ציבורית רק כשהסטטוס שולם/הושלם וגם יש נתוני הזמנה מושלמת (מונע false-positive) */
+export function isExpiredPublicOrderRecord(record) {
+    if (!record) return false;
+    if (!isExpiredPublicOrderStatus(record.status)) return false;
+    const completed = String(record.completedOrderData || '').trim();
+    return completed.length > 0;
+}
+
 export async function getDashboardOrderByCheckoutId(checkoutId) {
     return getSingleOrderByField('checkoutId', checkoutId);
 }
