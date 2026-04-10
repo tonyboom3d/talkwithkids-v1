@@ -9,6 +9,7 @@ import { getProductById, notifyOwner } from 'backend/tapuzUtils';
 import { processTapuzDelivery, processManualDelivery } from 'backend/tapuzApi';
 import { normalizeIsraeliPhone } from 'backend/helpers/phoneUtils';
 import { findContactByEmail } from 'backend/helpers/contactHelper';
+import { syncApprovedOrderToDashboard } from 'backend/services/orderService';
 
 // =========================================================
 // פונקציות עזר למנויים
@@ -193,6 +194,13 @@ export async function wixEcom_onOrderApproved(event) {
 
     try {
         console.log(`[TAPUZ] Order data: ${JSON.stringify(order)}`);
+
+        try {
+            await syncApprovedOrderToDashboard(order);
+        } catch (syncError) {
+            console.error(`[TAPUZ] Failed to sync dashboard order for checkoutId ${order.checkoutId || '(missing)'}: ${syncError.message}`);
+        }
+
         config = await wixData.get("AppConfig", "SINGLE_ITEM_ID", { suppressAuth: true });
         console.log(`[TAPUZ] Config: automationMode=${config?.automationMode} | apiMode=${config?.apiMode}`);
 

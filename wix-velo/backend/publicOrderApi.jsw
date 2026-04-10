@@ -1,4 +1,8 @@
-import wixData from 'wix-data';
+import {
+    EXPIRED_PUBLIC_ORDER_MESSAGE,
+    getPublicDashboardOrder,
+    isExpiredPublicOrderStatus,
+} from 'backend/services/orderService';
 
 const LOG_PREFIX = '[VELO-PUBLIC-ORDER]';
 
@@ -139,14 +143,10 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
     }
 
     try {
-        const results = await wixData.query('DashboardOrders')
-            .eq('dynamicLinkId', normalizedId)
-            .limit(1)
-            .find({ suppressAuth: true });
+        const record = await getPublicDashboardOrder(normalizedId);
+        console.log(`${LOG_PREFIX} query finished matches=${record ? 1 : 0}`);
 
-        console.log(`${LOG_PREFIX} query finished matches=${results.items.length}`);
-
-        if (!results.items.length) {
+        if (!record) {
             return {
                 ok: false,
                 code: 'ORDER_NOT_FOUND',
@@ -154,7 +154,14 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
             };
         }
 
-        const record = results.items[0];
+        if (isExpiredPublicOrderStatus(record.status)) {
+            return {
+                ok: false,
+                code: 'ORDER_LINK_EXPIRED',
+                message: EXPIRED_PUBLIC_ORDER_MESSAGE,
+            };
+        }
+
         const couponDetails = safeParseJson(record.couponDetails, null);
         const paymentLink = resolvePublicPaymentLink(record);
         const statusConfig = getPublicStatusConfig(record.status, paymentLink);

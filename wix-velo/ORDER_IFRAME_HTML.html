@@ -281,9 +281,10 @@
 
     .hero-price-single-wrap {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
-      gap: 4px;
+      gap: 10px;
+      justify-content: center;
     }
 
     .hero-price-label-inline {
@@ -294,16 +295,18 @@
 
     .hero-price-coupon-wrap {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
-      gap: 8px;
+      justify-content: center;
+      gap: 18px;
+      flex-wrap: wrap;
     }
 
     .hero-price-coupon-line {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
-      gap: 2px;
+      gap: 8px;
     }
 
     .hero-price-mini-label {
@@ -921,12 +924,12 @@
 
     <section id="errorScreen" class="screen">
       <div class="card error-card">
-        <h1 class="error-title">אופס... לא מצאתי את ההזמנה שלך</h1>
-        <p class="error-text">השירות לקוחות שלנו ישמחו לעזור לך</p>
+        <h1 id="errorTitle" class="error-title">אופס... לא מצאתי את ההזמנה שלך</h1>
+        <p id="errorText" class="error-text">השירות לקוחות שלנו ישמחו לעזור לך</p>
         <a class="support-link" href="https://www.talkwithkids.co.il/about" target="_top" rel="noopener noreferrer">
           מעבר לשירות לקוחות
         </a>
-        <p class="support-note">אם הגעת לכאן דרך קישור ישן או לא תקין, אפשר ליצור איתנו קשר ונשמח לבדוק עבורך.</p>
+        <p id="supportNote" class="support-note">אם הגעת לכאן דרך קישור ישן או לא תקין, אפשר ליצור איתנו קשר ונשמח לבדוק עבורך.</p>
       </div>
     </section>
   </div>
@@ -953,6 +956,9 @@
       var loadingScreen = document.getElementById("loadingScreen");
       var orderScreen = document.getElementById("orderScreen");
       var errorScreen = document.getElementById("errorScreen");
+      var errorTitle = document.getElementById("errorTitle");
+      var errorText = document.getElementById("errorText");
+      var supportNote = document.getElementById("supportNote");
       var payButton = document.getElementById("payButton");
       var productsList = document.getElementById("productsList");
       var redirectOverlay = document.getElementById("redirectOverlay");
@@ -1168,7 +1174,11 @@
         showScreen(orderScreen);
       }
 
-      function renderError() {
+      function renderError(errorState) {
+        var message = (errorState && errorState.message) || "אופס... לא מצאתי את ההזמנה שלך";
+        errorTitle.textContent = message;
+        errorText.textContent = "השירות לקוחות שלנו ישמחו לעזור לך";
+        supportNote.textContent = "אם הגעת לכאן דרך קישור ישן או לא תקין, אפשר ליצור איתנו קשר ונשמח לבדוק עבורך.";
         showScreen(errorScreen);
       }
 
@@ -1179,7 +1189,7 @@
           return;
         }
         if (state.error) {
-          renderError();
+          renderError(state.error);
         }
       }
 

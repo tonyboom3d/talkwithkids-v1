@@ -130,6 +130,7 @@ export default function OrdersTable({
       const creator = String(order.creatorName || "").toLowerCase();
       return (
         order.orderNumber.toLowerCase().includes(q) ||
+        order.deliveryNumber.toLowerCase().includes(q) ||
         name.includes(q) ||
         phone.includes(q) ||
         email.includes(q) ||
@@ -256,6 +257,7 @@ export default function OrdersTable({
                   )}
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">סטטוס</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">מס׳ הזמנה</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">מס׳ משלוח תפוז</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">מי יצר/ה</TableHead>
                   <TableHead className="text-left text-xs font-medium text-slate-500 w-12" />
                 </TableRow>
@@ -358,6 +360,9 @@ export default function OrdersTable({
                         <TableCell className="text-xs font-mono text-slate-500 whitespace-nowrap">
                           {order.orderNumber}
                         </TableCell>
+                        <TableCell className="text-xs font-mono text-slate-500 whitespace-nowrap">
+                          {order.deliveryNumber}
+                        </TableCell>
                         <TableCell className="text-right">
                           {order.creatorName && order.creatorName !== "—" ? (
                             <span
@@ -396,7 +401,7 @@ export default function OrdersTable({
 
                       {isExpanded && (
                         <TableRow className="bg-slate-50/60 hover:bg-slate-50/60">
-                          <TableCell colSpan={showProfitColumn ? 10 : 9} className="p-4">
+                          <TableCell colSpan={showProfitColumn ? 11 : 10} className="p-4">
                             <AnimatePresence initial={false}>
                               <motion.div
                                 initial={{ opacity: 0, height: 0, y: -4, scale: 0.985 }}
@@ -561,6 +566,10 @@ export default function OrdersTable({
                                           <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
                                             <p className="text-xs text-slate-400 mb-1">מס׳ הזמנה</p>
                                             <p className="text-sm font-mono text-slate-600">{order.orderNumber}</p>
+                                          </div>
+                                          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                            <p className="text-xs text-slate-400 mb-1">מס׳ משלוח תפוז</p>
+                                            <p className="text-sm font-mono text-slate-600">{order.deliveryNumber}</p>
                                           </div>
                                           {order.orderChangeNotes && (
                                             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">

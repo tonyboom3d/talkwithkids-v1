@@ -9,6 +9,12 @@ import {
     computeDiscountForSubtotal,
 } from 'backend/helpers/couponHelper';
 import { createDashboardCheckout } from 'backend/helpers/checkoutHelper';
+import {
+    EXPIRED_PUBLIC_ORDER_MESSAGE,
+    getPublicDashboardOrder,
+    isExpiredPublicOrderStatus,
+    syncApprovedOrderToDashboard,
+} from 'backend/services/orderService';
 import { products } from 'wix-stores.v2';
 
 export { searchContactsByQuery, searchStoreCoupons };
@@ -143,6 +149,7 @@ function normalizeOrderRecord(item, employeeMetaMap = {}) {
         changeChain,
         products: productsList,
         couponDetails,
+        deliveryNumber: item.deliveryNumber || '',
         createdByName: item.createdByName || creatorMeta?.displayName || '',
         creatorTagColor: creatorMeta?.color || '',
     };
@@ -276,12 +283,9 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
     }
 
     try {
-        const results = await wixData.query('DashboardOrders')
-            .eq('dynamicLinkId', normalizedId)
-            .limit(1)
-            .find({ suppressAuth: true });
+        const record = await getPublicDashboardOrder(normalizedId);
 
-        if (!results.items.length) {
+        if (!record) {
             return {
                 ok: false,
                 code: 'ORDER_NOT_FOUND',
@@ -289,7 +293,14 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
             };
         }
 
-        const record = results.items[0];
+        if (isExpiredPublicOrderStatus(record.status)) {
+            return {
+                ok: false,
+                code: 'ORDER_LINK_EXPIRED',
+                message: EXPIRED_PUBLIC_ORDER_MESSAGE,
+            };
+        }
+
         const couponDetails = safeParseJson(record.couponDetails, null);
         const paymentLink = resolvePublicPaymentLink(record);
         const statusConfig = getPublicStatusConfig(record.status, paymentLink);
@@ -322,25 +333,6 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
 }
 
 // ─── Create Order ───
-
-async function generateOrderNumber() {
-    const r = await wixData.query('DashboardOrders')
-        .startsWith('orderNumber', 'TWK-')
-        .limit(1000)
-        .find({ suppressAuth: true });
-
-    let maxN = 1000;
-    for (const item of r.items) {
-        const raw = item.orderNumber;
-        if (!raw || typeof raw !== 'string') continue;
-        const m = /^TWK-(\d+)$/i.exec(raw.trim());
-        if (m) {
-            const n = parseInt(m[1], 10);
-            if (!isNaN(n) && n > maxN) maxN = n;
-        }
-    }
-    return `TWK-${maxN + 1}`;
-}
 
 function buildDashboardOrderUrl(dynamicLinkId) {
     const id = String(dynamicLinkId || '').trim();
@@ -556,6 +548,7 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
 
     const record = {
         orderNumber: '',
+        deliveryNumber: '',
         status: initialStatus,
         createdByRef: employeeId,
         createdByName: employeeName || '',
@@ -749,63 +742,7 @@ export async function deleteOrderRecord(recordId, employeeName) {
 // ─── Post-Purchase (called from events.js) ───
 
 export async function handleOrderCompleted(ecomOrder) {
-    const checkoutId = ecomOrder.checkoutId;
-    if (!checkoutId) {
-        console.error(`${LOG_PREFIX} onOrderApproved: missing checkoutId`);
-        return;
-    }
-
-    console.log(`${LOG_PREFIX} Handling completed order for checkoutId: ${checkoutId}`);
-
-    const results = await wixData.query('DashboardOrders')
-        .eq('checkoutId', checkoutId)
-        .find({ suppressAuth: true });
-
-    if (results.items.length === 0) {
-        console.log(`${LOG_PREFIX} No dashboard record found for checkoutId: ${checkoutId}`);
-        return;
-    }
-
-    const record = results.items[0];
-
-    const chain = JSON.parse(record.changeChain || '[]');
-    chain.push({
-        action: 'paid',
-        by: 'מערכת',
-        date: new Date().toISOString(),
-        detail: record.status === 'paid_pending_details'
-            ? 'הלקוח/ה השלים/ה את הפרטים דרך הקישור'
-            : 'הזמנה שולמה בהצלחה',
-    });
-
-    let orderNumber = record.orderNumber && String(record.orderNumber).trim();
-    if (!orderNumber) {
-        orderNumber = await generateOrderNumber();
-        console.log(`${LOG_PREFIX} Assigned order number on payment: ${orderNumber}`);
-    }
-
-    const nextStatus = record.status === 'paid_pending_details' ? 'paid_completed' : 'paid';
-    const updatedRecord = {
-        ...record,
-        orderNumber,
-        status: nextStatus,
-        completedOrderData: JSON.stringify(ecomOrder),
-        changeChain: JSON.stringify(chain),
-    };
-
-    await wixData.update('DashboardOrders', updatedRecord, { suppressAuth: true });
-    console.log(`${LOG_PREFIX} Order status updated to ${nextStatus}: ${record._id}`);
-
-    // Shipping routing (Tapuz / ידני — ראו backend/events.js + tapuzApi.js)
-    const hasOrderChanges = record.orderChangeNotes && record.orderChangeNotes.trim() !== '';
-    await wixData.insert('ShippingRouting', {
-        orderRef: record._id,
-        routedTo: hasOrderChanges ? 'chen' : 'tapuz',
-        changeNote: record.orderChangeNotes || '',
-        handledDate: null,
-    }, { suppressAuth: true });
-
-    console.log(`${LOG_PREFIX} Shipping routed to: ${hasOrderChanges ? 'chen' : 'tapuz'}`);
+    return syncApprovedOrderToDashboard(ecomOrder);
 }
 
 // ─── Store products (קטלוג לדאשבורד) ───

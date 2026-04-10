@@ -3,6 +3,7 @@ import wixData from 'wix-data';
 import wixStoresBackend from 'wix-stores-backend';
 import { notifyOwner } from 'backend/tapuzUtils';
 import { normalizeIsraeliPhone } from 'backend/helpers/phoneUtils';
+import { updateDashboardOrderDeliveryNumber } from 'backend/services/orderService';
 
 // כתובת מוצא: מחסן / עסק (משלוח תפוז רגיל)
 const SENDER_INFO_TAPUZ = {
@@ -83,6 +84,11 @@ export async function processTapuzDelivery(order, lineItem, quantity, config, it
             });
 
             await logSystem(order.number, "SUCCESS", `המשלוח נקלט בתפוז: ${deliveryNumber} | DeliveryNumberString: ${deliveryNumberString}`, tapuzString, responseText);
+            try {
+                await updateDashboardOrderDeliveryNumber(order.checkoutId, deliveryNumber);
+            } catch (dashboardUpdateError) {
+                console.warn(`[TAPUZ-API] Could not save delivery number on dashboard order: ${dashboardUpdateError.message}`);
+            }
         } else {
             console.log(`[TAPUZ-API] FAILED — no valid DeliveryNumber or error code detected.`);
             throw new Error(`שגיאה מתפוז: ${responseText}`);
@@ -166,6 +172,11 @@ export async function processManualDelivery(order, lineItem, quantity, config, r
                 tapuzString,
                 responseText
             );
+            try {
+                await updateDashboardOrderDeliveryNumber(order.checkoutId, deliveryNumber);
+            } catch (dashboardUpdateError) {
+                console.warn(`[TAPUZ-API] Could not save manual delivery number on dashboard order: ${dashboardUpdateError.message}`);
+            }
         } else {
             console.log(`[TAPUZ-API] SELF DELIVERY FAILED — no valid DeliveryNumber or error code detected.`);
             throw new Error(`שגיאה מתפוז (משלוח מהבית): ${responseText}`);

@@ -1,0 +1,236 @@
+import wixData from 'wix-data';
+import { normalizeIsraeliPhone } from 'backend/helpers/phoneUtils';
+
+const LOG_PREFIX = '[ORDER-SERVICE]';
+const EXPIRED_PUBLIC_ORDER_STATUSES = new Set(['paid', 'paid_completed']);
+
+export const EXPIRED_PUBLIC_ORDER_MESSAGE = 'הקישור פג תוקף. למידע נוסף פנו לשירות הלקוחות';
+
+function safeParseJson(value, fallback) {
+    if (!value) return fallback;
+    if (typeof value !== 'string') return value;
+    try {
+        return JSON.parse(value);
+    } catch (err) {
+        return fallback;
+    }
+}
+
+function joinName(firstName, lastName) {
+    return [firstName, lastName].map((value) => String(value || '').trim()).filter(Boolean).join(' ').trim();
+}
+
+function firstNonEmptyString(...values) {
+    for (const value of values) {
+        if (value == null) continue;
+        const normalized = String(value).trim();
+        if (normalized) return normalized;
+    }
+    return '';
+}
+
+function extractOrderContactDetails(order) {
+    return (
+        order?.shippingInfo?.logistics?.shippingDestination?.contactDetails
+        || order?.billingInfo?.contactDetails
+        || {}
+    );
+}
+
+function extractPaymentMethod(order) {
+    const paymentOption = order?.paymentOption || {};
+    const paymentInfo = order?.paymentInfo || {};
+    const transactions = Array.isArray(order?.transactions) ? order.transactions : [];
+    const transactionMethod = transactions
+        .map((transaction) => (
+            transaction?.paymentMethod
+            || transaction?.paymentMethodType
+            || transaction?.paymentProvider
+            || transaction?.gateway
+        ))
+        .find(Boolean);
+
+    return firstNonEmptyString(
+        order?.paymentMethod,
+        paymentOption.paymentMethod,
+        paymentOption.paymentMethodType,
+        paymentOption.name,
+        paymentInfo.paymentMethod,
+        paymentInfo.method,
+        paymentInfo.provider,
+        transactionMethod
+    );
+}
+
+function extractMemberId(order) {
+    return firstNonEmptyString(
+        order?.buyerInfo?.memberId,
+        order?.buyerInfo?.member?._id,
+        order?.buyerInfo?.member?.id,
+        order?.memberId
+    );
+}
+
+async function extractCustomerSnapshot(order, existingRecord = {}) {
+    const contact = extractOrderContactDetails(order);
+    const customerPhone = await normalizeIsraeliPhone(
+        firstNonEmptyString(
+            contact.phone,
+            order?.buyerInfo?.phone,
+            existingRecord.customerPhone
+        )
+    );
+
+    return {
+        customerName: firstNonEmptyString(
+            joinName(contact.firstName, contact.lastName),
+            existingRecord.customerName
+        ),
+        customerPhone: firstNonEmptyString(customerPhone, existingRecord.customerPhone),
+        customerEmail: firstNonEmptyString(
+            order?.buyerInfo?.email,
+            contact.email,
+            existingRecord.customerEmail
+        ),
+    };
+}
+
+async function getSingleOrderByField(fieldName, value) {
+    const normalizedValue = String(value || '').trim();
+    if (!normalizedValue) return null;
+
+    const results = await wixData.query('DashboardOrders')
+        .eq(fieldName, normalizedValue)
+        .limit(1)
+        .find({ suppressAuth: true });
+
+    return results.items[0] || null;
+}
+
+function createTimelineEvent(action, detail, by = 'מערכת') {
+    return {
+        action,
+        by,
+        date: new Date().toISOString(),
+        detail,
+    };
+}
+
+async function ensureShippingRoutingRecord(record) {
+    const existing = await wixData.query('ShippingRouting')
+        .eq('orderRef', record._id)
+        .limit(1)
+        .find({ suppressAuth: true });
+
+    if (existing.items.length > 0) {
+        return existing.items[0];
+    }
+
+    const hasOrderChanges = record.orderChangeNotes && record.orderChangeNotes.trim() !== '';
+    return wixData.insert('ShippingRouting', {
+        orderRef: record._id,
+        routedTo: hasOrderChanges ? 'chen' : 'tapuz',
+        changeNote: record.orderChangeNotes || '',
+        handledDate: null,
+    }, { suppressAuth: true });
+}
+
+export function isExpiredPublicOrderStatus(status) {
+    return EXPIRED_PUBLIC_ORDER_STATUSES.has(String(status || '').trim());
+}
+
+export async function getDashboardOrderByCheckoutId(checkoutId) {
+    return getSingleOrderByField('checkoutId', checkoutId);
+}
+
+export async function getDashboardOrderByDynamicLinkId(dynamicLinkId) {
+    return getSingleOrderByField('dynamicLinkId', dynamicLinkId);
+}
+
+export async function markOrderLinkOpened(dynamicLinkId) {
+    const record = await getDashboardOrderByDynamicLinkId(dynamicLinkId);
+    if (!record) return null;
+    if (record.status !== 'sent') return record;
+
+    const chain = safeParseJson(record.changeChain, []);
+    chain.push(createTimelineEvent('link_opened', 'קישור נפתח', 'לקוח'));
+
+    const updatedRecord = await wixData.update('DashboardOrders', {
+        ...record,
+        status: 'opened',
+        changeChain: JSON.stringify(chain),
+    }, { suppressAuth: true });
+
+    console.log(`${LOG_PREFIX} Link opened for order record ${record._id}`);
+    return updatedRecord;
+}
+
+export async function getPublicDashboardOrder(dynamicLinkId) {
+    const record = await getDashboardOrderByDynamicLinkId(dynamicLinkId);
+    if (!record) return null;
+    if (record.status === 'sent') {
+        return markOrderLinkOpened(dynamicLinkId);
+    }
+    return record;
+}
+
+export async function syncApprovedOrderToDashboard(ecomOrder) {
+    const checkoutId = String(ecomOrder?.checkoutId || '').trim();
+    if (!checkoutId) {
+        console.error(`${LOG_PREFIX} onOrderApproved: missing checkoutId`);
+        return null;
+    }
+
+    const record = await getDashboardOrderByCheckoutId(checkoutId);
+    if (!record) {
+        console.log(`${LOG_PREFIX} No dashboard record found for checkoutId: ${checkoutId}`);
+        return null;
+    }
+
+    const chain = safeParseJson(record.changeChain, []);
+    const nextStatus = record.status === 'paid_pending_details' ? 'paid_completed' : 'paid';
+    const paidDetail = nextStatus === 'paid_completed'
+        ? 'הלקוח/ה השלים/ה את הפרטים דרך הקישור'
+        : 'הזמנה שולמה בהצלחה';
+    const hasPaidEvent = chain.some((event) => (event.action || event.type) === 'paid');
+    if (!hasPaidEvent) {
+        chain.push(createTimelineEvent('paid', paidDetail));
+    }
+
+    const customerSnapshot = await extractCustomerSnapshot(ecomOrder, record);
+    const paymentMethod = extractPaymentMethod(ecomOrder);
+    const payerMemberRef = extractMemberId(ecomOrder);
+
+    const updatedRecord = await wixData.update('DashboardOrders', {
+        ...record,
+        ...customerSnapshot,
+        orderNumber: firstNonEmptyString(ecomOrder?.number, record.orderNumber),
+        paymentMethod: firstNonEmptyString(paymentMethod, record.paymentMethod),
+        status: nextStatus,
+        completedOrderData: JSON.stringify(ecomOrder),
+        changeChain: JSON.stringify(chain),
+        ...(payerMemberRef ? { payerMemberRef } : {}),
+    }, { suppressAuth: true });
+
+    await ensureShippingRoutingRecord(updatedRecord);
+    console.log(`${LOG_PREFIX} Synced approved order for checkoutId ${checkoutId} -> ${nextStatus}`);
+    return updatedRecord;
+}
+
+export async function updateDashboardOrderDeliveryNumber(checkoutId, deliveryNumber) {
+    const normalizedCheckoutId = String(checkoutId || '').trim();
+    const normalizedDeliveryNumber = String(deliveryNumber || '').trim();
+    if (!normalizedCheckoutId || !normalizedDeliveryNumber) return null;
+
+    const record = await getDashboardOrderByCheckoutId(normalizedCheckoutId);
+    if (!record) return null;
+    if (String(record.deliveryNumber || '').trim() === normalizedDeliveryNumber) return record;
+
+    const updatedRecord = await wixData.update('DashboardOrders', {
+        ...record,
+        deliveryNumber: normalizedDeliveryNumber,
+    }, { suppressAuth: true });
+
+    console.log(`${LOG_PREFIX} Saved delivery number ${normalizedDeliveryNumber} for checkoutId ${normalizedCheckoutId}`);
+    return updatedRecord;
+}

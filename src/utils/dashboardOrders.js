@@ -124,6 +124,9 @@ export function normalizeOrder(order, options = {}) {
   const orderNumber = order.orderNumber && String(order.orderNumber).trim()
     ? String(order.orderNumber).trim()
     : "ממתין לתשלום";
+  const deliveryNumber = order.deliveryNumber && String(order.deliveryNumber).trim()
+    ? String(order.deliveryNumber).trim()
+    : "—";
   const creatorName =
     order.createdByName ||
     timeline.find((event) => (event.action || event.type) === "created")?.by ||
@@ -144,6 +147,7 @@ export function normalizeOrder(order, options = {}) {
     orderDate,
     sentDate,
     orderNumber,
+    deliveryNumber,
     creatorName,
     creatorTagColor: order.creatorTagColor || "",
     checkoutLink: order.checkoutLink || order.paymentLink || "",

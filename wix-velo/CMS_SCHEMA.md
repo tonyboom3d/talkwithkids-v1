@@ -4,9 +4,10 @@
 
 | Field ID | Display Name | Type | Notes |
 |----------|-------------|------|-------|
-| orderNumber | מספר הזמנה | Text | TWK-1001, TWK-1002... |
+| orderNumber | מספר הזמנה | Text | Wix Order Number לאחר אישור תשלום |
+| deliveryNumber | מספר משלוח | Text | מספר המשלוח מתפוז לאחר קליטת שילוח |
 | checkoutId | מזהה צ'קאאוט | Text | From Wix Ecom |
-| status | סטטוס | Text | sent/opened/unpaid/cancelled/error/paid |
+| status | סטטוס | Text | sent/opened/unpaid/cancelled/error/paid/paid_pending_details/paid_completed |
 | createdByRef | נוצר ע"י | Reference -> AuthorizedEmployees | |
 | paymentMethod | אופן תשלום | Text | ביט/פייבוקס/הוראת קבע/העברה בנקאית/קארדקום/וויקס |
 | products | מוצרים | Text | JSON array |
@@ -28,6 +29,11 @@
 | customerEmail | אימייל לקוח | Text | |
 
 **Permissions**: Read = Admin, Write = Admin (all access via suppressAuth: true in backend)
+
+**State transitions**
+- `sent` -> `opened` כאשר הלקוח/ה נכנס/ת לקישור הציבורי.
+- `paid_pending_details` -> `paid_completed` לאחר אישור תשלום.
+- כל תשלום מוצלח אחר -> `paid`.
 
 ## 2. AuthorizedEmployees
 
