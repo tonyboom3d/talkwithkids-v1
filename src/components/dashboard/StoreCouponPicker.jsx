@@ -19,6 +19,31 @@ function formatCouponListValue(c) {
   return c.discountValueText ?? "—";
 }
 
+function getSelectedCouponPrimaryText(coupon) {
+  const name = String(coupon?.name || "").trim();
+  const code = String(coupon?.code || "").trim();
+  if (!name) return code;
+  if (!code) return name;
+
+  const normalizedName = name.toLowerCase();
+  const normalizedCode = code.toLowerCase();
+  if (normalizedName === normalizedCode || normalizedName.includes(normalizedCode)) {
+    return name;
+  }
+
+  return name;
+}
+
+function shouldShowSelectedCouponCode(coupon) {
+  const name = String(coupon?.name || "").trim();
+  const code = String(coupon?.code || "").trim();
+  if (!name || !code) return false;
+
+  const normalizedName = name.toLowerCase();
+  const normalizedCode = code.toLowerCase();
+  return normalizedName !== normalizedCode && !normalizedName.includes(normalizedCode);
+}
+
 export default function StoreCouponPicker({ isDemo, selectedCoupon, onSelect, disabled }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -85,40 +110,45 @@ export default function StoreCouponPicker({ isDemo, selectedCoupon, onSelect, di
   return (
     <div className="space-y-2" ref={dropdownRef}>
       <div className="relative">
-        <button
-          type="button"
-          dir="rtl"
-          disabled={disabled}
-          onClick={() => !disabled && setIsOpen(!isOpen)}
-          className="w-full h-11 px-4 flex items-center justify-between gap-2 rounded-lg border border-violet-200 bg-white hover:border-violet-300 transition-colors text-base disabled:opacity-50"
-        >
-          <span className="text-slate-600 text-right flex-1 min-w-0 truncate">
-            {selectedCoupon ? (
-              <span className="font-medium text-violet-800 truncate">
-                {selectedCoupon.name || selectedCoupon.code}{" "}
-                <span className="text-slate-500 font-normal">({selectedCoupon.code})</span>
-                {selectedCoupon.discountValueText && (
-                  <span className="text-slate-600 font-normal mr-1"> · {selectedCoupon.discountValueText}</span>
-                )}
-              </span>
-            ) : (
-              <span className="text-slate-400">חיפוש קופון לפי שם או קוד...</span>
-            )}
-          </span>
-          <Ticket className="w-4 h-4 text-violet-400 shrink-0" />
-          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${isOpen ? "rotate-180" : ""}`} />
-        </button>
-
-        {selectedCoupon && (
+        <div className="w-full h-11 px-4 flex items-center gap-2 rounded-lg border border-violet-200 bg-white hover:border-violet-300 transition-colors text-base disabled:opacity-50">
           <button
             type="button"
-            onClick={clear}
-            className="absolute right-10 top-1/2 -translate-y-1/2 p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50"
-            aria-label="נקה בחירה"
+            dir="rtl"
+            disabled={disabled}
+            onClick={() => !disabled && setIsOpen(!isOpen)}
+            className="min-w-0 flex-1 flex items-center justify-between gap-2 text-right"
           >
-            <X className="w-4 h-4" />
+            <span className="text-slate-600 text-right flex-1 min-w-0 truncate">
+              {selectedCoupon ? (
+                <span className="font-medium text-violet-800 truncate">
+                  {getSelectedCouponPrimaryText(selectedCoupon)}
+                  {shouldShowSelectedCouponCode(selectedCoupon) && (
+                    <span className="text-slate-500 font-normal"> ({selectedCoupon.code})</span>
+                  )}
+                  {selectedCoupon.discountValueText && (
+                    <span className="text-slate-600 font-normal mr-1"> · {selectedCoupon.discountValueText}</span>
+                  )}
+                </span>
+              ) : (
+                <span className="text-slate-400">חיפוש קופון לפי שם או קוד...</span>
+              )}
+            </span>
+            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${isOpen ? "rotate-180" : ""}`} />
           </button>
-        )}
+
+          {selectedCoupon && (
+            <button
+              type="button"
+              onClick={clear}
+              className="shrink-0 p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50"
+              aria-label="נקה בחירה"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+
+          <Ticket className="w-4 h-4 text-violet-400 shrink-0" />
+        </div>
 
         <AnimatePresence>
           {isOpen && (

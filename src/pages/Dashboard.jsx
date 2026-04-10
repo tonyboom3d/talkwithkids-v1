@@ -51,6 +51,29 @@ function formatDiscountLineShekels(amount) {
   return `${n.toLocaleString("he-IL")}- ₪`;
 }
 
+function parseCustomPayAmount(value, subtotal) {
+  const rawValue = String(value ?? "").trim();
+  if (!rawValue) {
+    return {
+      hasValue: false,
+      isValid: false,
+      payAmount: 0,
+      discountAmount: 0,
+    };
+  }
+
+  const payAmount = Number(rawValue);
+  const normalizedSubtotal = Math.max(0, Number(subtotal) || 0);
+  const isValid = Number.isFinite(payAmount) && payAmount >= 0 && payAmount <= normalizedSubtotal;
+
+  return {
+    hasValue: true,
+    isValid,
+    payAmount: Number.isFinite(payAmount) ? payAmount : 0,
+    discountAmount: Number.isFinite(payAmount) ? Math.max(0, normalizedSubtotal - payAmount) : 0,
+  };
+}
+
 function isValidIsraeliPhone(phone) {
   return /^05\d{8}$/.test(String(phone || "").trim());
 }
@@ -177,13 +200,13 @@ export default function Dashboard() {
         }
       } else {
         const sub = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
-        const val = parseFloat(couponValue) || 0;
         if (!String(couponValue).trim()) {
-          showError("נא למלא ערך להנחה");
+          showError("נא למלא את הסכום לתשלום");
           return;
         }
-        if (val >= sub) {
-          showError("ערך ההנחה לא תקין");
+        const customCoupon = parseCustomPayAmount(couponValue, sub);
+        if (!customCoupon.isValid) {
+          showError("הסכום לתשלום חייב להיות בין 0 לסכום ההזמנה");
           return;
         }
       }
@@ -214,7 +237,7 @@ export default function Dashboard() {
         if (couponMode === "existing" && selectedStoreCoupon) {
           existingCoupon = { id: selectedStoreCoupon.id, code: selectedStoreCoupon.code };
         } else if (couponMode === "create") {
-          coupon = { type: "fixed", value: parseFloat(couponValue) };
+          coupon = { targetPayAmount: Number(couponValue) };
         }
       }
 
@@ -613,7 +636,7 @@ export default function Dashboard() {
                       ) : (
                         <>
                           <div dir="rtl" className="flex w-full items-center justify-start gap-2 text-right">
-                            <span className="text-xs font-medium text-slate-700">הנחה בשקלים</span>
+                            <span className="text-xs font-medium text-slate-700">הסכום לתשלום</span>
                             <span
                               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-violet-200 bg-violet-50 text-sm font-bold text-violet-800"
                               aria-hidden
@@ -623,27 +646,26 @@ export default function Dashboard() {
                           </div>
                           {(() => {
                             const total = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
-                            const val = parseFloat(couponValue) || 0;
-                            const isInvalid = val >= total;
+                            const customCoupon = parseCustomPayAmount(couponValue, total);
                             return (
                               <>
                                 <div dir="rtl" className="flex w-full items-center justify-start gap-2">
                                   <Input
                                     type="number"
                                     min="0"
-                                    max={Math.max(0, total - 1)}
+                                    max={Math.max(0, total)}
                                     step="0.01"
                                     value={couponValue}
                                     onChange={(e) => setCouponValue(e.target.value)}
-                                    placeholder="סכום ההנחה"
+                                    placeholder="הסכום לתשלום"
                                     className="h-9 max-w-xs flex-1 text-sm border-slate-200 bg-white text-right"
                                     dir="rtl"
                                   />
                                   <span className="shrink-0 text-sm font-semibold text-slate-600 tabular-nums">₪</span>
                                 </div>
-                                {isInvalid && couponValue !== "" && (
+                                {customCoupon.hasValue && !customCoupon.isValid && (
                                   <p className="text-xs text-red-500">
-                                    ההנחה לא יכולה להיות גדולה מ-₪{(total - 1).toLocaleString()}
+                                    הסכום לתשלום חייב להיות בין ₪0 ל-₪{total.toLocaleString("he-IL")}
                                   </p>
                                 )}
                               </>
@@ -686,11 +708,10 @@ export default function Dashboard() {
                         }
 
                         if (couponMode === "create") {
-                          const val = parseFloat(couponValue) || 0;
-                          const discountAmount = val;
-                          const discountedTotal = total - discountAmount;
-                          const isInvalid = val >= total;
-                          if (val <= 0 || isInvalid) return null;
+                          const customCoupon = parseCustomPayAmount(couponValue, total);
+                          if (!customCoupon.hasValue || !customCoupon.isValid) return null;
+                          const discountAmount = customCoupon.discountAmount;
+                          const discountedTotal = customCoupon.payAmount;
                           return (
                             <div className="bg-white rounded-lg p-3 space-y-1.5 border border-violet-100" dir="rtl">
                               <div className="flex flex-wrap items-center justify-start gap-2 text-sm">

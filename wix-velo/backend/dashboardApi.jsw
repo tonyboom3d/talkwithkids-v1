@@ -372,6 +372,69 @@ function enrichCouponDetailsWithTotals(couponDetailsObj, subtotal, existingStore
     couponDetailsObj.discountedTotal = Math.max(0, discountedTotal);
 }
 
+function normalizeCreatedCouponInput(couponInput, subtotal) {
+    if (!couponInput) return null;
+
+    const s = Math.max(0, Number(subtotal) || 0);
+
+    if (couponInput.targetPayAmount != null && couponInput.targetPayAmount !== '') {
+        const targetPayAmount = Number(couponInput.targetPayAmount);
+        if (!Number.isFinite(targetPayAmount)) {
+            throw new Error('סכום לתשלום לא תקין');
+        }
+        if (targetPayAmount < 0 || targetPayAmount > s) {
+            throw new Error('סכום לתשלום חייב להיות בין 0 לסכום ההזמנה');
+        }
+
+        const discountAmount = Math.max(0, s - targetPayAmount);
+        if (discountAmount === 0) {
+            return {
+                shouldCreateCoupon: false,
+                couponDetailsObj: null,
+            };
+        }
+
+        return {
+            shouldCreateCoupon: true,
+            type: 'fixed',
+            value: discountAmount,
+            couponDetailsObj: {
+                source: 'create',
+                type: 'fixed',
+                value: discountAmount,
+                targetPayAmount,
+            },
+        };
+    }
+
+    const type = couponInput.type === 'percent' ? 'percent' : 'fixed';
+    const value = Number(couponInput.value);
+    if (!Number.isFinite(value)) {
+        throw new Error('ערך הקופון לא תקין');
+    }
+
+    if (type === 'percent') {
+        if (value < 0 || value > 100) {
+            throw new Error('ערך הקופון לא תקין');
+        }
+    } else if (value < 0 || value > s) {
+        throw new Error('ערך הקופון לא תקין');
+    }
+
+    return {
+        shouldCreateCoupon: value > 0,
+        type,
+        value,
+        couponDetailsObj: value > 0
+            ? {
+                source: 'create',
+                type,
+                value,
+            }
+            : null,
+    };
+}
+
 async function sendDashboardCheckoutWebhook({ customerName, customerPhone, dynamicLinkId }) {
     const paymentUrl = buildDashboardOrderUrl(dynamicLinkId);
     const payload = {
@@ -434,6 +497,7 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
     let existingStoreCouponMapped = null;
     const isMarkedPaid = orderData.paymentStatus === 'paid';
     const initialStatus = isMarkedPaid ? 'paid_pending_details' : 'sent';
+    const orderSubtotal = Math.max(0, Number(orderData.totalPrice) || 0);
 
     if (isMarkedPaid) {
         couponResult = await createOrderCoupon('percent', 100);
@@ -461,17 +525,22 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
         };
         console.log(`${LOG_PREFIX} Using existing store coupon: ${validated.code}`);
     } else if (orderData.coupon) {
-        couponResult = await createOrderCoupon(orderData.coupon.type, orderData.coupon.value);
-        couponDetailsObj = {
-            source: 'create',
-            type: orderData.coupon.type,
-            value: orderData.coupon.value,
-            code: couponResult.code,
-        };
-        console.log(`${LOG_PREFIX} Coupon created: ${couponResult.code}`);
+        const normalizedCreatedCoupon = normalizeCreatedCouponInput(orderData.coupon, orderSubtotal);
+        if (normalizedCreatedCoupon?.shouldCreateCoupon) {
+            couponResult = await createOrderCoupon(
+                normalizedCreatedCoupon.type,
+                normalizedCreatedCoupon.value
+            );
+            couponDetailsObj = {
+                ...normalizedCreatedCoupon.couponDetailsObj,
+                code: couponResult.code,
+            };
+            console.log(`${LOG_PREFIX} Coupon created: ${couponResult.code}`);
+        } else {
+            console.log(`${LOG_PREFIX} Coupon skipped: no discount needed`);
+        }
     }
 
-    const orderSubtotal = Number(orderData.totalPrice) || 0;
     if (couponDetailsObj) {
         enrichCouponDetailsWithTotals(couponDetailsObj, orderSubtotal, existingStoreCouponMapped);
     }
