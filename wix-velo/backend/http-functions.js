@@ -184,41 +184,50 @@ async function processWhatsappCallback(payload) {
     const chain = safeParseJson(record.changeChain, []);
 
     const contact = payload?.contact || {};
-    const contactSnapshot = {
-        whatsappContactId: String(contact.id || '').trim(),
-        whatsappContactName: String(contact.name || '').trim(),
-        whatsappContactEmail: String(contact.email || '').trim(),
-        whatsappContactPhone: String(contact.phone || '').trim(),
-    };
-
     const nowIso = new Date().toISOString();
+    const whatsappData = {
+        status: result.status,
+        messageId: result.providerMessageId,
+        error: result.status === 'failed' ? result.errorMessage : '',
+        updatedAt: nowIso,
+        paymentLink: paymentLink,
+        dynamicLinkId,
+        contact: {
+            id: String(contact.id || '').trim(),
+            name: String(contact.name || '').trim(),
+            email: String(contact.email || '').trim(),
+            phone: String(contact.phone || '').trim(),
+        },
+    };
 
     if (result.status === 'success') {
         chain.push({
             action: 'whatsapp_sent_success',
             by: 'מערכת',
             date: nowIso,
-            detail: result.providerMessageId
-                ? `שליחת וואטסאפ הצליחה (messageId: ${result.providerMessageId})`
-                : 'שליחת וואטסאפ הצליחה',
+            detail: 'שליחת וואטסאפ צלחה',
         });
     } else {
         chain.push({
             action: 'whatsapp_sent_failed',
             by: 'מערכת',
             date: nowIso,
-            detail: result.errorMessage ? `שליחת וואטסאפ נכשלה: ${result.errorMessage}` : 'שליחת וואטסאפ נכשלה',
+            detail: 'שליחת וואטסאפ נכשלה',
         });
     }
 
     await wixData.update('DashboardOrders', {
         ...record,
         changeChain: JSON.stringify(chain),
-        whatsappLastStatus: result.status,
-        whatsappLastMessageId: result.providerMessageId,
-        whatsappLastError: result.status === 'failed' ? result.errorMessage : '',
-        whatsappLastUpdatedAt: nowIso,
-        ...contactSnapshot,
+        whatsappData: JSON.stringify(whatsappData),
+        whatsappLastStatus: '',
+        whatsappLastMessageId: '',
+        whatsappLastError: '',
+        whatsappLastUpdatedAt: '',
+        whatsappContactId: '',
+        whatsappContactName: '',
+        whatsappContactEmail: '',
+        whatsappContactPhone: '',
     }, { suppressAuth: true });
 
     console.log(`${LOG_PREFIX} updated record ${record._id} dynamicLinkId=${dynamicLinkId} status=${result.status}`);

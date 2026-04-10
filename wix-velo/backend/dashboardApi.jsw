@@ -463,6 +463,23 @@ async function deliverOrderToWhatsapp(record, employeeName, { isResend = false }
         customerPhone: record.customerPhone || '',
         dynamicLinkId: dyn,
     });
+
+    // Avoid false "opened" transitions from WhatsApp link previews.
+    // Mark as "requested" so public link open within a few seconds won't flip sent->opened.
+    const nowIso = new Date().toISOString();
+    const paymentUrl = buildDashboardOrderUrl(dyn);
+    await wixData.update('DashboardOrders', {
+        ...record,
+        whatsappData: JSON.stringify({
+            status: 'requested',
+            messageId: '',
+            error: '',
+            updatedAt: nowIso,
+            paymentLink: paymentUrl,
+            dynamicLinkId: dyn,
+            contact: {},
+        }),
+    }, { suppressAuth: true });
 }
 
 export async function createOrderRecord(orderData, employeeId, employeeName = '') {

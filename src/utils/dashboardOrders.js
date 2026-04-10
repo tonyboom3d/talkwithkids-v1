@@ -104,7 +104,10 @@ export function isPaidDisplayStatus(status) {
 }
 
 export function resolveWhatsappDeliveryStatus(order) {
-  const direct = String(order?.whatsappLastStatus || "").trim().toLowerCase();
+  const whatsappData = safeParseJson(order?.whatsappData, null);
+  const direct = String(
+    whatsappData?.status || order?.whatsappLastStatus || ""
+  ).trim().toLowerCase();
   if (direct === "success" || direct === "failed") return direct;
 
   const timeline = Array.isArray(order?.timeline) ? order.timeline : safeParseJson(order?.changeChain, []);
@@ -125,6 +128,7 @@ export function normalizeOrder(order, options = {}) {
     ? order.products
     : safeParseJson(order.products, []);
   const couponDetails = safeParseJson(order.couponDetails, null);
+  const whatsappData = safeParseJson(order.whatsappData, null);
   const customerName = order.customer
     ? `${order.customer.firstName || ""} ${order.customer.lastName || ""}`.trim()
     : (order.customerName || "").trim();
@@ -164,6 +168,7 @@ export function normalizeOrder(order, options = {}) {
     publicOrderUrl: order.orderUrl || buildPublicOrderUrl(resolveDynamicLinkId(order)),
     subtotalAmount: rawSubtotal,
     totalAmount,
+    whatsappData,
   };
 
   normalized.displayStatus = getDisplayStatus(normalized);

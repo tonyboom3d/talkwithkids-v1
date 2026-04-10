@@ -160,6 +160,15 @@ export async function markOrderLinkOpened(dynamicLinkId) {
     if (!record) return null;
     if (record.status !== 'sent') return record;
 
+    // Prevent WhatsApp / social previews from flipping the status immediately after send.
+    const wa = safeParseJson(record.whatsappData, null);
+    if (wa?.status === 'requested' && wa?.updatedAt) {
+        const ageMs = Date.now() - new Date(wa.updatedAt).getTime();
+        if (Number.isFinite(ageMs) && ageMs >= 0 && ageMs < 15000) {
+            return record;
+        }
+    }
+
     const chain = safeParseJson(record.changeChain, []);
     chain.push(createTimelineEvent('link_opened', 'קישור נפתח', 'לקוח'));
 
