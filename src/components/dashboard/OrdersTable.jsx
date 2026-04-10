@@ -28,6 +28,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  CircleAlert,
   Copy,
   CreditCard,
   MessageCircleMore,
@@ -274,6 +275,7 @@ export default function OrdersTable({
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">תאריך שליחה</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[160px]">שם לקוח</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">טלפון</TableHead>
+                        <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[90px]">וואטסאפ</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">סה"כ הזמנה</TableHead>
                   {showProfitColumn && (
                     <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">רווח עמלה</TableHead>
@@ -353,6 +355,21 @@ export default function OrdersTable({
                         <TableCell className="text-sm text-slate-600 text-right tabular-nums" dir="ltr">
                           {order.customerPhone || "—"}
                         </TableCell>
+                        <TableCell className="text-right whitespace-nowrap">
+                          {order.whatsappDeliveryStatus === "success" ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+                              <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                              נשלח
+                            </span>
+                          ) : order.whatsappDeliveryStatus === "failed" ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-red-700">
+                              <CircleAlert className="w-4 h-4" />
+                              נכשל
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm font-semibold text-slate-800 whitespace-nowrap">
                           ₪{order.totalAmount.toLocaleString("he-IL")}
                         </TableCell>
@@ -424,7 +441,7 @@ export default function OrdersTable({
 
                       {isExpanded && (
                         <TableRow className="bg-slate-50/60 hover:bg-slate-50/60">
-                          <TableCell colSpan={showProfitColumn ? 11 : 10} className="p-4">
+                          <TableCell colSpan={showProfitColumn ? 12 : 11} className="p-4">
                             <AnimatePresence initial={false}>
                               <motion.div
                                 initial={{ opacity: 0, height: 0, y: -4, scale: 0.985 }}

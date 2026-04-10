@@ -205,7 +205,7 @@ export default function Dashboard() {
       return;
     }
     const total = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
-    if (total === 0) {
+    if (total === 0 && paymentStatus !== "paid") {
       showError("מחיר ההזמנה חייב להיות גדול מ-0");
       return;
     }

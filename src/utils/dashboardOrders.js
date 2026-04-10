@@ -103,6 +103,16 @@ export function isPaidDisplayStatus(status) {
   return status === "paid" || status === "paid_pending_details" || status === "paid_completed";
 }
 
+export function resolveWhatsappDeliveryStatus(order) {
+  const direct = String(order?.whatsappLastStatus || "").trim().toLowerCase();
+  if (direct === "success" || direct === "failed") return direct;
+
+  const timeline = Array.isArray(order?.timeline) ? order.timeline : safeParseJson(order?.changeChain, []);
+  if (timeline.some((event) => (event.action || event.type) === "whatsapp_sent_success")) return "success";
+  if (timeline.some((event) => (event.action || event.type) === "whatsapp_sent_failed")) return "failed";
+  return "";
+}
+
 /**
  * @param {object} order
  * @param {{ commissionRate?: number }} [options] - עמלה: אחוז מה־AuthorizedEmployees; רווח = סכום הזמנה * (אחוז/100) להזמנות ששולמו
@@ -159,6 +169,7 @@ export function normalizeOrder(order, options = {}) {
   normalized.displayStatus = getDisplayStatus(normalized);
   normalized.statusCfg = STATUS_CONFIG[normalized.displayStatus] || STATUS_CONFIG.sent;
   normalized.couponSummary = getCouponSummary(couponDetails);
+  normalized.whatsappDeliveryStatus = resolveWhatsappDeliveryStatus(normalized);
 
   const paidForCommission = isPaidDisplayStatus(normalized.displayStatus);
   normalized.profitPercent = paidForCommission ? commissionRate : null;
