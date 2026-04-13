@@ -7,9 +7,10 @@
 | orderNumber | מספר הזמנה | Text | Wix Order Number לאחר אישור תשלום |
 | deliveryNumber | מספר משלוח | Text | מספר המשלוח מתפוז לאחר קליטת שילוח |
 | checkoutId | מזהה צ'קאאוט | Text | From Wix Ecom |
-| status | סטטוס | Text | sent/opened/unpaid/cancelled/error/paid/paid_pending_details/paid_completed |
+| status | סטטוס | Text | sent/opened/unpaid/cancelled/error/paid/paid_partial/paid_pending_details/paid_completed |
 | createdByRef | נוצר ע"י | Reference -> AuthorizedEmployees | |
 | paymentMethod | אופן תשלום | Text | ביט/פייבוקס/הוראת קבע/העברה בנקאית/קארדקום/וויקס |
+| partialPaidAmount | סכום ששולם חלקית | Number | נשמר כששולם חלק מהסכום מראש |
 | products | מוצרים | Text | JSON array |
 | totalPrice | מחיר סה"כ | Number | |
 | couponId | מזהה קופון | Text | |
@@ -32,6 +33,7 @@
 
 **State transitions**
 - `sent` -> `opened` כאשר הלקוח/ה נכנס/ת לקישור הציבורי.
+- `paid_partial` -> `paid` לאחר השלמת יתרת התשלום.
 - `paid_pending_details` -> `paid_completed` לאחר אישור תשלום.
 - כל תשלום מוצלח אחר -> `paid`.
 

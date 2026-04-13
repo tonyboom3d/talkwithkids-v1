@@ -174,6 +174,11 @@ async function handleIframeMessage(data) {
         break;
       }
 
+      case 'SCROLL_TO_TOP': {
+        await $w('#up').scrollTo();
+        break;
+      }
+
       default:
         console.warn(`${LOG_PREFIX} Unknown action: ${action}`);
         sendToIframe('ERROR', { code: 'UNKNOWN_ACTION', message: `Unknown action: ${action}`, action }, requestId);

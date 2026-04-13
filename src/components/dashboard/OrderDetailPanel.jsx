@@ -88,6 +88,11 @@ export default function OrderDetailPanel({ order, onClose, onAddNote, onCancelLi
   const orderProducts = order.products ? (typeof order.products === 'string' ? JSON.parse(order.products) : order.products) : [];
   const couponDetails = safeParseJson(order.couponDetails, null);
   const rawSubtotal = Number(order.totalPrice ?? order.total ?? 0);
+  const partialPaidAmount = Math.max(
+    0,
+    Number(order.partialPaidAmount ?? couponDetails?.paidAmount ?? couponDetails?.value ?? 0) || 0
+  );
+  const isPartialPayment = order.status === "paid_partial";
   const orderTotal =
     order.totalAmount != null && Number.isFinite(Number(order.totalAmount))
       ? Number(order.totalAmount)
@@ -193,13 +198,24 @@ export default function OrderDetailPanel({ order, onClose, onAddNote, onCancelLi
           <div className="space-y-3">
             <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">סטטוס תשלום</h4>
             <Badge className={`text-sm py-1.5 px-4 border-0 ${
-              order.status === 'paid' || order.paymentStatus === "paid"
+              isPartialPayment
+                ? "bg-orange-100 text-orange-700"
+                : order.status === 'paid' || order.paymentStatus === "paid"
                 ? "bg-emerald-100 text-emerald-700"
                 : "bg-amber-100 text-amber-700"
             }`}>
               <CreditCard className="w-4 h-4 ml-2" />
-              {order.status === 'paid' || order.paymentStatus === "paid" ? "שולם" : "לא שולם"}
+              {isPartialPayment
+                ? "שולמה חלקית"
+                : order.status === 'paid' || order.paymentStatus === "paid"
+                  ? "שולם"
+                  : "לא שולם"}
             </Badge>
+            {isPartialPayment && partialPaidAmount > 0 && (
+              <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800 text-right">
+                שולם מראש: ₪{partialPaidAmount.toLocaleString("he-IL")} | יתרה לתשלום: ₪{orderTotal.toLocaleString("he-IL")}
+              </div>
+            )}
           </div>
 
           {/* Payment Link */}

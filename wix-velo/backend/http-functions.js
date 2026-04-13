@@ -126,9 +126,24 @@ function buildPayload(request, body = {}) {
         paymentLink: firstDefinedValue(
             body.paymentLink,
             body.payment_link,
+            body.dynamic_payment_link,
+            body.dynamicPaymentLink,
+            body.link,
             q.paymentLink,
             q.payment_link,
-            getHeaderValue(headers, 'paymentLink', 'paymentlink', 'payment_link')
+            q.dynamic_payment_link,
+            q.dynamicPaymentLink,
+            q.link,
+            getHeaderValue(headers, 'paymentLink', 'paymentlink', 'payment_link', 'dynamic_payment_link', 'dynamicpaymentlink', 'link')
+        ) || '',
+        dynamicLinkId: firstDefinedValue(
+            body.dynamicLinkId,
+            body.dynamic_link_id,
+            body.dynamicId,
+            q.dynamicLinkId,
+            q.dynamic_link_id,
+            q.dynamicId,
+            getHeaderValue(headers, 'dynamicLinkId', 'dynamiclinkid', 'dynamic_link_id', 'dynamicid')
         ) || '',
         ...(success !== undefined ? { success } : {}),
         ...(okVal !== undefined ? { ok: okVal } : {}),
@@ -154,6 +169,18 @@ function buildPayload(request, body = {}) {
             name: firstDefinedValue(body.contact?.name, body.contactName, body.name, q.contactName, q.name, getHeaderValue(headers, 'contactName', 'contactname', 'name')) || '',
             email: firstDefinedValue(body.contact?.email, body.contactEmail, body.email, q.contactEmail, q.email, getHeaderValue(headers, 'contactEmail', 'contactemail', 'email')) || '',
             phone: firstDefinedValue(body.contact?.phone, body.contactPhone, body.phone, q.contactPhone, q.phone, getHeaderValue(headers, 'contactPhone', 'contactphone', 'phone')) || '',
+            dynamicPaymentLink: firstDefinedValue(
+                body.contact?.dynamic_payment_link,
+                body.contact?.dynamicPaymentLink,
+                body.contact?.paymentLink,
+                body.contact?.payment_link,
+                body.contact?.link
+            ) || '',
+            dynamicLinkId: firstDefinedValue(
+                body.contact?.dynamicLinkId,
+                body.contact?.dynamic_link_id,
+                body.contact?.dynamicId
+            ) || '',
         },
     };
 }
@@ -176,8 +203,17 @@ async function isAuthorized(request) {
 }
 
 async function processWhatsappCallback(payload) {
-    const paymentLink = payload?.paymentLink || payload?.contact?.dynamic_payment_link || '';
-    const dynamicLinkId = extractDynamicLinkIdFromPaymentLink(paymentLink);
+    const paymentLink = String(
+        payload?.paymentLink
+        || payload?.contact?.dynamicPaymentLink
+        || ''
+    ).trim();
+    const dynamicLinkId = String(
+        payload?.dynamicLinkId
+        || payload?.contact?.dynamicLinkId
+        || extractDynamicLinkIdFromPaymentLink(paymentLink)
+        || ''
+    ).trim();
 
     if (!dynamicLinkId) {
         return {

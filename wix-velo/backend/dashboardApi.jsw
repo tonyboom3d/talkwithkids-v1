@@ -21,7 +21,7 @@ import { products } from 'wix-stores.v2';
 export { searchContactsByQuery, searchStoreCoupons };
 
 const LOG_PREFIX = '[VELO-BE]';
-const UPDATABLE_ORDER_STATUSES = new Set(['sent', 'opened', 'paid_pending_details', 'paid_completed', 'paid', 'cancelled']);
+const UPDATABLE_ORDER_STATUSES = new Set(['sent', 'opened', 'paid_partial', 'paid_pending_details', 'paid_completed', 'paid', 'cancelled']);
 
 /** LeadConnector — אחרי יצירת checkout + רשומת CMS */
 const DASHBOARD_CHECKOUT_WEBHOOK_URL =
@@ -80,6 +80,7 @@ function getStatusLabel(status) {
     const labels = {
         sent: 'נשלח',
         opened: 'נפתח',
+        paid_partial: 'שולמה חלקית',
         paid_pending_details: 'שולמה - לא הושלמה',
         paid_completed: 'שולמה - הושלמה',
         paid: 'שולם',
@@ -253,6 +254,9 @@ function formatPublicCouponDetails(couponDetails) {
     if (couponDetails.source === 'auto_paid') {
         return '100% הנחה - ההזמנה כבר שולמה';
     }
+    if (couponDetails.source === 'partial_paid') {
+        return `שולם מראש ₪${Number(couponDetails.paidAmount || couponDetails.value || 0).toLocaleString('he-IL')}`;
+    }
     if (couponDetails.source === 'existing') {
         return couponDetails.code ? `קוד קופון: ${couponDetails.code}` : 'קופון הנחה קיים';
     }
@@ -272,6 +276,13 @@ function formatPublicCouponDetails(couponDetails) {
 
 function getPublicStatusConfig(status, paymentLink) {
     switch (normalizeOrderStatus(status)) {
+    case 'paid_partial':
+        return {
+            text: 'ההזמנה שולמה חלקית. נותר להשלים את היתרה דרך הקישור.',
+            tone: 'info',
+            ctaLabel: paymentLink ? 'השלימי את יתרת התשלום >>' : '',
+            canContinue: !!paymentLink,
+        };
     case 'paid_pending_details':
         return {
             text: 'הזמנה שולמה ממתין להשלמת פרטי לקוח',
@@ -533,10 +544,34 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
     let couponDetailsObj = null;
     let existingStoreCouponMapped = null;
     const isMarkedPaid = orderData.paymentStatus === 'paid';
-    const initialStatus = isMarkedPaid ? 'paid_pending_details' : 'sent';
     const orderSubtotal = Math.max(0, Number(orderData.totalPrice) || 0);
+    const requestedPartialPaidAmount = Number(orderData.partialPayment?.amountPaid);
+    const hasPartialPaymentInput = orderData.partialPayment?.amountPaid != null && orderData.partialPayment?.amountPaid !== '';
+    if (isMarkedPaid && hasPartialPaymentInput) {
+        if (!Number.isFinite(requestedPartialPaidAmount) || requestedPartialPaidAmount <= 0 || requestedPartialPaidAmount >= orderSubtotal) {
+            throw new Error('הסכום ששולם חלקית חייב להיות גדול מ-0 וקטן מסכום ההזמנה');
+        }
+    }
+    const isPartiallyPaid = (
+        isMarkedPaid
+        && Number.isFinite(requestedPartialPaidAmount)
+        && requestedPartialPaidAmount > 0
+        && requestedPartialPaidAmount < orderSubtotal
+    );
+    const initialStatus = isPartiallyPaid ? 'paid_partial' : isMarkedPaid ? 'paid_pending_details' : 'sent';
 
-    if (isMarkedPaid) {
+    if (isPartiallyPaid) {
+        couponResult = await createOrderCoupon('fixed', requestedPartialPaidAmount);
+        couponDetailsObj = {
+            source: 'partial_paid',
+            type: 'fixed',
+            value: requestedPartialPaidAmount,
+            paidAmount: requestedPartialPaidAmount,
+            remainingAmount: Math.max(0, orderSubtotal - requestedPartialPaidAmount),
+            code: couponResult.code,
+        };
+        console.log(`${LOG_PREFIX} Auto-created partial payment coupon for paid amount: ${requestedPartialPaidAmount}`);
+    } else if (isMarkedPaid) {
         couponResult = await createOrderCoupon('percent', 100);
         couponDetailsObj = {
             source: 'auto_paid',
@@ -598,6 +633,7 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
         createdByRef: employeeId,
         createdByName: employeeName || '',
         paymentMethod: orderData.paymentTag || '',
+        partialPaidAmount: isPartiallyPaid ? requestedPartialPaidAmount : 0,
         products: JSON.stringify(orderData.products),
         totalPrice: orderData.totalPrice,
         couponId: couponResult?.couponId || '',
@@ -609,7 +645,9 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
                 action: 'created',
                 by: employeeName || employeeId,
                 date: new Date().toISOString(),
-                detail: isMarkedPaid
+                detail: isPartiallyPaid
+                    ? `ההזמנה סומנה כששולמה חלקית. שולם מראש ₪${requestedPartialPaidAmount.toLocaleString('he-IL')}`
+                    : isMarkedPaid
                     ? 'הזמנה סומנה כשולמה וממתינה להשלמת פרטים דרך הקישור'
                     : 'הזמנה נוצרה',
             }

@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -21,9 +22,12 @@ import ProductSelector from "../components/dashboard/ProductSelector";
 import StoreCouponPicker from "../components/dashboard/StoreCouponPicker";
 import OrdersTable from "../components/dashboard/OrdersTable";
 import OrderDetailPanel from "../components/dashboard/OrderDetailPanel";
+import EmployeeFilterField from "../components/dashboard/EmployeeFilterField";
 import { useAuth } from "@/lib/IframeAuthContext";
 import { usePostMessage, usePostMessageListener } from "@/hooks/usePostMessage";
+import { useScrollToTopOnOpen } from "@/hooks/useScrollToTopOnOpen";
 import { buildPublicOrderUrl } from "@/utils/dashboardOrders";
+import { buildCreatorOptions, filterOrdersByCreators } from "@/utils/orderCreatorFilter";
 import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
 
 const DASHBOARD_ORDERS_REFRESH_KEY = "twk_dashboard_orders_last_refresh";
@@ -124,6 +128,8 @@ export default function Dashboard() {
   const [lastRefreshedAt, setLastRefreshedAt] = useState(() => readSessionRefresh(DASHBOARD_ORDERS_REFRESH_KEY));
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [paymentTag, setPaymentTag] = useState("");
+  const [isPartialPayment, setIsPartialPayment] = useState(false);
+  const [partialPaidAmount, setPartialPaidAmount] = useState("");
   const [couponEnabled, setCouponEnabled] = useState(false);
   /** "create" = יצירת קופון חדש; "existing" = בחירת קופון מהחנות (רק אחד) */
   const [couponMode, setCouponMode] = useState("create");
@@ -132,6 +138,20 @@ export default function Dashboard() {
   const [validationError, setValidationError] = useState("");
   const [createdOrderState, setCreatedOrderState] = useState(null);
   const [isConfirmingSend, setIsConfirmingSend] = useState(false);
+  const [includeAllCreators, setIncludeAllCreators] = useState(true);
+  const [selectedCreatorKeys, setSelectedCreatorKeys] = useState(() => new Set());
+
+  const creatorOptions = useMemo(() => buildCreatorOptions(orders), [orders]);
+  const visibleOrders = useMemo(
+    () => filterOrdersByCreators(orders, canViewOthers, includeAllCreators, selectedCreatorKeys),
+    [orders, canViewOthers, includeAllCreators, selectedCreatorKeys]
+  );
+  const selectedProductsTotal = useMemo(
+    () => selectedProducts.reduce((sum, product) => sum + product.price * product.quantity, 0),
+    [selectedProducts]
+  );
+
+  useScrollToTopOnOpen(Boolean(createdOrderState));
 
   const loadOrders = useCallback(async () => {
     setIsLoadingOrders(true);
@@ -162,12 +182,37 @@ export default function Dashboard() {
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
   useEffect(() => {
-    if (paymentStatus !== "paid") return;
+    if (paymentStatus !== "paid") {
+      setIsPartialPayment(false);
+      setPartialPaidAmount("");
+      return;
+    }
     setCouponEnabled(false);
     setCouponMode("create");
     setSelectedStoreCoupon(null);
     setCouponValue("");
   }, [paymentStatus]);
+
+  useEffect(() => {
+    if (!isPartialPayment) return;
+    if (selectedProductsTotal <= 0) {
+      setIsPartialPayment(false);
+      setPartialPaidAmount("");
+      return;
+    }
+    const numericPartial = Number(partialPaidAmount);
+    if (Number.isFinite(numericPartial) && numericPartial >= selectedProductsTotal) {
+      setPartialPaidAmount(String(Math.max(0, selectedProductsTotal - 1)));
+    }
+  }, [isPartialPayment, partialPaidAmount, selectedProductsTotal]);
+
+  useEffect(() => {
+    if (!canViewOthers || creatorOptions.length === 0) return;
+    setSelectedCreatorKeys((prev) => {
+      if (prev.size > 0) return prev;
+      return new Set(creatorOptions.map((creator) => creator.id));
+    });
+  }, [canViewOthers, creatorOptions]);
 
   usePostMessageListener('ORDER_STATUS_UPDATED', (payload) => {
     setOrders(prev => prev.map(o =>
@@ -204,10 +249,21 @@ export default function Dashboard() {
       showError("יש לבחור לפחות מוצר אחד");
       return;
     }
-    const total = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
+    const total = selectedProductsTotal;
     if (total === 0 && paymentStatus !== "paid") {
       showError("מחיר ההזמנה חייב להיות גדול מ-0");
       return;
+    }
+    if (paymentStatus === "paid" && isPartialPayment) {
+      const partialAmount = Number(partialPaidAmount);
+      if (!String(partialPaidAmount).trim()) {
+        showError("יש למלא כמה מתוך סכום ההזמנה כבר שולם");
+        return;
+      }
+      if (!Number.isFinite(partialAmount) || partialAmount <= 0 || partialAmount >= total) {
+        showError("הסכום ששולם חלקית חייב להיות גדול מ-0 וקטן מסכום ההזמנה");
+        return;
+      }
     }
     if (paymentStatus === "paid" && !paymentTag) {
       showError("יש לבחור אופן תשלום עבור הזמנה ששולמה");
@@ -279,6 +335,9 @@ export default function Dashboard() {
         orderChanges,
         paymentStatus,
         paymentTag: paymentStatus === 'paid' ? paymentTag : '',
+        partialPayment: paymentStatus === "paid" && isPartialPayment
+          ? { amountPaid: Number(partialPaidAmount) }
+          : null,
         totalPrice: total,
       });
 
@@ -308,6 +367,8 @@ export default function Dashboard() {
     setNotes("");
     setOrderChanges("");
     setPaymentTag("");
+    setIsPartialPayment(false);
+    setPartialPaidAmount("");
     setCouponEnabled(false);
     setCouponMode("create");
     setSelectedStoreCoupon(null);
@@ -589,7 +650,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, delay: 0.22 }}
-              className="space-y-3"
+              className="space-y-2"
             >
               <button
                 type="button"
@@ -626,7 +687,7 @@ export default function Dashboard() {
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                   >
-                    <div className="bg-violet-50/60 border border-violet-100 rounded-xl p-4 space-y-3">
+                    <div className="bg-violet-50/60 border border-violet-100 rounded-xl p-4 space-y-2">
                       <div className="flex flex-wrap gap-2" dir="rtl">
                         <button
                           type="button"
@@ -657,7 +718,7 @@ export default function Dashboard() {
                         />
                       ) : (
                         <>
-                          <div dir="rtl" className="flex w-full items-center justify-start gap-2 text-right">
+                          <div dir="rtl" className="flex w-full items-center justify-start gap-1.5 text-right">
                             <span className="text-xs font-medium text-slate-700">הסכום לתשלום</span>
                             <span
                               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-violet-200 bg-violet-50 text-sm font-bold text-violet-800"
@@ -671,7 +732,7 @@ export default function Dashboard() {
                             const customCoupon = parseCustomPayAmount(couponValue, total);
                             return (
                               <>
-                                <div dir="rtl" className="flex w-full items-center justify-start gap-2">
+                                <div dir="rtl" className="flex w-full items-center justify-start gap-1.5">
                                   <Input
                                     type="number"
                                     min="0"
@@ -779,6 +840,67 @@ export default function Dashboard() {
                 className="overflow-hidden"
               >
                 <div className="space-y-3">
+                  <label className="flex cursor-pointer items-center justify-end gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
+                    <span>שולמה חלקית</span>
+                    <Checkbox
+                      checked={isPartialPayment}
+                      onCheckedChange={(checked) => {
+                        const nextChecked = checked === true;
+                        setIsPartialPayment(nextChecked);
+                        if (!nextChecked) {
+                          setPartialPaidAmount("");
+                        }
+                      }}
+                    />
+                  </label>
+
+                  <AnimatePresence>
+                    {isPartialPayment && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="space-y-2 rounded-xl border border-orange-200 bg-orange-50/70 px-4 py-3">
+                          <Label className="block text-right text-sm font-medium text-slate-700">
+                            כמה מתוך סכום ההזמנה שולם
+                          </Label>
+                          <div className="flex items-center gap-2" dir="rtl">
+                            <Input
+                              type="number"
+                              min="0"
+                              max={Math.max(0, selectedProductsTotal - 0.01)}
+                              step="0.01"
+                              value={partialPaidAmount}
+                              onChange={(e) => setPartialPaidAmount(e.target.value)}
+                              placeholder="סכום ששולם"
+                              className="h-10 text-right"
+                              dir="ltr"
+                            />
+                            <span className="text-sm font-semibold text-slate-600">₪</span>
+                          </div>
+                          {(() => {
+                            const partialAmount = Number(partialPaidAmount);
+                            if (!Number.isFinite(partialAmount) || partialAmount <= 0 || partialAmount >= selectedProductsTotal) {
+                              return (
+                                <p className="text-xs text-orange-700">
+                                  יש להזין סכום גדול מ-0 וקטן מ-₪{selectedProductsTotal.toLocaleString("he-IL")}
+                                </p>
+                              );
+                            }
+                            const remainingAmount = Math.max(0, selectedProductsTotal - partialAmount);
+                            return (
+                              <p className="text-xs text-orange-800">
+                                שולם מראש: ₪{partialAmount.toLocaleString("he-IL")} | יתרה לשליחה בקישור: ₪{remainingAmount.toLocaleString("he-IL")}
+                              </p>
+                            );
+                          })()}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <div className="flex items-center gap-2">
                     <Tag className="w-[18px] h-[18px] text-slate-400" />
                     <Label className="text-sm font-medium text-slate-700">אמצעי תשלום</Label>
@@ -914,8 +1036,31 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Orders Table */}
+        {canViewOthers && creatorOptions.length > 0 && (
+          <EmployeeFilterField
+            creatorOptions={creatorOptions}
+            includeAllCreators={includeAllCreators}
+            selectedCreatorKeys={selectedCreatorKeys}
+            onIncludeAllChange={(checked) => {
+              setIncludeAllCreators(checked);
+              if (checked) {
+                setSelectedCreatorKeys(new Set(creatorOptions.map((creator) => creator.id)));
+              }
+            }}
+            onToggleCreator={(creatorId, checked) => {
+              setIncludeAllCreators(false);
+              setSelectedCreatorKeys((prev) => {
+                const next = new Set(prev);
+                if (checked) next.add(creatorId);
+                else next.delete(creatorId);
+                return next;
+              });
+            }}
+          />
+        )}
+
         <OrdersTable
-          orders={orders}
+          orders={visibleOrders}
           isLoading={isLoadingOrders}
           onRefresh={loadOrders}
           lastRefreshedAt={lastRefreshedAt}

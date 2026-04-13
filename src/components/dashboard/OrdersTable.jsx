@@ -43,6 +43,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { TableSkeleton } from "./LoadingSkeleton";
+import { useScrollToTopOnOpen } from "@/hooks/useScrollToTopOnOpen";
 import {
   normalizeOrder,
   STATUS_CONFIG,
@@ -52,6 +53,9 @@ import {
 import { creatorTagStyleFromColor } from "@/utils/employeeTagStyle";
 
 const PAGE_SIZE = 8;
+const TOP_DIALOG_CONTENT_CLASSNAME =
+  "max-w-md top-4 left-[50%] max-h-[min(90vh,calc(100dvh-1rem))] translate-x-[-50%] translate-y-0 overflow-y-auto sm:top-6";
+
 function timelineDotClass(action) {
   switch (action) {
     case "paid":
@@ -129,6 +133,8 @@ export default function OrdersTable({
     () => (orders || []).map((order) => normalizeOrder(order, { commissionRate })),
     [orders, commissionRate]
   );
+
+  useScrollToTopOnOpen(Boolean(statusOrder) || Boolean(resendConfirmOrder) || Boolean(deleteOrderState));
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -215,6 +221,34 @@ export default function OrdersTable({
     });
   };
 
+  const renderPaidAmountCell = (order) => {
+    if (order.partialPaidAmount > 0) {
+      return (
+        <div className="text-right whitespace-nowrap">
+          <div className="text-sm font-semibold text-orange-700">
+            ₪{order.partialPaidAmount.toLocaleString("he-IL")}
+          </div>
+          <div className="text-[11px] text-slate-400">
+            יתרה: ₪{(order.remainingPaymentAmount ?? 0).toLocaleString("he-IL")}
+          </div>
+        </div>
+      );
+    }
+
+    if (isPaidDisplayStatus(order.displayStatus)) {
+      const fullyPaidAmount = order.couponDetails?.source === "auto_paid"
+        ? order.subtotalAmount
+        : order.totalAmount;
+      return (
+        <span className="text-sm font-semibold text-emerald-700 whitespace-nowrap">
+          ₪{fullyPaidAmount.toLocaleString("he-IL")}
+        </span>
+      );
+    }
+
+    return <span className="text-xs text-slate-400">—</span>;
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -283,6 +317,7 @@ export default function OrdersTable({
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">טלפון</TableHead>
                         <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[90px]">וואטסאפ</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">סה"כ הזמנה</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">שולם בפועל</TableHead>
                   {showProfitColumn && (
                     <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">רווח עמלה</TableHead>
                   )}
@@ -384,6 +419,9 @@ export default function OrdersTable({
                         <TableCell className="text-sm font-semibold text-slate-800 whitespace-nowrap">
                           ₪{order.totalAmount.toLocaleString("he-IL")}
                         </TableCell>
+                        <TableCell className="text-right whitespace-nowrap">
+                          {renderPaidAmountCell(order)}
+                        </TableCell>
                         {showProfitColumn && (
                           <TableCell className="text-right whitespace-nowrap">
                             {isPaidDisplayStatus(order.displayStatus) ? (
@@ -452,7 +490,7 @@ export default function OrdersTable({
 
                       {isExpanded && (
                         <TableRow className="bg-slate-50/60 hover:bg-slate-50/60">
-                          <TableCell colSpan={showProfitColumn ? 12 : 11} className="p-4">
+                          <TableCell colSpan={showProfitColumn ? 13 : 12} className="p-4">
                             <AnimatePresence initial={false}>
                               <motion.div
                                 initial={{ opacity: 0, height: 0, y: -4, scale: 0.985 }}
@@ -549,6 +587,28 @@ export default function OrdersTable({
                                             {order.statusCfg.label}
                                           </Badge>
                                         </div>
+                                        {order.partialPaidAmount > 0 && (
+                                          <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5 text-right">
+                                            <div className="mb-1 flex items-center justify-end gap-2 text-xs text-orange-700">
+                                              <CreditCard className="w-3.5 h-3.5" />
+                                              <span>שולם מראש</span>
+                                            </div>
+                                            <p className="text-sm font-semibold text-orange-800">
+                                              ₪{order.partialPaidAmount.toLocaleString("he-IL")}
+                                            </p>
+                                          </div>
+                                        )}
+                                        {order.partialPaidAmount > 0 && (
+                                          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
+                                            <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
+                                              <CreditCard className="w-3.5 h-3.5" />
+                                              <span>יתרה לתשלום</span>
+                                            </div>
+                                            <p className="text-sm font-semibold text-slate-700">
+                                              ₪{(order.remainingPaymentAmount ?? 0).toLocaleString("he-IL")}
+                                            </p>
+                                          </div>
+                                        )}
                                         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
                                           <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
                                             <UserRound className="w-3.5 h-3.5" />
@@ -756,7 +816,7 @@ export default function OrdersTable({
       )}
 
       <Dialog open={Boolean(statusOrder)} onOpenChange={(open) => !open && setStatusOrder(null)}>
-        <DialogContent dir="rtl" className="max-w-md">
+        <DialogContent dir="rtl" className={TOP_DIALOG_CONTENT_CLASSNAME}>
           <DialogHeader className="text-right">
             <DialogTitle className="text-right">שינוי סטטוס הזמנה</DialogTitle>
             <DialogDescription className="text-right">
@@ -803,7 +863,7 @@ export default function OrdersTable({
         open={Boolean(resendConfirmOrder)}
         onOpenChange={(open) => !open && busyAction.type !== "resend" && setResendConfirmOrder(null)}
       >
-        <DialogContent dir="rtl" className="max-w-md">
+        <DialogContent dir="rtl" className={TOP_DIALOG_CONTENT_CLASSNAME}>
           <DialogHeader className="text-right">
             <DialogTitle className="text-right">שליחה חוזרת לוואטסאפ</DialogTitle>
             <DialogDescription className="text-right leading-relaxed">
@@ -845,7 +905,7 @@ export default function OrdersTable({
       </Dialog>
 
       <Dialog open={Boolean(deleteOrderState)} onOpenChange={(open) => !open && setDeleteOrderState(null)}>
-        <DialogContent dir="rtl" className="max-w-md">
+        <DialogContent dir="rtl" className={TOP_DIALOG_CONTENT_CLASSNAME}>
           <DialogHeader className="text-right">
             <DialogTitle className="text-right">ביטול הזמנה</DialogTitle>
             <DialogDescription className="text-right">

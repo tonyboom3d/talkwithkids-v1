@@ -8,6 +8,10 @@ const STATUS_ALIASES = new Map([
     ['נשלח', 'sent'],
     ['opened', 'opened'],
     ['נפתח', 'opened'],
+    ['paid_partial', 'paid_partial'],
+    ['paid-partial', 'paid_partial'],
+    ['שולמה חלקית', 'paid_partial'],
+    ['שולם חלקית', 'paid_partial'],
     ['paid', 'paid'],
     ['שולם', 'paid'],
     ['שולמה', 'paid'],
@@ -198,16 +202,25 @@ export async function markOrderLinkOpened(dynamicLinkId) {
     if (!record) return null;
     if (normalizeOrderStatus(record.status) !== 'sent') return record;
 
-    // Prevent WhatsApp / social previews from flipping the status immediately after send.
+    // Prevent WhatsApp / social previews from flipping status to "opened"
+    // before we have delivery confirmation from WhatsApp callback.
     const wa = safeParseJson(record.whatsappData, null);
-    if (wa?.status === 'requested' && wa?.updatedAt) {
-        const ageMs = Date.now() - new Date(wa.updatedAt).getTime();
-        if (Number.isFinite(ageMs) && ageMs >= 0 && ageMs < 15000) {
-            return record;
-        }
+    const waStatus = String(wa?.status || '').trim().toLowerCase();
+    if (waStatus && waStatus !== 'success') {
+        return record;
     }
 
+    // Fallback guard for older records where whatsappData is missing/invalid.
     const chain = safeParseJson(record.changeChain, []);
+    const hasPendingWhatsappEvent = chain.some((event) => (event.action || event.type) === 'whatsapp_pending');
+    const hasResolvedWhatsappEvent = chain.some((event) => {
+        const action = event.action || event.type;
+        return action === 'whatsapp_sent_success' || action === 'whatsapp_sent_failed';
+    });
+    if (!waStatus && hasPendingWhatsappEvent && !hasResolvedWhatsappEvent) {
+        return record;
+    }
+
     chain.push(createTimelineEvent('link_opened', 'קישור נפתח', 'לקוח'));
 
     const updatedRecord = await wixData.update('DashboardOrders', {

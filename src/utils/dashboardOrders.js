@@ -8,16 +8,18 @@ export const STATUS_CONFIG = {
   unpaid: { label: "לא שולם", className: "bg-red-100 text-red-700" },
   cancelled: { label: "בוטל", className: "bg-red-100 text-red-700" },
   error: { label: "שגיאה", className: "bg-red-100 text-red-700" },
+  paid_partial: { label: "שולמה חלקית", className: "bg-orange-100 text-orange-700" },
   paid_pending_details: { label: "שולמה - לא הושלמה", className: "bg-violet-100 text-violet-700" },
   paid_completed: { label: "שולמה - הושלמה", className: "bg-emerald-100 text-emerald-700" },
   paid: { label: "שולם", className: "bg-emerald-100 text-emerald-700" },
 };
 
-export const STATUS_UPDATE_OPTIONS = ["sent", "opened", "paid_pending_details", "paid_completed", "paid", "cancelled"];
+export const STATUS_UPDATE_OPTIONS = ["sent", "opened", "paid_partial", "paid_pending_details", "paid_completed", "paid", "cancelled"];
 
 export const SALES_STATUS_FILTERS = [
   "sent",
   "opened",
+  "paid_partial",
   "paid_pending_details",
   "paid_completed",
   "paid",
@@ -66,6 +68,9 @@ export function getCouponSummary(couponDetails) {
   if (couponDetails.source === "auto_paid") {
     return "שולם מראש - קופון 100% להשלמת פרטים";
   }
+  if (couponDetails.source === "partial_paid") {
+    return `שולם מראש: ₪${Number(couponDetails.paidAmount || couponDetails.value || 0).toLocaleString("he-IL")}`;
+  }
   if (couponDetails.source === "existing") {
     return couponDetails.code ? `קופון קיים: ${couponDetails.code}` : "קופון קיים מהחנות";
   }
@@ -101,6 +106,22 @@ export function buildPublicOrderUrl(dynamicLinkId) {
 
 export function isPaidDisplayStatus(status) {
   return status === "paid" || status === "paid_pending_details" || status === "paid_completed";
+}
+
+function resolvePartialPaidAmount(order, couponDetails, subtotal) {
+  const directValue = Number(order?.partialPaidAmount);
+  if (Number.isFinite(directValue) && directValue > 0) {
+    return Math.min(Math.max(0, directValue), subtotal);
+  }
+
+  if (couponDetails?.source === "partial_paid") {
+    const couponValue = Number(couponDetails.paidAmount ?? couponDetails.value);
+    if (Number.isFinite(couponValue) && couponValue > 0) {
+      return Math.min(Math.max(0, couponValue), subtotal);
+    }
+  }
+
+  return 0;
 }
 
 export function resolveWhatsappDeliveryStatus(order) {
@@ -147,6 +168,7 @@ export function normalizeOrder(order, options = {}) {
 
   const rawSubtotal = Number(order.totalPrice ?? order.total ?? 0);
   const totalAmount = computeDisplayTotalAfterCoupon(rawSubtotal, couponDetails);
+  const partialPaidAmount = resolvePartialPaidAmount(order, couponDetails, rawSubtotal);
   const commissionRate = Math.max(0, Number(options.commissionRate) || 0);
 
   const normalized = {
@@ -167,6 +189,8 @@ export function normalizeOrder(order, options = {}) {
     publicOrderUrl: order.orderUrl || buildPublicOrderUrl(resolveDynamicLinkId(order)),
     subtotalAmount: rawSubtotal,
     totalAmount,
+    partialPaidAmount,
+    remainingPaymentAmount: Math.max(0, totalAmount),
     whatsappData,
   };
 

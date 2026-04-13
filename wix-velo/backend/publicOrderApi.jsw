@@ -22,6 +22,9 @@ function formatPublicCouponDetails(couponDetails) {
     if (couponDetails.source === 'auto_paid') {
         return '100% הנחה - ההזמנה כבר שולמה';
     }
+    if (couponDetails.source === 'partial_paid') {
+        return `שולם מראש ₪${Number(couponDetails.paidAmount || couponDetails.value || 0).toLocaleString('he-IL')}`;
+    }
     if (couponDetails.source === 'existing') {
         return couponDetails.code ? `קוד קופון: ${couponDetails.code}` : 'קופון הנחה קיים';
     }
@@ -40,6 +43,13 @@ function formatPublicCouponDetails(couponDetails) {
 function getPublicStatusConfig(status, paymentLink) {
     const normalizedStatus = normalizeOrderStatus(status);
     switch (normalizedStatus) {
+    case 'paid_partial':
+        return {
+            text: 'ההזמנה שולמה חלקית. נותר להשלים את יתרת התשלום.',
+            tone: 'info',
+            ctaLabel: paymentLink ? 'המשיכי לתשלום יתרה >>' : '',
+            canContinue: !!paymentLink,
+        };
     case 'paid_pending_details':
         return {
             text: 'הזמנה שולמה ממתין להשלמת פרטי לקוח',

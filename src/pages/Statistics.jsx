@@ -17,19 +17,16 @@ import {
   Scatter,
   CartesianGrid,
 } from "recharts";
-import { TrendingUp, ShoppingBag, CreditCard, Percent, Users, ChevronDown, Loader2, CircleDot } from "lucide-react";
+import { TrendingUp, ShoppingBag, CreditCard, Percent, Loader2, CircleDot } from "lucide-react";
 import moment from "moment";
 import DateRangePicker from "../components/dashboard/DateRangePicker";
+import EmployeeFilterField from "../components/dashboard/EmployeeFilterField";
 import { useAuth } from "@/lib/IframeAuthContext";
 import { usePostMessage } from "@/hooks/usePostMessage";
 import { toast } from "sonner";
 import { normalizeOrder, isPaidDisplayStatus } from "@/utils/dashboardOrders";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
+import { buildCreatorOptions, filterOrdersByCreators } from "@/utils/orderCreatorFilter";
 
 const DEMO_USER_NAME = "שרה מ.";
 
@@ -64,19 +61,6 @@ function PaymentStatusLegend({ payload }) {
       })}
     </div>
   );
-}
-
-function creatorKey(order) {
-  const ref = order.createdByRef != null && String(order.createdByRef).trim() !== ""
-    ? String(order.createdByRef).trim()
-    : "";
-  const name = String(order.creatorName || "").trim();
-  return ref || name || "__none__";
-}
-
-function creatorLabel(order) {
-  const name = String(order.creatorName || "").trim();
-  return name || "לא ידוע";
 }
 
 /** סכום שורת מוצר (מחיר יחידה × כמות) — לחלוקת רווח עמלה יחסית */
@@ -147,16 +131,7 @@ export default function Statistics() {
   );
 
   const creatorOptions = useMemo(() => {
-    const map = new Map();
-    normalizedOrders.forEach((order) => {
-      const key = creatorKey(order);
-      if (!map.has(key)) {
-        map.set(key, creatorLabel(order));
-      }
-    });
-    return Array.from(map.entries())
-      .map(([id, label]) => ({ id, label }))
-      .sort((a, b) => a.label.localeCompare(b.label, "he"));
+    return buildCreatorOptions(normalizedOrders);
   }, [normalizedOrders]);
 
   /** אתחול רשימת נבחרות כשטוענים הזמנות (רק אם עדיין ריק, כדי לא לדרוס בחירה ידנית) */
@@ -179,10 +154,12 @@ export default function Statistics() {
   }, [normalizedOrders, dateRange]);
 
   const filteredOrders = useMemo(() => {
-    if (!canViewOthers || includeAllCreators) {
-      return dateFiltered;
-    }
-    return dateFiltered.filter((order) => selectedCreatorKeys.has(creatorKey(order)));
+    return filterOrdersByCreators(
+      dateFiltered,
+      canViewOthers,
+      includeAllCreators,
+      selectedCreatorKeys
+    );
   }, [dateFiltered, canViewOthers, includeAllCreators, selectedCreatorKeys]);
 
   const paidOrders = useMemo(
@@ -320,20 +297,6 @@ export default function Statistics() {
     setSelectedCreatorKeys(all);
   };
 
-  const employeeFilterSummary = () => {
-    if (!canViewOthers) return null;
-    if (includeAllCreators) return "כל העובדים";
-    const n = selectedCreatorKeys.size;
-    if (n === 0) return "לא נבחרו עובדים";
-    if (n === creatorOptions.length) return "כל העובדים (נבחר)";
-    if (n === 1) {
-      const id = [...selectedCreatorKeys][0];
-      const opt = creatorOptions.find((c) => c.id === id);
-      return opt?.label || "עובדת אחת";
-    }
-    return `${n} עובדות נבחרו`;
-  };
-
   return (
     <div className="min-h-screen bg-[#f8f8f8] p-6" dir="rtl">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -353,66 +316,6 @@ export default function Statistics() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {canViewOthers && creatorOptions.length > 0 && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-9 border-slate-200 gap-2 min-w-[200px] justify-between"
-                    disabled={isLoading}
-                  >
-                    <span className="flex items-center gap-2 truncate">
-                      <Users className="w-4 h-4 shrink-0 text-slate-500" />
-                      <span className="truncate text-sm">{employeeFilterSummary()}</span>
-                    </span>
-                    <ChevronDown className="w-4 h-4 shrink-0 opacity-60" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-3" align="start" dir="rtl">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 space-x-reverse">
-                      <Checkbox
-                        id="stats-all-creators"
-                        checked={includeAllCreators}
-                        onCheckedChange={(v) => {
-                          const checked = v === true;
-                          setIncludeAllCreators(checked);
-                          if (checked) selectAllCreatorsInList();
-                        }}
-                      />
-                      <Label htmlFor="stats-all-creators" className="text-sm font-medium cursor-pointer">
-                        כל העובדים
-                      </Label>
-                    </div>
-                    <div className="border-t border-slate-100 pt-2 space-y-2 max-h-56 overflow-y-auto">
-                      {creatorOptions.map(({ id, label }) => (
-                        <div key={id} className="flex items-center gap-2 space-x-reverse">
-                          <Checkbox
-                            id={`creator-${id}`}
-                            checked={selectedCreatorKeys.has(id)}
-                            disabled={includeAllCreators}
-                            onCheckedChange={(v) => toggleCreator(id, v === true)}
-                          />
-                          <Label
-                            htmlFor={`creator-${id}`}
-                            className={cn(
-                              "text-sm cursor-pointer flex-1 truncate",
-                              includeAllCreators && "text-slate-400 cursor-not-allowed"
-                            )}
-                          >
-                            {label}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                    {!includeAllCreators && selectedCreatorKeys.size === 0 && (
-                      <p className="text-xs text-amber-700">נא לבחור לפחות עובדת אחת, או לסמן &quot;כל העובדים&quot;.</p>
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
             <DateRangePicker value={dateRange} onChange={setDateRange} />
           </div>
         </motion.div>
@@ -604,11 +507,26 @@ export default function Statistics() {
                 transition={{ delay: 0.14 }}
                 className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 md:col-span-2"
               >
-                <div className="mb-3">
-                  <h3 className="text-sm font-semibold text-slate-700">מוצרים מובילים (כמות)</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    עמודת רווח: סה״כ עמלה מההזמנות ששולמו, מחולק יחסית לפי סכום שורות המוצר בהזמנה
-                  </p>
+                <div className="mb-3 flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-700">מוצרים מובילים (כמות)</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      עמודת רווח: סה״כ עמלה מההזמנות ששולמו, מחולק יחסית לפי סכום שורות המוצר בהזמנה
+                    </p>
+                  </div>
+                  {canViewOthers && creatorOptions.length > 0 && (
+                    <EmployeeFilterField
+                      creatorOptions={creatorOptions}
+                      includeAllCreators={includeAllCreators}
+                      selectedCreatorKeys={selectedCreatorKeys}
+                      disabled={isLoading}
+                      onIncludeAllChange={(checked) => {
+                        setIncludeAllCreators(checked);
+                        if (checked) selectAllCreatorsInList();
+                      }}
+                      onToggleCreator={toggleCreator}
+                    />
+                  )}
                 </div>
                 {productStats.length === 0 ? (
                   <p className="text-sm text-slate-400 text-center py-8">אין נתונים בטווח שנבחר</p>

@@ -271,20 +271,7 @@ export default function CustomerSection({
 
             {selectedContact && isEditing && (
               <motion.div {...fadeIn} className="space-y-3">
-                <div className="space-y-1.5 w-full max-w-[50%] min-w-0">
-                  <Label className="text-xs text-slate-500 block text-right">
-                    שם מלא<span className="text-red-400 mr-0.5">*</span>
-                  </Label>
-                  <Input
-                    value={customerData.firstName}
-                    onChange={e => handleFieldChange("firstName", e.target.value)}
-                    placeholder="שם פרטי ושם משפחה"
-                    className="h-10 w-full text-sm border-slate-200 text-right"
-                    dir="rtl"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                   <div className="space-y-1.5 w-full" dir="rtl">
                     <Label className="text-xs text-slate-500 block w-full text-right">
                       טלפון<span className="text-red-400 mr-0.5">*</span>
@@ -309,6 +296,19 @@ export default function CustomerSection({
                       />
                     </label>
                   </div>
+                  <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
+                  <div className="space-y-1.5 w-full min-w-0">
+                    <Label className="text-xs text-slate-500 block text-right">
+                      שם מלא<span className="text-red-400 mr-0.5">*</span>
+                    </Label>
+                    <Input
+                      value={customerData.firstName}
+                      onChange={e => handleFieldChange("firstName", e.target.value)}
+                      placeholder="שם פרטי ושם משפחה"
+                      className="h-10 w-full text-sm border-slate-200 text-right"
+                      dir="rtl"
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-2 justify-end">
                   <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} className="text-xs h-8">ביטול</Button>
@@ -319,20 +319,7 @@ export default function CustomerSection({
           </motion.div>
         ) : (
           <motion.div key="new" {...fadeIn} className="space-y-3">
-            <div className="w-full max-w-[50%] min-w-0 space-y-1.5">
-              <Label className="text-xs text-slate-500 block text-right">
-                שם מלא<span className="text-red-400 mr-0.5">*</span>
-              </Label>
-              <Input
-                value={customerData.firstName}
-                onChange={e => setCustomerData(prev => ({ ...prev, firstName: e.target.value }))}
-                placeholder="שם פרטי ושם משפחה"
-                className="h-10 w-full text-sm border-slate-200 focus:border-slate-400 text-right"
-                dir="rtl"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <div className="space-y-1.5 w-full" dir="rtl">
                 <Label className="text-xs text-slate-500 block w-full text-right">
                   טלפון<span className="text-red-400 mr-0.5">*</span>
@@ -357,6 +344,19 @@ export default function CustomerSection({
                     onCheckedChange={onInternationalToggle}
                   />
                 </label>
+              </div>
+              <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
+              <div className="w-full min-w-0 space-y-1.5">
+                <Label className="text-xs text-slate-500 block text-right">
+                  שם מלא<span className="text-red-400 mr-0.5">*</span>
+                </Label>
+                <Input
+                  value={customerData.firstName}
+                  onChange={e => setCustomerData(prev => ({ ...prev, firstName: e.target.value }))}
+                  placeholder="שם פרטי ושם משפחה"
+                  className="h-10 w-full text-sm border-slate-200 focus:border-slate-400 text-right"
+                  dir="rtl"
+                />
               </div>
             </div>
           </motion.div>

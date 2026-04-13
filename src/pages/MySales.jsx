@@ -7,6 +7,7 @@ import { Download, TrendingUp, ShoppingBag, CreditCard, Users } from "lucide-rea
 import moment from "moment";
 import DateRangePicker from "../components/dashboard/DateRangePicker";
 import OrdersTable from "../components/dashboard/OrdersTable";
+import EmployeeFilterField from "../components/dashboard/EmployeeFilterField";
 import { useAuth } from "@/lib/IframeAuthContext";
 import { usePostMessage } from "@/hooks/usePostMessage";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ import {
   SALES_STATUS_FILTERS,
   STATUS_CONFIG,
 } from "@/utils/dashboardOrders";
+import { buildCreatorOptions, filterOrdersByCreators } from "@/utils/orderCreatorFilter";
 
 const DEMO_USER_NAME = "שרה מ.";
 const MY_SALES_REFRESH_KEY = "twk_my_sales_last_refresh";
@@ -65,6 +67,8 @@ export default function MySales() {
   const [orders, setOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(() => readSessionRefresh(MY_SALES_REFRESH_KEY));
+  const [includeAllCreators, setIncludeAllCreators] = useState(true);
+  const [selectedCreatorKeys, setSelectedCreatorKeys] = useState(() => new Set());
 
   const isDemo = !user;
 
@@ -107,8 +111,18 @@ export default function MySales() {
     [orders, commissionRate]
   );
 
+  const creatorOptions = useMemo(() => buildCreatorOptions(orders), [orders]);
+
+  useEffect(() => {
+    if (!canViewOthers || creatorOptions.length === 0) return;
+    setSelectedCreatorKeys((prev) => {
+      if (prev.size > 0) return prev;
+      return new Set(creatorOptions.map((creator) => creator.id));
+    });
+  }, [canViewOthers, creatorOptions]);
+
   const filteredOrders = useMemo(() => {
-    return normalizedOrders.filter((order) => {
+    const dateAndStatusFiltered = normalizedOrders.filter((order) => {
       const relevantDate = moment(order.orderDate || order.sentDate || undefined);
       const matchesDate =
         (!dateRange.from || relevantDate.isSameOrAfter(moment(dateRange.from).startOf("day"))) &&
@@ -117,7 +131,14 @@ export default function MySales() {
         selectedStatuses.length === 0 || selectedStatuses.includes(order.displayStatus);
       return matchesDate && matchesStatus;
     });
-  }, [normalizedOrders, dateRange, selectedStatuses]);
+
+    return filterOrdersByCreators(
+      dateAndStatusFiltered,
+      canViewOthers,
+      includeAllCreators,
+      selectedCreatorKeys
+    );
+  }, [normalizedOrders, dateRange, selectedStatuses, canViewOthers, includeAllCreators, selectedCreatorKeys]);
 
   const paidOrders = useMemo(
     () => filteredOrders.filter((order) => isPaidDisplayStatus(order.displayStatus)),
@@ -347,6 +368,30 @@ export default function MySales() {
             </div>
           ))}
         </motion.div>
+
+        {canViewOthers && creatorOptions.length > 0 && (
+          <EmployeeFilterField
+            creatorOptions={creatorOptions}
+            includeAllCreators={includeAllCreators}
+            selectedCreatorKeys={selectedCreatorKeys}
+            disabled={isLoadingOrders || isAuthLoading}
+            onIncludeAllChange={(checked) => {
+              setIncludeAllCreators(checked);
+              if (checked) {
+                setSelectedCreatorKeys(new Set(creatorOptions.map((creator) => creator.id)));
+              }
+            }}
+            onToggleCreator={(creatorId, checked) => {
+              setIncludeAllCreators(false);
+              setSelectedCreatorKeys((prev) => {
+                const next = new Set(prev);
+                if (checked) next.add(creatorId);
+                else next.delete(creatorId);
+                return next;
+              });
+            }}
+          />
+        )}
 
         <OrdersTable
           orders={filteredOrders}
