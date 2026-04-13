@@ -1,12 +1,38 @@
 import {
     EXPIRED_PUBLIC_ORDER_MESSAGE,
     getPublicDashboardOrder,
-    isExpiredPublicOrderRecord,
     normalizeOrderStatus,
 } from 'backend/orderService.jsw';
 
 const LOG_PREFIX = '[VELO-PUBLIC-ORDER]';
 const EXPIRED_STATUSES = ['paid', 'paid_completed'];
+
+function statusValueToString(status) {
+    if (status == null) return '';
+    if (typeof status === 'string') return status.trim();
+    if (typeof status === 'object') {
+        const fromKnownKeys = String(
+            status.key
+            || status.value
+            || status.label
+            || status.status
+            || status._id
+            || ''
+        ).trim();
+        if (fromKnownKeys) return fromKnownKeys;
+    }
+    return String(status).trim();
+}
+
+function normalizePublicStatus(status) {
+    const raw = statusValueToString(status);
+    if (!raw) return '';
+    const normalized = normalizeOrderStatus(raw);
+    if (typeof normalized === 'string' && normalized.trim()) {
+        return normalized.trim();
+    }
+    return raw;
+}
 
 function safeParseJson(value, fallback) {
     if (!value) return fallback;
@@ -42,7 +68,7 @@ function formatPublicCouponDetails(couponDetails) {
 }
 
 function getPublicStatusConfig(status, paymentLink) {
-    const normalizedStatus = normalizeOrderStatus(status);
+    const normalizedStatus = normalizePublicStatus(status);
     switch (normalizedStatus) {
     case 'paid_partial':
         return {
@@ -176,8 +202,10 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
             };
         }
 
-        if (isExpiredPublicOrderRecord(record)) {
-            const normalizedStatus = normalizeOrderStatus(record.status);
+        const rawStatus = statusValueToString(record.status);
+        const normalizedStatus = normalizePublicStatus(record.status);
+        const isExpiredByStatus = EXPIRED_STATUSES.includes(normalizedStatus);
+        if (isExpiredByStatus) {
             return {
                 ok: false,
                 code: 'ORDER_LINK_EXPIRED',
@@ -187,9 +215,10 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
                     requestedDynamicLinkId: normalizedId,
                     recordId: record._id,
                     orderNumber: record.orderNumber || '',
-                    rawStatus: record.status || '',
+                    rawStatus,
                     normalizedStatus,
                     expiredStatuses: EXPIRED_STATUSES,
+                    isExpiredByStatus,
                     hasCheckoutLink: !!record.checkoutLink,
                     customerName: record.customerName || '',
                     createdDate: record._createdDate || null,

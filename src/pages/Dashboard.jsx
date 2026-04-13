@@ -193,16 +193,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (paymentStatus !== "paid_partial") return;
-    if (selectedProductsTotal <= 0) {
-      setPaymentStatus("unpaid");
-      setPartialPaidAmount("");
-      return;
-    }
+    if (selectedProductsTotal <= 0) return;
     const numericPartial = Number(partialPaidAmount);
     if (Number.isFinite(numericPartial) && numericPartial >= selectedProductsTotal) {
       setPartialPaidAmount(String(Math.max(0, selectedProductsTotal - 1)));
     }
   }, [paymentStatus, partialPaidAmount, selectedProductsTotal]);
+
+  useEffect(() => {
+    if (selectedProductsTotal > 0) return;
+    setPartialPaidAmount("");
+  }, [selectedProductsTotal]);
 
   useEffect(() => {
     if (!canViewOthers || creatorOptions.length === 0) return;
@@ -664,10 +665,17 @@ export default function Dashboard() {
                     placeholder="סכום ששולם"
                     className="h-10 text-right"
                     dir="ltr"
+                    disabled={selectedProductsTotal <= 0}
                   />
                   <span className="text-sm font-semibold text-slate-600">₪</span>
                 </div>
+                {selectedProductsTotal <= 0 && (
+                  <p className="text-xs text-orange-700">
+                    יש לבחור קודם לפחות מוצר אחד כדי להזין סכום ששולם.
+                  </p>
+                )}
                 {(() => {
+                  if (selectedProductsTotal <= 0) return null;
                   const partialAmount = Number(partialPaidAmount);
                   if (!Number.isFinite(partialAmount) || partialAmount <= 0 || partialAmount >= selectedProductsTotal) {
                     return (
