@@ -21,7 +21,7 @@ import { products } from 'wix-stores.v2';
 export { searchContactsByQuery, searchStoreCoupons };
 
 const LOG_PREFIX = '[VELO-BE]';
-const UPDATABLE_ORDER_STATUSES = new Set(['sent', 'opened', 'paid_partial', 'paid_pending_details', 'paid_completed', 'paid', 'cancelled']);
+const UPDATABLE_ORDER_STATUSES = new Set(['sent', 'opened', 'paid_pending_details', 'paid_completed', 'paid', 'cancelled']);
 
 /** LeadConnector — אחרי יצירת checkout + רשומת CMS */
 const DASHBOARD_CHECKOUT_WEBHOOK_URL =
@@ -544,16 +544,18 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
     let couponDetailsObj = null;
     let existingStoreCouponMapped = null;
     const isMarkedPaid = orderData.paymentStatus === 'paid';
+    const isMarkedPartial = orderData.paymentStatus === 'paid_partial';
     const orderSubtotal = Math.max(0, Number(orderData.totalPrice) || 0);
     const requestedPartialPaidAmount = Number(orderData.partialPayment?.amountPaid);
     const hasPartialPaymentInput = orderData.partialPayment?.amountPaid != null && orderData.partialPayment?.amountPaid !== '';
-    if (isMarkedPaid && hasPartialPaymentInput) {
+    if (isMarkedPartial) {
         if (!Number.isFinite(requestedPartialPaidAmount) || requestedPartialPaidAmount <= 0 || requestedPartialPaidAmount >= orderSubtotal) {
             throw new Error('הסכום ששולם חלקית חייב להיות גדול מ-0 וקטן מסכום ההזמנה');
         }
     }
     const isPartiallyPaid = (
-        isMarkedPaid
+        isMarkedPartial
+        && hasPartialPaymentInput
         && Number.isFinite(requestedPartialPaidAmount)
         && requestedPartialPaidAmount > 0
         && requestedPartialPaidAmount < orderSubtotal

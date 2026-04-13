@@ -6,6 +6,7 @@ import {
 } from 'backend/orderService.jsw';
 
 const LOG_PREFIX = '[VELO-PUBLIC-ORDER]';
+const EXPIRED_STATUSES = ['paid', 'paid_completed'];
 
 function safeParseJson(value, fallback) {
     if (!value) return fallback;
@@ -152,6 +153,10 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
             ok: false,
             code: 'MISSING_ORDER_ID',
             message: 'אופס... לא מצאתי את ההזמנה שלך',
+            debug: {
+                reason: 'missing_dynamic_link_id',
+                requestedDynamicLinkId: normalizedId,
+            },
         };
     }
 
@@ -164,14 +169,31 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
                 ok: false,
                 code: 'ORDER_NOT_FOUND',
                 message: 'אופס... לא מצאתי את ההזמנה שלך',
+                debug: {
+                    reason: 'record_not_found',
+                    requestedDynamicLinkId: normalizedId,
+                },
             };
         }
 
         if (isExpiredPublicOrderRecord(record)) {
+            const normalizedStatus = normalizeOrderStatus(record.status);
             return {
                 ok: false,
                 code: 'ORDER_LINK_EXPIRED',
                 message: EXPIRED_PUBLIC_ORDER_MESSAGE,
+                debug: {
+                    reason: 'status_marked_as_expired',
+                    requestedDynamicLinkId: normalizedId,
+                    recordId: record._id,
+                    orderNumber: record.orderNumber || '',
+                    rawStatus: record.status || '',
+                    normalizedStatus,
+                    expiredStatuses: EXPIRED_STATUSES,
+                    hasCheckoutLink: !!record.checkoutLink,
+                    customerName: record.customerName || '',
+                    createdDate: record._createdDate || null,
+                },
             };
         }
 
@@ -226,6 +248,11 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
             ok: false,
             code: 'ORDER_LOOKUP_FAILED',
             message: 'אופס... לא מצאתי את ההזמנה שלך',
+            debug: {
+                reason: 'lookup_exception',
+                requestedDynamicLinkId: normalizedId,
+                errorMessage: err.message || String(err),
+            },
         };
     }
 }

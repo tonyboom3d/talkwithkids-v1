@@ -1176,6 +1176,13 @@
 
       function renderError(errorState) {
         var message = (errorState && errorState.message) || "אופס... לא מצאתי את ההזמנה שלך";
+        if (errorState && (errorState.code || errorState.debug)) {
+          console.error("[TWK-IFRAME] order error details:", {
+            code: errorState.code || "UNKNOWN_ERROR",
+            message: message,
+            debug: errorState.debug || null
+          });
+        }
         errorTitle.textContent = message;
         errorText.textContent = "השירות לקוחות שלנו ישמחו לעזור לך";
         supportNote.textContent = "אם הגעת לכאן דרך קישור ישן או לא תקין, אפשר ליצור איתנו קשר ונשמח לבדוק עבורך.";

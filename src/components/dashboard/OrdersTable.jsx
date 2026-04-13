@@ -441,7 +441,7 @@ export default function OrdersTable({
                         <TableCell>
                           <Badge
                             variant="outline"
-                            className={`text-[11px] border-0 font-medium ${order.statusCfg.className}`}
+                            className={`inline-flex whitespace-nowrap text-[11px] border-0 font-medium ${order.statusCfg.className}`}
                           >
                             {order.statusCfg.label}
                           </Badge>
@@ -582,7 +582,7 @@ export default function OrdersTable({
                                           </div>
                                           <Badge
                                             variant="outline"
-                                            className={`text-[11px] border-0 font-medium ${order.statusCfg.className}`}
+                                            className={`inline-flex whitespace-nowrap text-[11px] border-0 font-medium ${order.statusCfg.className}`}
                                           >
                                             {order.statusCfg.label}
                                           </Badge>

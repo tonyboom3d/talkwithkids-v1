@@ -14,7 +14,7 @@ export const STATUS_CONFIG = {
   paid: { label: "שולם", className: "bg-emerald-100 text-emerald-700" },
 };
 
-export const STATUS_UPDATE_OPTIONS = ["sent", "opened", "paid_partial", "paid_pending_details", "paid_completed", "paid", "cancelled"];
+export const STATUS_UPDATE_OPTIONS = ["sent", "opened", "paid_pending_details", "paid_completed", "paid", "cancelled"];
 
 export const SALES_STATUS_FILTERS = [
   "sent",
@@ -105,7 +105,7 @@ export function buildPublicOrderUrl(dynamicLinkId) {
 }
 
 export function isPaidDisplayStatus(status) {
-  return status === "paid" || status === "paid_pending_details" || status === "paid_completed";
+  return status === "paid" || status === "paid_partial" || status === "paid_pending_details" || status === "paid_completed";
 }
 
 function resolvePartialPaidAmount(order, couponDetails, subtotal) {

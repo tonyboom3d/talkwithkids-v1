@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -128,7 +127,6 @@ export default function Dashboard() {
   const [lastRefreshedAt, setLastRefreshedAt] = useState(() => readSessionRefresh(DASHBOARD_ORDERS_REFRESH_KEY));
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [paymentTag, setPaymentTag] = useState("");
-  const [isPartialPayment, setIsPartialPayment] = useState(false);
   const [partialPaidAmount, setPartialPaidAmount] = useState("");
   const [couponEnabled, setCouponEnabled] = useState(false);
   /** "create" = יצירת קופון חדש; "existing" = בחירת קופון מהחנות (רק אחד) */
@@ -182,21 +180,21 @@ export default function Dashboard() {
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
   useEffect(() => {
-    if (paymentStatus !== "paid") {
-      setIsPartialPayment(false);
+    if (paymentStatus !== "paid" && paymentStatus !== "paid_partial") {
       setPartialPaidAmount("");
-      return;
     }
-    setCouponEnabled(false);
-    setCouponMode("create");
-    setSelectedStoreCoupon(null);
-    setCouponValue("");
+    if (paymentStatus === "paid" || paymentStatus === "paid_partial") {
+      setCouponEnabled(false);
+      setCouponMode("create");
+      setSelectedStoreCoupon(null);
+      setCouponValue("");
+    }
   }, [paymentStatus]);
 
   useEffect(() => {
-    if (!isPartialPayment) return;
+    if (paymentStatus !== "paid_partial") return;
     if (selectedProductsTotal <= 0) {
-      setIsPartialPayment(false);
+      setPaymentStatus("unpaid");
       setPartialPaidAmount("");
       return;
     }
@@ -204,7 +202,7 @@ export default function Dashboard() {
     if (Number.isFinite(numericPartial) && numericPartial >= selectedProductsTotal) {
       setPartialPaidAmount(String(Math.max(0, selectedProductsTotal - 1)));
     }
-  }, [isPartialPayment, partialPaidAmount, selectedProductsTotal]);
+  }, [paymentStatus, partialPaidAmount, selectedProductsTotal]);
 
   useEffect(() => {
     if (!canViewOthers || creatorOptions.length === 0) return;
@@ -254,7 +252,7 @@ export default function Dashboard() {
       showError("מחיר ההזמנה חייב להיות גדול מ-0");
       return;
     }
-    if (paymentStatus === "paid" && isPartialPayment) {
+    if (paymentStatus === "paid_partial") {
       const partialAmount = Number(partialPaidAmount);
       if (!String(partialPaidAmount).trim()) {
         showError("יש למלא כמה מתוך סכום ההזמנה כבר שולם");
@@ -265,12 +263,12 @@ export default function Dashboard() {
         return;
       }
     }
-    if (paymentStatus === "paid" && !paymentTag) {
+    if ((paymentStatus === "paid" || paymentStatus === "paid_partial") && !paymentTag) {
       showError("יש לבחור אופן תשלום עבור הזמנה ששולמה");
       return;
     }
 
-    if (couponEnabled && paymentStatus !== "paid") {
+    if (couponEnabled && paymentStatus === "unpaid") {
       if (couponMode === "existing") {
         if (!selectedStoreCoupon) {
           showError("נא לבחור קופון מהרשימה");
@@ -311,7 +309,7 @@ export default function Dashboard() {
     try {
       let coupon = null;
       let existingCoupon = null;
-      if (couponEnabled && paymentStatus !== "paid") {
+      if (couponEnabled && paymentStatus === "unpaid") {
         if (couponMode === "existing" && selectedStoreCoupon) {
           existingCoupon = { id: selectedStoreCoupon.id, code: selectedStoreCoupon.code };
         } else if (couponMode === "create") {
@@ -334,8 +332,8 @@ export default function Dashboard() {
         notes,
         orderChanges,
         paymentStatus,
-        paymentTag: paymentStatus === 'paid' ? paymentTag : '',
-        partialPayment: paymentStatus === "paid" && isPartialPayment
+        paymentTag: paymentStatus === 'paid' || paymentStatus === "paid_partial" ? paymentTag : '',
+        partialPayment: paymentStatus === "paid_partial"
           ? { amountPaid: Number(partialPaidAmount) }
           : null,
         totalPrice: total,
@@ -367,7 +365,6 @@ export default function Dashboard() {
     setNotes("");
     setOrderChanges("");
     setPaymentTag("");
-    setIsPartialPayment(false);
     setPartialPaidAmount("");
     setCouponEnabled(false);
     setCouponMode("create");
@@ -645,7 +642,52 @@ export default function Dashboard() {
             setSelectedProducts={setSelectedProducts}
           />
 
-          {paymentStatus !== "paid" && (
+          {paymentStatus === "paid_partial" && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: 0.18 }}
+              className="space-y-2"
+            >
+              <div className="rounded-xl border border-orange-200 bg-orange-50/70 px-4 py-3 space-y-2">
+                <Label className="block text-right text-sm font-medium text-slate-700">
+                  כמה שולם כבר עבור ההזמנה
+                </Label>
+                <div className="flex items-center gap-2" dir="rtl">
+                  <Input
+                    type="number"
+                    min="0"
+                    max={Math.max(0, selectedProductsTotal - 0.01)}
+                    step="0.01"
+                    value={partialPaidAmount}
+                    onChange={(e) => setPartialPaidAmount(e.target.value)}
+                    placeholder="סכום ששולם"
+                    className="h-10 text-right"
+                    dir="ltr"
+                  />
+                  <span className="text-sm font-semibold text-slate-600">₪</span>
+                </div>
+                {(() => {
+                  const partialAmount = Number(partialPaidAmount);
+                  if (!Number.isFinite(partialAmount) || partialAmount <= 0 || partialAmount >= selectedProductsTotal) {
+                    return (
+                      <p className="text-xs text-orange-700">
+                        יש להזין סכום גדול מ-0 וקטן מ-₪{selectedProductsTotal.toLocaleString("he-IL")}
+                      </p>
+                    );
+                  }
+                  const remainingAmount = Math.max(0, selectedProductsTotal - partialAmount);
+                  return (
+                    <p className="text-xs text-orange-800">
+                      שולם מראש: ₪{partialAmount.toLocaleString("he-IL")} | יתרה לשליחה בקישור: ₪{remainingAmount.toLocaleString("he-IL")}
+                    </p>
+                  );
+                })()}
+              </div>
+            </motion.div>
+          )}
+
+          {paymentStatus === "unpaid" && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -832,7 +874,7 @@ export default function Dashboard() {
 
           {/* Payment Tag */}
           <AnimatePresence>
-            {paymentStatus === "paid" && (
+            {(paymentStatus === "paid" || paymentStatus === "paid_partial") && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
@@ -840,67 +882,6 @@ export default function Dashboard() {
                 className="overflow-hidden"
               >
                 <div className="space-y-3">
-                  <label className="flex cursor-pointer items-center justify-end gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
-                    <span>שולמה חלקית</span>
-                    <Checkbox
-                      checked={isPartialPayment}
-                      onCheckedChange={(checked) => {
-                        const nextChecked = checked === true;
-                        setIsPartialPayment(nextChecked);
-                        if (!nextChecked) {
-                          setPartialPaidAmount("");
-                        }
-                      }}
-                    />
-                  </label>
-
-                  <AnimatePresence>
-                    {isPartialPayment && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="space-y-2 rounded-xl border border-orange-200 bg-orange-50/70 px-4 py-3">
-                          <Label className="block text-right text-sm font-medium text-slate-700">
-                            כמה מתוך סכום ההזמנה שולם
-                          </Label>
-                          <div className="flex items-center gap-2" dir="rtl">
-                            <Input
-                              type="number"
-                              min="0"
-                              max={Math.max(0, selectedProductsTotal - 0.01)}
-                              step="0.01"
-                              value={partialPaidAmount}
-                              onChange={(e) => setPartialPaidAmount(e.target.value)}
-                              placeholder="סכום ששולם"
-                              className="h-10 text-right"
-                              dir="ltr"
-                            />
-                            <span className="text-sm font-semibold text-slate-600">₪</span>
-                          </div>
-                          {(() => {
-                            const partialAmount = Number(partialPaidAmount);
-                            if (!Number.isFinite(partialAmount) || partialAmount <= 0 || partialAmount >= selectedProductsTotal) {
-                              return (
-                                <p className="text-xs text-orange-700">
-                                  יש להזין סכום גדול מ-0 וקטן מ-₪{selectedProductsTotal.toLocaleString("he-IL")}
-                                </p>
-                              );
-                            }
-                            const remainingAmount = Math.max(0, selectedProductsTotal - partialAmount);
-                            return (
-                              <p className="text-xs text-orange-800">
-                                שולם מראש: ₪{partialAmount.toLocaleString("he-IL")} | יתרה לשליחה בקישור: ₪{remainingAmount.toLocaleString("he-IL")}
-                              </p>
-                            );
-                          })()}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
                   <div className="flex items-center gap-2">
                     <Tag className="w-[18px] h-[18px] text-slate-400" />
                     <Label className="text-sm font-medium text-slate-700">אמצעי תשלום</Label>

@@ -36,6 +36,11 @@ async function sendOrderToIframe() {
         console.warn('[ORDER-IFRAME] missing id in URL');
         postToIframe('ORDER_ERROR', {
             message: 'אופס... לא מצאתי את ההזמנה שלך',
+            code: 'MISSING_ORDER_ID',
+            debug: {
+                reason: 'missing_dynamic_link_id_in_browser_url',
+                currentUrl: wixLocation.url,
+            },
         });
         return;
     }
@@ -44,9 +49,15 @@ async function sendOrderToIframe() {
     console.log('[ORDER-IFRAME] backend result:', result);
 
     if (!result?.ok || !result.order) {
-        console.warn('[ORDER-IFRAME] order lookup failed:', result);
-        postToIframe('ORDER_ERROR', {
+        console.error('[ORDER-IFRAME] order lookup failed:', {
+            code: result?.code || 'UNKNOWN_ERROR',
             message: result?.message || 'אופס... לא מצאתי את ההזמנה שלך',
+            debug: result?.debug || null,
+        });
+        postToIframe('ORDER_ERROR', {
+            code: result?.code || 'UNKNOWN_ERROR',
+            message: result?.message || 'אופס... לא מצאתי את ההזמנה שלך',
+            debug: result?.debug || null,
         });
         return;
     }
