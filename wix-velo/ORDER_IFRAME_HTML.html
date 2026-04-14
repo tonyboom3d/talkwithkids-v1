@@ -1119,31 +1119,19 @@
         redirectOverlay.setAttribute("aria-hidden", "false");
       }
 
-      function startCheckoutRedirect(url) {
-        if (!url || isRedirecting) return;
+      function startCheckoutRedirect() {
+        if (isRedirecting) return;
         isRedirecting = true;
-        console.log("[TWK-IFRAME] starting checkout redirect:", url);
+        console.log("[TWK-IFRAME] requesting checkout creation from parent");
         showRedirectOverlay();
         payButton.setAttribute("aria-disabled", "true");
         payButton.style.pointerEvents = "none";
 
         window.parent.postMessage({
           type: MESSAGE_TYPE,
-          action: "OPEN_PAYMENT",
-          payload: { url: url }
+          action: "REQUEST_CHECKOUT",
+          payload: {}
         }, "*");
-
-        window.setTimeout(function () {
-          try {
-            if (window.top && window.top.location) {
-              window.top.location.href = url;
-              return;
-            }
-          } catch (err) {
-            console.warn("[TWK-IFRAME] top redirect failed, using current window:", err);
-          }
-          window.location.href = url;
-        }, 650);
       }
 
       function renderOrder(order) {
@@ -1166,9 +1154,9 @@
           couponRow.style.display = "none";
         }
 
-        if (order.canContinue && order.paymentLink && order.ctaLabel) {
+        if (order.canContinue && order.ctaLabel) {
           payButton.textContent = order.ctaLabel;
-          payButton.href = order.paymentLink;
+          payButton.href = "#";
           payButton.style.display = "inline-flex";
           payButton.style.alignItems = "center";
           payButton.style.justifyContent = "center";
@@ -1176,8 +1164,8 @@
           payButton.style.pointerEvents = "auto";
           payButton.onclick = function (event) {
             event.preventDefault();
-            console.log("[TWK-IFRAME] pay button clicked:", order.paymentLink);
-            startCheckoutRedirect(order.paymentLink);
+            console.log("[TWK-IFRAME] pay button clicked, requesting checkout");
+            startCheckoutRedirect();
           };
         } else {
           payButton.style.display = "none";
@@ -1236,6 +1224,18 @@
           state.error = data.payload || { message: "אופס... לא מצאתי את ההזמנה שלך" };
           state.order = null;
           maybeRender();
+          return;
+        }
+
+        if (data.action === "CHECKOUT_ERROR") {
+          var errorMsg = (data.payload && data.payload.message) || "אירעה שגיאה ביצירת קישור התשלום. נסי שוב.";
+          console.error("[TWK-IFRAME] checkout creation error:", data.payload);
+          isRedirecting = false;
+          redirectOverlay.classList.remove("is-visible");
+          redirectOverlay.setAttribute("aria-hidden", "true");
+          payButton.removeAttribute("aria-disabled");
+          payButton.style.pointerEvents = "auto";
+          alert(errorMsg);
         }
       });
 

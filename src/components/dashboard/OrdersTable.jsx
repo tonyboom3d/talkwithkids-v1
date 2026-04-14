@@ -403,7 +403,7 @@ export default function OrdersTable({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-52" dir="rtl">
                               <DropdownMenuItem
-                                disabled={!order.checkoutLink || !onResendWhatsapp || isBusy || isCancelled || isError}
+                                disabled={!order.publicOrderUrl || !onResendWhatsapp || isBusy || isCancelled || isError}
                                 className="bg-[#30D46B] text-black hover:bg-[#28b85f] focus:bg-[#28b85f] focus:text-black data-[highlighted]:bg-[#28b85f] data-[highlighted]:text-black"
                                 onClick={() => setResendConfirmOrder(order)}
                               >
@@ -562,7 +562,7 @@ export default function OrdersTable({
                                       <ActionButton
                                         icon={MessageCircleMore}
                                         label="שליחה חוזרת לוואטסאפ"
-                                        disabled={!order.checkoutLink || !onResendWhatsapp || isBusy || isCancelled}
+                                        disabled={!order.publicOrderUrl || !onResendWhatsapp || isBusy || isCancelled}
                                         className="border-[#30D46B] bg-[#30D46B] text-black hover:bg-[#28b85f] hover:text-black"
                                         onClick={() => setResendConfirmOrder(order)}
                                       />

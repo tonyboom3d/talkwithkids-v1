@@ -20,7 +20,8 @@
 | changeChain | שרשרת שינויים | Text | JSON array |
 | payerContactId | מזהה Contact | Text | |
 | payerMemberRef | Member | Reference -> Members | Created after payment |
-| checkoutLink | קישור צ'קאאוט | URL | |
+| checkoutLink | קישור צ'קאאוט | URL | מתעדכן בכל לחיצת לקוח על כפתור התשלום (לא נוצר מראש) |
+| checkoutSessionData | נתוני יצירת Checkout | Text | JSON: `{ version, draft: { products, orderChangeNotes, couponCode, lockCouponCode }, history: [{ checkoutId, checkoutUrl, createdAt, source }], latest }` |
 | dynamicLinkId | מזהה דינמי | Text | 16 תווים מ־\_id; קישור ציבורי: `…/dashboard-orders?id={dynamicLinkId}` |
 | dynamicOrderUrl | קישור ציבורי להזמנה | URL | מתמלא אוטומטית ביצירת ההזמנה (`…/dashboard-orders?id=…`) |
 | errors | שגיאות | Text | JSON |

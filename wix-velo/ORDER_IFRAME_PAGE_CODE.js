@@ -1,5 +1,5 @@
 import wixLocation from 'wix-location';
-import { getPublicOrderForIframe } from 'backend/publicOrderApi.jsw';
+import { getPublicOrderForIframe, createPublicCheckoutForOrder } from 'backend/publicOrderApi.jsw';
 
 const MESSAGE_TYPE = 'TWK_PUBLIC_ORDER_IFRAME';
 const HTML_COMPONENT_ID = '#html1';
@@ -68,6 +68,7 @@ async function sendOrderToIframe() {
 
 $w.onReady(function () {
     let initialized = false;
+    let checkoutInProgress = false;
 
     $w(HTML_COMPONENT_ID).onMessage(async (event) => {
         const data = event.data || {};
@@ -81,12 +82,29 @@ $w.onReady(function () {
             return;
         }
 
-        if (data.action === 'OPEN_PAYMENT') {
-            const nextUrl = String(data.payload?.url || '').trim();
-            console.log('[ORDER-IFRAME] OPEN_PAYMENT requested:', nextUrl);
-            if (nextUrl) {
-                wixLocation.to(nextUrl);
+        if (data.action === 'REQUEST_CHECKOUT') {
+            if (checkoutInProgress) {
+                console.log('[ORDER-IFRAME] checkout already in progress, ignoring duplicate request');
+                return;
             }
+            checkoutInProgress = true;
+            console.log('[ORDER-IFRAME] REQUEST_CHECKOUT received, generating checkout...');
+
+            const publicOrderId = extractPublicOrderIdFromCurrentUrl();
+            const result = await createPublicCheckoutForOrder(publicOrderId);
+            checkoutInProgress = false;
+
+            if (!result?.ok || !result.checkoutUrl) {
+                console.error('[ORDER-IFRAME] checkout creation failed:', result);
+                postToIframe('CHECKOUT_ERROR', {
+                    message: result?.message || 'אירעה שגיאה ביצירת קישור התשלום. נסי שוב.',
+                    code: result?.code || 'CHECKOUT_CREATION_FAILED',
+                });
+                return;
+            }
+
+            console.log('[ORDER-IFRAME] checkout created, redirecting to:', result.checkoutUrl);
+            wixLocation.to(result.checkoutUrl);
         }
     });
 });

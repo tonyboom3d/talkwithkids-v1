@@ -190,7 +190,35 @@ export function isExpiredPublicOrderRecord(record) {
 }
 
 export async function getDashboardOrderByCheckoutId(checkoutId) {
-    return getSingleOrderByField('checkoutId', checkoutId);
+    const normalized = String(checkoutId || '').trim();
+    if (!normalized) return null;
+
+    const direct = await getSingleOrderByField('checkoutId', normalized);
+    if (direct) return direct;
+
+    // Fallback: search checkout history stored in checkoutSessionData JSON.
+    // Handles the case where a newer checkout overwrote checkoutId but the
+    // customer paid using an earlier checkout from the same session.
+    const results = await wixData.query('DashboardOrders')
+        .contains('checkoutSessionData', normalized)
+        .limit(5)
+        .find({ suppressAuth: true });
+
+    for (const item of results.items || []) {
+        try {
+            const session = item.checkoutSessionData
+                ? JSON.parse(item.checkoutSessionData)
+                : null;
+            const history = Array.isArray(session?.history) ? session.history : [];
+            if (history.some((entry) => entry.checkoutId === normalized)) {
+                return item;
+            }
+        } catch (_) {
+            // malformed JSON — skip
+        }
+    }
+
+    return null;
 }
 
 export async function getDashboardOrderByDynamicLinkId(dynamicLinkId) {

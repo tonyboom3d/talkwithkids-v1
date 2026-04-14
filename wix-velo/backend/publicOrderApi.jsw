@@ -1,8 +1,13 @@
+import wixData from 'wix-data';
 import {
     EXPIRED_PUBLIC_ORDER_MESSAGE,
     getPublicDashboardOrder,
     normalizeOrderStatus,
 } from 'backend/orderService.jsw';
+import {
+    createDashboardCheckout,
+    appendCheckoutToHistory,
+} from 'backend/helpers/checkoutHelper';
 
 const LOG_PREFIX = '[VELO-PUBLIC-ORDER]';
 const EXPIRED_STATUSES = ['paid', 'paid_completed'];
@@ -67,22 +72,22 @@ function formatPublicCouponDetails(couponDetails) {
     return '';
 }
 
-function getPublicStatusConfig(status, paymentLink) {
+function getPublicStatusConfig(status) {
     const normalizedStatus = normalizePublicStatus(status);
     switch (normalizedStatus) {
     case 'paid_partial':
         return {
             text: 'ההזמנה שולמה חלקית. נותר להשלים את יתרת התשלום.',
             tone: 'info',
-            ctaLabel: paymentLink ? 'המשיכי לתשלום יתרה >>' : '',
-            canContinue: !!paymentLink,
+            ctaLabel: 'המשיכי לתשלום יתרה >>',
+            canContinue: true,
         };
     case 'paid_pending_details':
         return {
             text: 'הזמנה שולמה ממתין להשלמת פרטי לקוח',
             tone: 'info',
-            ctaLabel: paymentLink ? 'השלימי את הפרטים שלך >>' : '',
-            canContinue: !!paymentLink,
+            ctaLabel: 'השלימי את הפרטים שלך >>',
+            canContinue: true,
         };
     case 'paid_completed':
         return {
@@ -105,15 +110,23 @@ function getPublicStatusConfig(status, paymentLink) {
         return {
             text: 'ממתין לתשלום',
             tone: 'waiting',
-            ctaLabel: paymentLink ? 'המשיכי לתשלום >>' : '',
-            canContinue: !!paymentLink,
+            ctaLabel: 'המשיכי לתשלום >>',
+            canContinue: true,
         };
     }
 }
 
-function resolvePublicPaymentLink(record) {
-    return record.checkoutLink || '';
+function safeParseCheckoutSessionData(value) {
+    if (!value) return null;
+    try {
+        const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+        return parsed && parsed.draft ? parsed : null;
+    } catch (_) {
+        return null;
+    }
 }
+
+const NON_PAYABLE_STATUSES = new Set(['paid', 'paid_completed', 'cancelled', 'error']);
 
 function computePublicPriceDisplay(record, couponDetails) {
     const subtotal = Math.max(0, Number(record.totalPrice) || 0);
@@ -231,8 +244,7 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
         }
 
         const couponDetails = safeParseJson(record.couponDetails, null);
-        const paymentLink = resolvePublicPaymentLink(record);
-        const statusConfig = getPublicStatusConfig(record.status, paymentLink);
+        const statusConfig = getPublicStatusConfig(record.status);
         const products = normalizePublicProducts(record.products);
         const priceDisplay = computePublicPriceDisplay(record, couponDetails);
         const showHeroPrice = !isPaidOrderStatus(record.status);
@@ -243,8 +255,6 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
             customerPhone: record.customerPhone,
             totalPrice: record.totalPrice,
             status: record.status,
-            checkoutLink: record.checkoutLink || '',
-            resolvedPaymentLink: paymentLink,
             hasCoupon: !!couponDetails,
             createdDate: record._createdDate || null,
             productsCount: products.length,
@@ -269,7 +279,6 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
                 status: normalizeOrderStatus(record.status) || 'sent',
                 statusText: statusConfig.text,
                 statusTone: statusConfig.tone,
-                paymentLink,
                 canContinue: statusConfig.canContinue,
                 ctaLabel: statusConfig.ctaLabel,
                 products,
@@ -286,6 +295,77 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
                 requestedDynamicLinkId: normalizedId,
                 errorMessage: err.message || String(err),
             },
+        };
+    }
+}
+
+/**
+ * יוצר checkout חדש בלחיצת לקוח ומחזיר את ה-URL להפניה.
+ * נקרא מ-ORDER_IFRAME_PAGE_CODE.js בלחיצה על כפתור התשלום.
+ */
+export async function createPublicCheckoutForOrder(dynamicLinkId) {
+    const normalizedId = String(dynamicLinkId || '').trim();
+    console.log(`${LOG_PREFIX} createPublicCheckoutForOrder started dynamicLinkId=${normalizedId}`);
+
+    if (!normalizedId) {
+        return { ok: false, code: 'MISSING_ORDER_ID', message: 'מזהה הזמנה חסר' };
+    }
+
+    try {
+        const record = await getPublicDashboardOrder(normalizedId);
+
+        if (!record) {
+            return { ok: false, code: 'ORDER_NOT_FOUND', message: 'אופס... לא מצאתי את ההזמנה שלך' };
+        }
+
+        const normalizedStatus = normalizeOrderStatus(record.status);
+        if (NON_PAYABLE_STATUSES.has(normalizedStatus)) {
+            return { ok: false, code: 'ORDER_NOT_PAYABLE', message: 'לא ניתן לשלם עבור הזמנה זו' };
+        }
+
+        const sessionData = safeParseCheckoutSessionData(record.checkoutSessionData);
+        if (!sessionData || !sessionData.draft) {
+            console.error(`${LOG_PREFIX} Missing checkoutSessionData for record ${record._id}`);
+            return { ok: false, code: 'CHECKOUT_DRAFT_MISSING', message: 'פרטי ההזמנה לתשלום לא נמצאו. אנא פנו לשירות לקוחות.' };
+        }
+
+        const { draft } = sessionData;
+        console.log(`${LOG_PREFIX} Creating checkout from draft for record ${record._id}`);
+
+        const checkoutResult = await createDashboardCheckout({
+            products: draft.products,
+            orderChangeNotes: draft.orderChangeNotes || '',
+            couponCode: draft.couponCode || null,
+            lockCouponCode: !!draft.lockCouponCode,
+        });
+
+        const updatedSession = appendCheckoutToHistory(
+            sessionData,
+            checkoutResult.checkoutId,
+            checkoutResult.checkoutUrl,
+            'public_click'
+        );
+
+        const currentRecord = await wixData.get('DashboardOrders', record._id, { suppressAuth: true });
+        await wixData.update('DashboardOrders', {
+            ...currentRecord,
+            checkoutId: checkoutResult.checkoutId,
+            checkoutLink: checkoutResult.checkoutUrl,
+            checkoutSessionData: JSON.stringify(updatedSession),
+        }, { suppressAuth: true });
+
+        console.log(`${LOG_PREFIX} Checkout created on click: ${checkoutResult.checkoutId}`);
+
+        return {
+            ok: true,
+            checkoutUrl: checkoutResult.checkoutUrl,
+        };
+    } catch (err) {
+        console.error(`${LOG_PREFIX} createPublicCheckoutForOrder failed:`, err);
+        return {
+            ok: false,
+            code: 'CHECKOUT_CREATION_FAILED',
+            message: 'אירעה שגיאה ביצירת קישור התשלום. נסי שוב מאוחר יותר.',
         };
     }
 }

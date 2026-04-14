@@ -8,7 +8,7 @@ import {
     validateExistingStoreCoupon,
     computeDiscountForSubtotal,
 } from 'backend/helpers/couponHelper';
-import { createDashboardCheckout } from 'backend/helpers/checkoutHelper';
+import { buildCheckoutSessionData } from 'backend/helpers/checkoutHelper';
 import {
     EXPIRED_PUBLIC_ORDER_MESSAGE,
     getPublicDashboardOrder,
@@ -274,21 +274,21 @@ function formatPublicCouponDetails(couponDetails) {
     return '';
 }
 
-function getPublicStatusConfig(status, paymentLink) {
+function getPublicStatusConfig(status) {
     switch (normalizeOrderStatus(status)) {
     case 'paid_partial':
         return {
             text: 'ההזמנה שולמה חלקית. נותר להשלים את היתרה דרך הקישור.',
             tone: 'info',
-            ctaLabel: paymentLink ? 'השלימי את יתרת התשלום >>' : '',
-            canContinue: !!paymentLink,
+            ctaLabel: 'השלימי את יתרת התשלום >>',
+            canContinue: true,
         };
     case 'paid_pending_details':
         return {
             text: 'הזמנה שולמה ממתין להשלמת פרטי לקוח',
             tone: 'info',
-            ctaLabel: paymentLink ? 'השלימי את הפרטים שלך >>' : '',
-            canContinue: !!paymentLink,
+            ctaLabel: 'השלימי את הפרטים שלך >>',
+            canContinue: true,
         };
     case 'paid_completed':
         return {
@@ -311,14 +311,10 @@ function getPublicStatusConfig(status, paymentLink) {
         return {
             text: 'ממתין לתשלום',
             tone: 'waiting',
-            ctaLabel: paymentLink ? 'המשיכי לתשלום >>' : '',
-            canContinue: !!paymentLink,
+            ctaLabel: 'המשיכי לתשלום >>',
+            canContinue: true,
         };
     }
-}
-
-function resolvePublicPaymentLink(record) {
-    return record?.checkoutLink || '';
 }
 
 export async function getPublicOrderForIframe(dynamicLinkId) {
@@ -351,8 +347,7 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
         }
 
         const couponDetails = safeParseJson(record.couponDetails, null);
-        const paymentLink = resolvePublicPaymentLink(record);
-        const statusConfig = getPublicStatusConfig(record.status, paymentLink);
+        const statusConfig = getPublicStatusConfig(record.status);
 
         return {
             ok: true,
@@ -366,7 +361,6 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
                 status: normalizeOrderStatus(record.status) || 'sent',
                 statusText: statusConfig.text,
                 statusTone: statusConfig.tone,
-                paymentLink,
                 canContinue: statusConfig.canContinue,
                 ctaLabel: statusConfig.ctaLabel,
             },
@@ -510,9 +504,6 @@ async function deliverOrderToWhatsapp(record, employeeName, { isResend = false }
     if (record.status === 'cancelled' || record.status === 'error') {
         throw new Error('לא ניתן לשלוח קישור להזמנה שבוטלה או נמצאת בסטטוס שגיאה');
     }
-    if (!record.checkoutId) {
-        throw new Error('לא נמצא קישור תשלום לשליחה');
-    }
 
     const dyn =
         String(record.dynamicLinkId || '').trim() ||
@@ -638,13 +629,6 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
     }
 
     const normalizedPhone = await normalizeIsraeliPhone(orderData.customer.phone || "");
-    let contactId = orderData.customer.contactId;
-    if (!contactId && normalizedPhone) {
-        const existing = await searchContactsByQuery(normalizedPhone);
-        if (existing.length > 0) {
-            contactId = existing[0].id;
-        }
-    }
 
     const record = {
         orderNumber: '',
@@ -678,7 +662,7 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
                     : 'הזמנה נוצרה',
             }
         ]),
-        payerContactId: contactId || '',
+        payerContactId: '',
         customerName: orderData.customer.firstName + (orderData.customer.lastName ? ' ' + orderData.customer.lastName : ''),
         customerPhone: normalizedPhone || '',
         customerEmail: orderData.customer.email || '',
@@ -691,57 +675,26 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
 
     const dynamicId = inserted._id.substring(0, 16);
     const dynamicOrderUrl = buildDashboardOrderUrl(dynamicId);
+
+    const checkoutDraft = buildCheckoutSessionData({
+        products: orderData.products,
+        orderChangeNotes: orderData.orderChanges || '',
+        couponCode: couponResult?.code || null,
+        lockCouponCode: isMarkedPaid,
+    });
+
     await wixData.update('DashboardOrders', {
         ...inserted,
         dynamicLinkId: dynamicId,
         dynamicOrderUrl,
+        checkoutSessionData: JSON.stringify(checkoutDraft),
     }, { suppressAuth: true });
 
-    let checkoutResult = null;
-    try {
-        checkoutResult = await createDashboardCheckout({
-            products: orderData.products,
-            contactId,
-            orderChangeNotes: orderData.orderChanges || '',
-            couponCode: couponResult?.code || null,
-            lockCouponCode: isMarkedPaid,
-        });
-
-        const currentRecord = await wixData.get('DashboardOrders', inserted._id, { suppressAuth: true });
-        await wixData.update('DashboardOrders', {
-            ...currentRecord,
-            checkoutId: checkoutResult.checkoutId,
-            checkoutLink: checkoutResult.checkoutUrl,
-            dynamicLinkId: dynamicId,
-            dynamicOrderUrl,
-        }, { suppressAuth: true });
-
-        console.log(`${LOG_PREFIX} Checkout created: ${checkoutResult.checkoutId}`);
-
-    } catch (err) {
-        console.error(`${LOG_PREFIX} Checkout creation failed:`, err);
-        const currentRecord = await wixData.get('DashboardOrders', inserted._id, { suppressAuth: true });
-        const chain = JSON.parse(currentRecord.changeChain || '[]');
-        chain.push({
-            action: 'error',
-            by: 'מערכת',
-            date: new Date().toISOString(),
-            detail: `אירעה תקלה ביצירת קישור התשלום: ${err.message || 'שגיאה לא ידועה'}`,
-        });
-        await wixData.update('DashboardOrders', {
-            ...currentRecord,
-            dynamicLinkId: dynamicId,
-            dynamicOrderUrl,
-            errors: JSON.stringify({ checkout: err.message }),
-            status: 'error',
-            changeChain: JSON.stringify(chain),
-        }, { suppressAuth: true });
-    }
+    console.log(`${LOG_PREFIX} Order record ready, checkout deferred to customer click: dynamicLinkId=${dynamicId}`);
 
     return {
         recordId: inserted._id,
         orderNumber: '',
-        checkoutLink: checkoutResult?.checkoutUrl || '',
         orderUrl: buildDashboardOrderUrl(dynamicId),
         dynamicLinkId: dynamicId,
     };
@@ -854,19 +807,20 @@ export async function updateOrderStatus(recordId, nextStatus, employeeName, opti
         };
         enrichCouponDetailsWithTotals(couponDetailsObj, subtotal);
 
-        const checkoutResult = await createDashboardCheckout({
+        const checkoutDraft = buildCheckoutSessionData({
             products: safeParseJson(record.products, []),
-            contactId: record.payerContactId || '',
             orderChangeNotes: record.orderChangeNotes || '',
             couponCode: couponResult.code,
+            lockCouponCode: false,
         });
 
         updatePayload.paymentMethod = paymentTag;
         updatePayload.partialPaidAmount = paidAmount;
         updatePayload.couponId = couponResult?.couponId || '';
         updatePayload.couponDetails = JSON.stringify(couponDetailsObj);
-        updatePayload.checkoutId = checkoutResult.checkoutId;
-        updatePayload.checkoutLink = checkoutResult.checkoutUrl;
+        updatePayload.checkoutSessionData = JSON.stringify(checkoutDraft);
+        updatePayload.checkoutId = '';
+        updatePayload.checkoutLink = '';
 
         chain.push({
             action: 'status_updated',
