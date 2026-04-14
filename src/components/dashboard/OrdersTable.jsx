@@ -55,6 +55,7 @@ import { creatorTagStyleFromColor } from "@/utils/employeeTagStyle";
 const PAGE_SIZE = 8;
 const TOP_DIALOG_CONTENT_CLASSNAME =
   "max-w-md top-4 left-[50%] max-h-[min(90vh,calc(100dvh-1rem))] translate-x-[-50%] translate-y-0 overflow-y-auto sm:top-6";
+const PAYMENT_METHOD_OPTIONS = ["ביט", "פייבוקס", "הוראת קבע", "העברה בנקאית", "קארדקום טלפונית", "שולם דרך וויקס"];
 
 function timelineDotClass(action) {
   switch (action) {
@@ -125,6 +126,9 @@ export default function OrdersTable({
   const [statusOrder, setStatusOrder] = useState(null);
   const [deleteOrderState, setDeleteOrderState] = useState(null);
   const [pendingStatus, setPendingStatus] = useState("sent");
+  const [pendingPaidAmount, setPendingPaidAmount] = useState("");
+  const [pendingPaymentTag, setPendingPaymentTag] = useState("");
+  const [statusFormError, setStatusFormError] = useState("");
   const [busyAction, setBusyAction] = useState({ type: "", rowId: "" });
   const [noteDrafts, setNoteDrafts] = useState({});
   const [resendConfirmOrder, setResendConfirmOrder] = useState(null);
@@ -180,16 +184,48 @@ export default function OrdersTable({
     }
   };
 
+  const closeStatusDialog = () => {
+    setStatusOrder(null);
+    setPendingStatus("sent");
+    setPendingPaidAmount("");
+    setPendingPaymentTag("");
+    setStatusFormError("");
+  };
+
   const openStatusDialog = (order) => {
     setStatusOrder(order);
     setPendingStatus(order.displayStatus === "unpaid" ? "sent" : order.displayStatus);
+    setPendingPaidAmount(order.displayStatus === "paid_partial" && order.partialPaidAmount > 0 ? String(order.partialPaidAmount) : "");
+    setPendingPaymentTag(order.paymentMethod || "");
+    setStatusFormError("");
   };
 
   const handleConfirmStatus = async () => {
     if (!statusOrder || !onUpdateStatus) return;
+    if (pendingStatus === "paid_partial") {
+      const subtotal = Math.max(0, Number(statusOrder.subtotalAmount) || 0);
+      const paidAmount = Number(pendingPaidAmount);
+      if (!String(pendingPaidAmount).trim()) {
+        setStatusFormError("יש למלא כמה שולם כבר עבור ההזמנה.");
+        return;
+      }
+      if (!Number.isFinite(paidAmount) || paidAmount <= 0 || paidAmount >= subtotal) {
+        setStatusFormError(`הסכום ששולם חייב להיות גדול מ-0 וקטן מ-₪${subtotal.toLocaleString("he-IL")}.`);
+        return;
+      }
+      if (!pendingPaymentTag) {
+        setStatusFormError("יש לבחור אופן תשלום עבור ההזמנה.");
+        return;
+      }
+    }
     await runRowAction("status", statusOrder, async () => {
-      await onUpdateStatus(statusOrder.rowId, pendingStatus);
-      setStatusOrder(null);
+      await onUpdateStatus(statusOrder.rowId, pendingStatus, pendingStatus === "paid_partial"
+        ? {
+          partialPayment: { amountPaid: Number(pendingPaidAmount) },
+          paymentTag: pendingPaymentTag,
+        }
+        : {});
+      closeStatusDialog();
     });
   };
 
@@ -839,7 +875,7 @@ export default function OrdersTable({
         </>
       )}
 
-      <Dialog open={Boolean(statusOrder)} onOpenChange={(open) => !open && setStatusOrder(null)}>
+      <Dialog open={Boolean(statusOrder)} onOpenChange={(open) => !open && closeStatusDialog()}>
         <DialogContent dir="rtl" className={TOP_DIALOG_CONTENT_CLASSNAME}>
           <DialogHeader className="text-right">
             <DialogTitle className="text-right">שינוי סטטוס הזמנה</DialogTitle>
@@ -855,7 +891,10 @@ export default function OrdersTable({
                 <button
                   key={statusKey}
                   type="button"
-                  onClick={() => setPendingStatus(statusKey)}
+                  onClick={() => {
+                    setPendingStatus(statusKey);
+                    setStatusFormError("");
+                  }}
                   className={`rounded-xl border px-3 py-2 text-sm font-medium transition-all ${
                     isSelected
                       ? "border-slate-900 bg-slate-900 text-white"
@@ -867,6 +906,59 @@ export default function OrdersTable({
               );
             })}
           </div>
+          {pendingStatus === "paid_partial" && (
+            <div className="space-y-3 rounded-xl border border-orange-200 bg-orange-50/70 p-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-slate-700 text-right">כמה שולם כבר עבור ההזמנה</p>
+                <div className="flex items-center gap-2" dir="rtl">
+                  <Input
+                    type="number"
+                    min="0"
+                    max={Math.max(0, (statusOrder?.subtotalAmount ?? 0) - 0.01)}
+                    step="0.01"
+                    value={pendingPaidAmount}
+                    onChange={(event) => {
+                      setPendingPaidAmount(event.target.value);
+                      setStatusFormError("");
+                    }}
+                    placeholder="סכום ששולם"
+                    className="h-10 text-right bg-white"
+                    dir="ltr"
+                  />
+                  <span className="text-sm font-semibold text-slate-600">₪</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700 text-right">אופן תשלום</p>
+                <div className="flex flex-wrap gap-2">
+                  {PAYMENT_METHOD_OPTIONS.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        setPendingPaymentTag(tag);
+                        setStatusFormError("");
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
+                        pendingPaymentTag === tag
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {statusFormError ? (
+                <p className="text-xs text-red-600 text-right">{statusFormError}</p>
+              ) : (
+                <p className="text-xs text-orange-800 text-right">
+                  יווצר קישור חדש ליתרת התשלום והסכום שנקלט יישמר בהזמנה.
+                </p>
+              )}
+            </div>
+          )}
           <DialogFooter className="sm:justify-start sm:space-x-0 gap-2">
             <Button
               type="button"
@@ -876,7 +968,7 @@ export default function OrdersTable({
             >
               שמירת סטטוס
             </Button>
-            <Button type="button" variant="ghost" onClick={() => setStatusOrder(null)}>
+            <Button type="button" variant="ghost" onClick={closeStatusDialog}>
               ביטול
             </Button>
           </DialogFooter>

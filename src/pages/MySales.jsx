@@ -213,17 +213,35 @@ export default function MySales() {
     }
   };
 
-  const handleUpdateOrderStatus = async (orderId, status) => {
+  const handleUpdateOrderStatus = async (orderId, status, options = {}) => {
     if (isDemo) {
-      setOrders((prev) => prev.map((order) =>
-        (order.id === orderId || order._id === orderId) ? { ...order, status } : order
-      ));
+      setOrders((prev) => prev.map((order) => {
+        if (order.id !== orderId && order._id !== orderId) return order;
+        if (status !== "paid_partial") {
+          return { ...order, status };
+        }
+        const subtotal = Math.max(0, Number(order.totalPrice ?? order.total ?? 0) || 0);
+        const paidAmount = Number(options.partialPayment?.amountPaid || 0);
+        return {
+          ...order,
+          status,
+          paymentMethod: options.paymentTag || "",
+          partialPaidAmount: paidAmount,
+          couponDetails: JSON.stringify({
+            source: "partial_paid",
+            type: "fixed",
+            value: paidAmount,
+            paidAmount,
+            remainingAmount: Math.max(0, subtotal - paidAmount),
+          }),
+        };
+      }));
       toast.success("(מצב דמו) סטטוס ההזמנה עודכן");
       return;
     }
 
     try {
-      await request("UPDATE_ORDER_STATUS", { recordId: orderId, status });
+      await request("UPDATE_ORDER_STATUS", { recordId: orderId, status, ...options });
       toast.success("סטטוס ההזמנה עודכן");
       loadOrders();
     } catch (err) {

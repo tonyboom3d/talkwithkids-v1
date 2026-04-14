@@ -483,14 +483,34 @@ export default function Dashboard() {
     }
   };
 
-  const handleUpdateOrderStatus = async (orderId, status) => {
+  const handleUpdateOrderStatus = async (orderId, status, options = {}) => {
     if (isDemo) {
-      setOrders(prev => prev.map(o => (o.id === orderId || o._id === orderId) ? { ...o, status } : o));
+      setOrders(prev => prev.map((o) => {
+        if (o.id !== orderId && o._id !== orderId) return o;
+        if (status !== "paid_partial") {
+          return { ...o, status };
+        }
+        const subtotal = Math.max(0, Number(o.totalPrice ?? o.total ?? 0) || 0);
+        const paidAmount = Number(options.partialPayment?.amountPaid || 0);
+        return {
+          ...o,
+          status,
+          paymentMethod: options.paymentTag || "",
+          partialPaidAmount: paidAmount,
+          couponDetails: JSON.stringify({
+            source: "partial_paid",
+            type: "fixed",
+            value: paidAmount,
+            paidAmount,
+            remainingAmount: Math.max(0, subtotal - paidAmount),
+          }),
+        };
+      }));
       toast.success("(מצב דמו) סטטוס ההזמנה עודכן");
       return;
     }
     try {
-      await request('UPDATE_ORDER_STATUS', { recordId: orderId, status });
+      await request('UPDATE_ORDER_STATUS', { recordId: orderId, status, ...options });
       toast.success("סטטוס ההזמנה עודכן");
       loadOrders();
     } catch (err) {

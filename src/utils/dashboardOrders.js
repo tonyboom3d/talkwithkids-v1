@@ -14,7 +14,7 @@ export const STATUS_CONFIG = {
   paid: { label: "שולם", className: "bg-emerald-100 text-emerald-700" },
 };
 
-export const STATUS_UPDATE_OPTIONS = ["sent", "opened", "paid_pending_details", "paid_completed", "paid", "cancelled"];
+export const STATUS_UPDATE_OPTIONS = ["sent", "opened", "paid_partial", "paid_pending_details", "paid_completed", "paid", "cancelled"];
 
 export const SALES_STATUS_FILTERS = [
   "sent",
@@ -165,9 +165,9 @@ export function normalizeOrder(order, options = {}) {
   const customerPhone = order.customer?.phone || order.customerPhone || "";
   const orderDate = order._createdDate || order.date || "";
   const sentDate = timeline.find((event) => (event.action || event.type) === "sent")?.date || orderDate;
-  const orderNumber = order.orderNumber && String(order.orderNumber).trim()
+  const rawOrderNumber = order.orderNumber && String(order.orderNumber).trim()
     ? String(order.orderNumber).trim()
-    : "ממתין לתשלום";
+    : "";
   const deliveryNumber = order.deliveryNumber && String(order.deliveryNumber).trim()
     ? String(order.deliveryNumber).trim()
     : "—";
@@ -191,7 +191,7 @@ export function normalizeOrder(order, options = {}) {
     customerPhone,
     orderDate,
     sentDate,
-    orderNumber,
+    orderNumber: rawOrderNumber,
     deliveryNumber,
     creatorName,
     creatorTagColor: order.creatorTagColor || "",
@@ -205,6 +205,11 @@ export function normalizeOrder(order, options = {}) {
   };
 
   normalized.displayStatus = getDisplayStatus(normalized);
+  if (couponDetails?.source === "partial_paid" && normalized.displayStatus !== "paid_partial") {
+    normalized.totalAmount = rawSubtotal;
+    normalized.remainingPaymentAmount = 0;
+  }
+  normalized.orderNumber = rawOrderNumber || (normalized.displayStatus === "paid_pending_details" ? "-" : "ממתין לתשלום");
   normalized.statusCfg = STATUS_CONFIG[normalized.displayStatus] || STATUS_CONFIG.sent;
   normalized.couponSummary = getCouponSummary(couponDetails);
   normalized.whatsappDeliveryStatus = resolveWhatsappDeliveryStatus(normalized);

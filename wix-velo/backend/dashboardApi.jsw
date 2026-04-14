@@ -21,7 +21,7 @@ import { products } from 'wix-stores.v2';
 export { searchContactsByQuery, searchStoreCoupons };
 
 const LOG_PREFIX = '[VELO-BE]';
-const UPDATABLE_ORDER_STATUSES = new Set(['sent', 'opened', 'paid_pending_details', 'paid_completed', 'paid', 'cancelled']);
+const UPDATABLE_ORDER_STATUSES = new Set(['sent', 'opened', 'paid_partial', 'paid_pending_details', 'paid_completed', 'paid', 'cancelled']);
 
 /** LeadConnector — אחרי יצירת checkout + רשומת CMS */
 const DASHBOARD_CHECKOUT_WEBHOOK_URL =
@@ -816,7 +816,7 @@ export async function resendOrderWhatsapp(recordId, employeeName) {
     await deliverOrderToWhatsapp(record, employeeName, { isResend: true });
 }
 
-export async function updateOrderStatus(recordId, nextStatus, employeeName) {
+export async function updateOrderStatus(recordId, nextStatus, employeeName, options = {}) {
     if (!UPDATABLE_ORDER_STATUSES.has(nextStatus)) {
         throw new Error('סטטוס לא נתמך');
     }
@@ -826,16 +826,65 @@ export async function updateOrderStatus(recordId, nextStatus, employeeName) {
         throw new Error('לא ניתן לעדכן סטטוס של הזמנה שבסטטוס שגיאה');
     }
     const chain = JSON.parse(record.changeChain || '[]');
-    chain.push({
-        action: 'status_updated',
-        by: employeeName,
-        date: new Date().toISOString(),
-        detail: `סטטוס ההזמנה עודכן ל-${getStatusLabel(nextStatus)}`,
-    });
-
-    await wixData.update('DashboardOrders', {
+    const updatePayload = {
         ...record,
         status: nextStatus,
+    };
+
+    if (nextStatus === 'paid_partial') {
+        const subtotal = Math.max(0, Number(record.totalPrice) || 0);
+        const requestedPaidAmount = Number(options.partialPayment?.amountPaid);
+        const paymentTag = String(options.paymentTag || '').trim();
+        if (!Number.isFinite(requestedPaidAmount) || requestedPaidAmount <= 0 || requestedPaidAmount >= subtotal) {
+            throw new Error('הסכום ששולם חלקית חייב להיות גדול מ-0 וקטן מסכום ההזמנה');
+        }
+        if (!paymentTag) {
+            throw new Error('יש לבחור אופן תשלום עבור הזמנה ששולמה חלקית');
+        }
+
+        const paidAmount = Math.min(subtotal, Math.max(0, requestedPaidAmount));
+        const couponResult = await createOrderCoupon('fixed', paidAmount);
+        const couponDetailsObj = {
+            source: 'partial_paid',
+            type: 'fixed',
+            value: paidAmount,
+            paidAmount,
+            remainingAmount: Math.max(0, subtotal - paidAmount),
+            code: couponResult.code,
+        };
+        enrichCouponDetailsWithTotals(couponDetailsObj, subtotal);
+
+        const checkoutResult = await createDashboardCheckout({
+            products: safeParseJson(record.products, []),
+            contactId: record.payerContactId || '',
+            orderChangeNotes: record.orderChangeNotes || '',
+            couponCode: couponResult.code,
+        });
+
+        updatePayload.paymentMethod = paymentTag;
+        updatePayload.partialPaidAmount = paidAmount;
+        updatePayload.couponId = couponResult?.couponId || '';
+        updatePayload.couponDetails = JSON.stringify(couponDetailsObj);
+        updatePayload.checkoutId = checkoutResult.checkoutId;
+        updatePayload.checkoutLink = checkoutResult.checkoutUrl;
+
+        chain.push({
+            action: 'status_updated',
+            by: employeeName,
+            date: new Date().toISOString(),
+            detail: `סטטוס ההזמנה עודכן לשולמה חלקית. שולם מראש ₪${paidAmount.toLocaleString('he-IL')} באמצעות ${paymentTag}`,
+        });
+    } else {
+        chain.push({
+            action: 'status_updated',
+            by: employeeName,
+            date: new Date().toISOString(),
+            detail: `סטטוס ההזמנה עודכן ל-${getStatusLabel(nextStatus)}`,
+        });
+    }
+
+    await wixData.update('DashboardOrders', {
+        ...updatePayload,
         changeChain: JSON.stringify(chain),
     }, { suppressAuth: true });
 }

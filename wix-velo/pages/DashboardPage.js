@@ -151,7 +151,10 @@ async function handleIframeMessage(data) {
       }
 
       case 'UPDATE_ORDER_STATUS': {
-        await updateOrderStatus(payload.recordId, payload.status, currentEmployee.displayName);
+        await updateOrderStatus(payload.recordId, payload.status, currentEmployee.displayName, {
+          partialPayment: payload.partialPayment || null,
+          paymentTag: payload.paymentTag || '',
+        });
         sendToIframe('ORDER_STATUS_SAVED', { success: true }, requestId);
         break;
       }

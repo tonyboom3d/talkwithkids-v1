@@ -107,7 +107,9 @@ export default function OrderDetailPanel({ order, onClose, onAddNote, onCancelLi
   const orderId =
     order.orderNumber && String(order.orderNumber).trim()
       ? order.orderNumber
-      : 'ממתין לתשלום';
+      : order.status === "paid_pending_details"
+        ? "-"
+        : "ממתין לתשלום";
   const orderDate = order._createdDate || order.date;
   const isLinkCancelled = order.linkCancelled || order.status === 'cancelled';
 

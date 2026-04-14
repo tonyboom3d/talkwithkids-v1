@@ -7,7 +7,13 @@ export function computeDisplayTotalAfterCoupon(subtotal, couponDetails) {
   if (couponDetails.discountedTotal != null && Number.isFinite(Number(couponDetails.discountedTotal))) {
     return Math.max(0, Number(couponDetails.discountedTotal));
   }
-  if (couponDetails.source === "auto_paid") return 0;
+  if (couponDetails.source === "auto_paid") {
+    const actualPaidAmount = Number(couponDetails.actualPaidAmount);
+    if (Number.isFinite(actualPaidAmount) && actualPaidAmount > 0) {
+      return Math.max(0, actualPaidAmount);
+    }
+    return 0;
+  }
   if (couponDetails.source === "create" || couponDetails.source === "partial_paid") {
     if (couponDetails.type === "percent") {
       const pct = Math.min(100, Math.max(0, Number(couponDetails.value) || 0));
