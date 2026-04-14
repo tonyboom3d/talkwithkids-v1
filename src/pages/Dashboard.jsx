@@ -128,6 +128,8 @@ export default function Dashboard() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [paymentTag, setPaymentTag] = useState("");
   const [partialPaidAmount, setPartialPaidAmount] = useState("");
+  const [hasCustomPaidAmount, setHasCustomPaidAmount] = useState(false);
+  const [actualPaidAmount, setActualPaidAmount] = useState("");
   const [couponEnabled, setCouponEnabled] = useState(false);
   /** "create" = יצירת קופון חדש; "existing" = בחירת קופון מהחנות (רק אחד) */
   const [couponMode, setCouponMode] = useState("create");
@@ -182,6 +184,10 @@ export default function Dashboard() {
   useEffect(() => {
     if (paymentStatus !== "paid" && paymentStatus !== "paid_partial") {
       setPartialPaidAmount("");
+    }
+    if (paymentStatus !== "paid") {
+      setHasCustomPaidAmount(false);
+      setActualPaidAmount("");
     }
     if (paymentStatus === "paid" || paymentStatus === "paid_partial") {
       setCouponEnabled(false);
@@ -268,6 +274,17 @@ export default function Dashboard() {
       showError("יש לבחור אופן תשלום עבור הזמנה ששולמה");
       return;
     }
+    if (paymentStatus === "paid" && hasCustomPaidAmount) {
+      const actualAmount = Number(actualPaidAmount);
+      if (!String(actualPaidAmount).trim()) {
+        showError("יש למלא כמה שולם בפועל");
+        return;
+      }
+      if (!Number.isFinite(actualAmount) || actualAmount <= 0) {
+        showError("הסכום ששולם בפועל חייב להיות גדול מ-0");
+        return;
+      }
+    }
 
     if (couponEnabled && paymentStatus === "unpaid") {
       if (couponMode === "existing") {
@@ -337,6 +354,9 @@ export default function Dashboard() {
         partialPayment: paymentStatus === "paid_partial"
           ? { amountPaid: Number(partialPaidAmount) }
           : null,
+        actualPaidAmount: paymentStatus === "paid" && hasCustomPaidAmount
+          ? Number(actualPaidAmount)
+          : null,
         totalPrice: total,
       });
 
@@ -367,6 +387,8 @@ export default function Dashboard() {
     setOrderChanges("");
     setPaymentTag("");
     setPartialPaidAmount("");
+    setHasCustomPaidAmount(false);
+    setActualPaidAmount("");
     setCouponEnabled(false);
     setCouponMode("create");
     setSelectedStoreCoupon(null);
@@ -692,6 +714,81 @@ export default function Dashboard() {
                   );
                 })()}
               </div>
+            </motion.div>
+          )}
+
+          {paymentStatus === "paid" && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: 0.2 }}
+              className="space-y-2"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setHasCustomPaidAmount((prev) => {
+                    const nextValue = !prev;
+                    if (!nextValue) {
+                      setActualPaidAmount("");
+                    }
+                    return nextValue;
+                  });
+                }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all w-full ${
+                  hasCustomPaidAmount
+                    ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
+                }`}
+              >
+                שולם סכום שונה
+                <div className={`mr-auto w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+                  hasCustomPaidAmount ? "bg-emerald-600 border-emerald-600" : "border-slate-300"
+                }`}>
+                  {hasCustomPaidAmount && <div className="w-2 h-2 bg-white rounded-sm" />}
+                </div>
+              </button>
+
+              <AnimatePresence>
+                {hasCustomPaidAmount && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 space-y-2">
+                      <Label className="block text-right text-sm font-medium text-slate-700">
+                        כמה שולם בפועל עבור ההזמנה
+                      </Label>
+                      <div className="flex items-center gap-2" dir="rtl">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={actualPaidAmount}
+                          onChange={(e) => setActualPaidAmount(e.target.value)}
+                          placeholder="סכום ששולם בפועל"
+                          className="h-10 text-right"
+                          dir="ltr"
+                        />
+                        <span className="text-sm font-semibold text-slate-600">₪</span>
+                      </div>
+                      {String(actualPaidAmount).trim() && (
+                        Number.isFinite(Number(actualPaidAmount)) && Number(actualPaidAmount) > 0 ? (
+                          <p className="text-xs text-emerald-800">
+                            הערך יישמר בשדה "שולם בפועל" ויוצג בדאשבורד.
+                          </p>
+                        ) : (
+                          <p className="text-xs text-emerald-700">
+                            יש להזין סכום גדול מ-0.
+                          </p>
+                        )
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 

@@ -93,6 +93,10 @@ export default function OrderDetailPanel({ order, onClose, onAddNote, onCancelLi
     Number(order.partialPaidAmount ?? couponDetails?.paidAmount ?? couponDetails?.value ?? 0) || 0
   );
   const isPartialPayment = order.status === "paid_partial";
+  const hasCustomActualPaidAmount =
+    couponDetails?.source === "auto_paid" &&
+    partialPaidAmount > 0 &&
+    order.status !== "paid_partial";
   const orderTotal =
     order.totalAmount != null && Number.isFinite(Number(order.totalAmount))
       ? Number(order.totalAmount)
@@ -214,6 +218,11 @@ export default function OrderDetailPanel({ order, onClose, onAddNote, onCancelLi
             {isPartialPayment && partialPaidAmount > 0 && (
               <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800 text-right">
                 שולם מראש: ₪{partialPaidAmount.toLocaleString("he-IL")} | יתרה לתשלום: ₪{orderTotal.toLocaleString("he-IL")}
+              </div>
+            )}
+            {hasCustomActualPaidAmount && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 text-right">
+                שולם בפועל: ₪{partialPaidAmount.toLocaleString("he-IL")}
               </div>
             )}
           </div>

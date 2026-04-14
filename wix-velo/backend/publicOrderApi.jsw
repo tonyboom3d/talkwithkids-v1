@@ -138,6 +138,10 @@ function computePublicPriceDisplay(record, couponDetails) {
                 payPrice = Math.max(0, subtotal - off);
             }
             originalPrice = subtotal;
+        } else if (couponDetails.source === 'partial_paid') {
+            const paidAmount = Math.min(subtotal, Math.max(0, Number(couponDetails.paidAmount ?? couponDetails.value) || 0));
+            payPrice = Math.max(0, subtotal - paidAmount);
+            originalPrice = subtotal;
         }
     }
 

@@ -66,6 +66,9 @@ export function getDisplayStatus(order) {
 export function getCouponSummary(couponDetails) {
   if (!couponDetails) return "ללא קופון";
   if (couponDetails.source === "auto_paid") {
+    if (Number(couponDetails.actualPaidAmount) > 0) {
+      return `שולם בפועל: ₪${Number(couponDetails.actualPaidAmount).toLocaleString("he-IL")} | קופון 100% להשלמת פרטים`;
+    }
     return "שולם מראש - קופון 100% להשלמת פרטים";
   }
   if (couponDetails.source === "partial_paid") {
@@ -118,6 +121,13 @@ function resolvePartialPaidAmount(order, couponDetails, subtotal) {
     const couponValue = Number(couponDetails.paidAmount ?? couponDetails.value);
     if (Number.isFinite(couponValue) && couponValue > 0) {
       return Math.min(Math.max(0, couponValue), subtotal);
+    }
+  }
+
+  if (couponDetails?.source === "auto_paid") {
+    const actualPaidAmount = Number(couponDetails.actualPaidAmount);
+    if (Number.isFinite(actualPaidAmount) && actualPaidAmount > 0) {
+      return Math.max(0, actualPaidAmount);
     }
   }
 

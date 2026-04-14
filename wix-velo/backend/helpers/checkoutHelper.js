@@ -46,6 +46,9 @@ export async function createDashboardCheckout(orderData) {
   if (orderData.couponCode) {
     checkoutOptions.couponCode = orderData.couponCode;
   }
+  if (orderData.lockCouponCode != null) {
+    checkoutOptions.lockCouponCode = !!orderData.lockCouponCode;
+  }
 
   const checkoutObj = await checkout.createCheckout(checkoutOptions);
   const urlResult = await checkout.getCheckoutUrl(checkoutObj._id);

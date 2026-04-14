@@ -222,7 +222,7 @@ export default function OrdersTable({
   };
 
   const renderPaidAmountCell = (order) => {
-    if (order.partialPaidAmount > 0) {
+    if (order.displayStatus === "paid_partial" && order.partialPaidAmount > 0) {
       return (
         <div className="text-right whitespace-nowrap">
           <div className="text-sm font-semibold text-orange-700">
@@ -230,6 +230,19 @@ export default function OrdersTable({
           </div>
           <div className="text-[11px] text-slate-400">
             יתרה: ₪{(order.remainingPaymentAmount ?? 0).toLocaleString("he-IL")}
+          </div>
+        </div>
+      );
+    }
+
+    if (order.partialPaidAmount > 0 && order.couponDetails?.source === "auto_paid" && isPaidDisplayStatus(order.displayStatus)) {
+      return (
+        <div className="text-right whitespace-nowrap">
+          <div className="text-sm font-semibold text-emerald-700">
+            ₪{order.partialPaidAmount.toLocaleString("he-IL")}
+          </div>
+          <div className="text-[11px] text-slate-400">
+            שולם בפועל
           </div>
         </div>
       );
@@ -587,7 +600,7 @@ export default function OrdersTable({
                                             {order.statusCfg.label}
                                           </Badge>
                                         </div>
-                                        {order.partialPaidAmount > 0 && (
+                                        {order.displayStatus === "paid_partial" && order.partialPaidAmount > 0 && (
                                           <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5 text-right">
                                             <div className="mb-1 flex items-center justify-end gap-2 text-xs text-orange-700">
                                               <CreditCard className="w-3.5 h-3.5" />
@@ -598,7 +611,7 @@ export default function OrdersTable({
                                             </p>
                                           </div>
                                         )}
-                                        {order.partialPaidAmount > 0 && (
+                                        {order.displayStatus === "paid_partial" && order.partialPaidAmount > 0 && (
                                           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
                                             <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
                                               <CreditCard className="w-3.5 h-3.5" />
@@ -606,6 +619,17 @@ export default function OrdersTable({
                                             </div>
                                             <p className="text-sm font-semibold text-slate-700">
                                               ₪{(order.remainingPaymentAmount ?? 0).toLocaleString("he-IL")}
+                                            </p>
+                                          </div>
+                                        )}
+                                        {order.displayStatus !== "paid_partial" && order.partialPaidAmount > 0 && order.couponDetails?.source === "auto_paid" && (
+                                          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-right">
+                                            <div className="mb-1 flex items-center justify-end gap-2 text-xs text-emerald-700">
+                                              <CreditCard className="w-3.5 h-3.5" />
+                                              <span>שולם בפועל</span>
+                                            </div>
+                                            <p className="text-sm font-semibold text-emerald-800">
+                                              ₪{order.partialPaidAmount.toLocaleString("he-IL")}
                                             </p>
                                           </div>
                                         )}

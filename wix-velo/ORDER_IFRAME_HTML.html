@@ -61,6 +61,26 @@
       display: block;
     }
 
+    /* Loading screen should appear at top of viewport */
+    #loadingScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 18px;
+      padding-top: 22px;
+      background:
+        radial-gradient(circle at top right, rgba(238, 63, 110, 0.14), transparent 32%),
+        radial-gradient(circle at bottom left, rgba(155, 182, 193, 0.22), transparent 28%),
+        linear-gradient(180deg, #fffafb 0%, #f9fcfd 100%);
+    }
+
+    #loadingScreen.is-visible {
+      display: flex;
+    }
+
     .card {
       position: relative;
       overflow: hidden;

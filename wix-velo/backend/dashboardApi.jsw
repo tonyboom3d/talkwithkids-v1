@@ -397,6 +397,12 @@ function enrichCouponDetailsWithTotals(couponDetailsObj, subtotal, existingStore
 
     if (couponDetailsObj.source === 'auto_paid') {
         discountedTotal = 0;
+    } else if (couponDetailsObj.source === 'partial_paid') {
+        const paidAmount = Math.min(s, Math.max(0, Number(couponDetailsObj.paidAmount ?? couponDetailsObj.value) || 0));
+        discountedTotal = Math.max(0, s - paidAmount);
+        couponDetailsObj.paidAmount = paidAmount;
+        couponDetailsObj.value = paidAmount;
+        couponDetailsObj.remainingAmount = discountedTotal;
     } else if (couponDetailsObj.source === 'create') {
         if (couponDetailsObj.type === 'percent') {
             const pct = Math.min(100, Math.max(0, Number(couponDetailsObj.value) || 0));
@@ -548,9 +554,16 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
     const orderSubtotal = Math.max(0, Number(orderData.totalPrice) || 0);
     const requestedPartialPaidAmount = Number(orderData.partialPayment?.amountPaid);
     const hasPartialPaymentInput = orderData.partialPayment?.amountPaid != null && orderData.partialPayment?.amountPaid !== '';
+    const requestedActualPaidAmount = Number(orderData.actualPaidAmount);
+    const hasActualPaidAmountInput = orderData.actualPaidAmount != null && orderData.actualPaidAmount !== '';
     if (isMarkedPartial) {
         if (!Number.isFinite(requestedPartialPaidAmount) || requestedPartialPaidAmount <= 0 || requestedPartialPaidAmount >= orderSubtotal) {
             throw new Error('הסכום ששולם חלקית חייב להיות גדול מ-0 וקטן מסכום ההזמנה');
+        }
+    }
+    if (isMarkedPaid && hasActualPaidAmountInput) {
+        if (!Number.isFinite(requestedActualPaidAmount) || requestedActualPaidAmount <= 0) {
+            throw new Error('הסכום ששולם בפועל חייב להיות גדול מ-0');
         }
     }
     const isPartiallyPaid = (
@@ -563,16 +576,17 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
     const initialStatus = isPartiallyPaid ? 'paid_partial' : isMarkedPaid ? 'paid_pending_details' : 'sent';
 
     if (isPartiallyPaid) {
-        couponResult = await createOrderCoupon('fixed', requestedPartialPaidAmount);
+        const paidAmount = Math.min(orderSubtotal, Math.max(0, requestedPartialPaidAmount));
+        couponResult = await createOrderCoupon('fixed', paidAmount);
         couponDetailsObj = {
             source: 'partial_paid',
             type: 'fixed',
-            value: requestedPartialPaidAmount,
-            paidAmount: requestedPartialPaidAmount,
-            remainingAmount: Math.max(0, orderSubtotal - requestedPartialPaidAmount),
+            value: paidAmount,
+            paidAmount,
+            remainingAmount: Math.max(0, orderSubtotal - paidAmount),
             code: couponResult.code,
         };
-        console.log(`${LOG_PREFIX} Auto-created partial payment coupon for paid amount: ${requestedPartialPaidAmount}`);
+        console.log(`${LOG_PREFIX} Auto-created partial payment coupon: paid=${paidAmount}, remaining=${Math.max(0, orderSubtotal - paidAmount)}, code=${couponResult.code}`);
     } else if (isMarkedPaid) {
         couponResult = await createOrderCoupon('percent', 100);
         couponDetailsObj = {
@@ -580,6 +594,7 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
             type: 'percent',
             value: 100,
             code: couponResult.code,
+            actualPaidAmount: hasActualPaidAmountInput ? requestedActualPaidAmount : undefined,
         };
         console.log(`${LOG_PREFIX} Auto-created 100% coupon for paid order: ${couponResult.code}`);
     } else if (orderData.existingCoupon?.id && orderData.existingCoupon?.code) {
@@ -618,6 +633,9 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
     if (couponDetailsObj) {
         enrichCouponDetailsWithTotals(couponDetailsObj, orderSubtotal, existingStoreCouponMapped);
     }
+    if (isPartiallyPaid && !couponResult?.code) {
+        throw new Error('לא נוצר קופון להשלמת יתרת תשלום עבור הזמנה ששולמה חלקית');
+    }
 
     const normalizedPhone = await normalizeIsraeliPhone(orderData.customer.phone || "");
     let contactId = orderData.customer.contactId;
@@ -635,7 +653,9 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
         createdByRef: employeeId,
         createdByName: employeeName || '',
         paymentMethod: orderData.paymentTag || '',
-        partialPaidAmount: isPartiallyPaid ? requestedPartialPaidAmount : 0,
+        partialPaidAmount: isPartiallyPaid
+            ? requestedPartialPaidAmount
+            : (isMarkedPaid && hasActualPaidAmountInput ? requestedActualPaidAmount : 0),
         products: JSON.stringify(orderData.products),
         totalPrice: orderData.totalPrice,
         couponId: couponResult?.couponId || '',
@@ -650,7 +670,11 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
                 detail: isPartiallyPaid
                     ? `ההזמנה סומנה כששולמה חלקית. שולם מראש ₪${requestedPartialPaidAmount.toLocaleString('he-IL')}`
                     : isMarkedPaid
-                    ? 'הזמנה סומנה כשולמה וממתינה להשלמת פרטים דרך הקישור'
+                    ? (
+                        hasActualPaidAmountInput
+                            ? `הזמנה סומנה כשולמה וממתינה להשלמת פרטים דרך הקישור. שולם בפועל ₪${requestedActualPaidAmount.toLocaleString('he-IL')}`
+                            : 'הזמנה סומנה כשולמה וממתינה להשלמת פרטים דרך הקישור'
+                    )
                     : 'הזמנה נוצרה',
             }
         ]),
@@ -680,6 +704,7 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
             contactId,
             orderChangeNotes: orderData.orderChanges || '',
             couponCode: couponResult?.code || null,
+            lockCouponCode: isMarkedPaid,
         });
 
         const currentRecord = await wixData.get('DashboardOrders', inserted._id, { suppressAuth: true });
@@ -822,15 +847,16 @@ export async function deleteOrderRecord(recordId, employeeName) {
     }
     const chain = JSON.parse(record.changeChain || '[]');
     chain.push({
-        action: 'cancelled',
+        action: 'deleted',
         by: employeeName,
         date: new Date().toISOString(),
-        detail: 'ההזמנה בוטלה מלוח הבקרה וקישור התשלום אינו זמין יותר',
+        detail: 'ההזמנה נמחקה מלוח הבקרה',
     });
 
     await wixData.update('DashboardOrders', {
         ...record,
         status: 'cancelled',
+        deletedAt: new Date().toISOString(),
         changeChain: JSON.stringify(chain),
     }, { suppressAuth: true });
 }
@@ -844,12 +870,42 @@ export async function handleOrderCompleted(ecomOrder) {
 // ─── Store products (קטלוג לדאשבורד) ───
 
 function unitPriceFromStoreProduct(p) {
-    const pd = p.priceData;
-    if (pd != null && pd.price != null) {
-        const n = typeof pd.price === 'number' ? pd.price : parseFloat(String(pd.price).replace(/,/g, ''));
-        if (!isNaN(n)) return n;
+    const parsePrice = (value) => {
+        if (value == null || value === '') return NaN;
+        if (typeof value === 'number') return value;
+        const parsed = parseFloat(String(value).replace(/,/g, ''));
+        return Number.isFinite(parsed) ? parsed : NaN;
+    };
+
+    const priceData = p.priceData || {};
+    const convertedPriceData = p.convertedPriceData || {};
+
+    // עדיפות למחיר מוזל אם קיים במבנה המוצר
+    const discountedCandidates = [
+        priceData.discountedPrice,
+        priceData.discountedPriceAmount,
+        priceData?.discount?.discountedPrice,
+        priceData?.discount?.discountedPriceAmount,
+        convertedPriceData.discountedPrice,
+        convertedPriceData.discountedPriceAmount,
+        p.discountedPrice,
+        p.salePrice,
+    ];
+    for (const candidate of discountedCandidates) {
+        const n = parsePrice(candidate);
+        if (Number.isFinite(n) && n >= 0) return n;
     }
-    if (typeof p.price === 'number') return p.price;
+
+    const regularCandidates = [
+        priceData.price,
+        convertedPriceData.price,
+        p.price,
+    ];
+    for (const candidate of regularCandidates) {
+        const n = parsePrice(candidate);
+        if (Number.isFinite(n) && n >= 0) return n;
+    }
+
     return 0;
 }
 
