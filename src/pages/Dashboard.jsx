@@ -147,7 +147,10 @@ export default function Dashboard() {
     [orders, canViewOthers, includeAllCreators, selectedCreatorKeys]
   );
   const selectedProductsTotal = useMemo(
-    () => selectedProducts.reduce((sum, product) => sum + product.price * product.quantity, 0),
+    () => selectedProducts.reduce((sum, product) => {
+      const price = Number.isFinite(Number(product.price)) ? Number(product.price) : 0;
+      return sum + price * product.quantity;
+    }, 0),
     [selectedProducts]
   );
 
@@ -254,7 +257,19 @@ export default function Dashboard() {
       showError("יש לבחור לפחות מוצר אחד");
       return;
     }
+    const invalidPriceProduct = selectedProducts.find((p) => {
+      const price = Number(p.price);
+      return !Number.isFinite(price) || price < 0;
+    });
+    if (invalidPriceProduct) {
+      showError(`מחיר לא תקין עבור המוצר "${invalidPriceProduct.name}" — חייב להיות 0 ומעלה`);
+      return;
+    }
     const total = selectedProductsTotal;
+    if (total < 0) {
+      showError("סכום ההזמנה לא יכול להיות שלילי");
+      return;
+    }
     if (total === 0 && paymentStatus !== "paid") {
       showError("מחיר ההזמנה חייב להיות גדול מ-0");
       return;
@@ -293,7 +308,7 @@ export default function Dashboard() {
           return;
         }
       } else {
-        const sub = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
+        const sub = selectedProducts.reduce((s, p) => s + (Number.isFinite(Number(p.price)) ? Number(p.price) : 0) * p.quantity, 0);
         if (!String(couponValue).trim()) {
           showError("נא למלא את הסכום לתשלום");
           return;
@@ -343,7 +358,12 @@ export default function Dashboard() {
           contactId: selectedContact?.id || null,
         },
         products: selectedProducts.map(p => ({
-          id: p.id, name: p.name, price: p.price, quantity: p.quantity, image: p.image,
+          id: p.id,
+          name: p.name,
+          price: Number.isFinite(Number(p.price)) ? Number(p.price) : 0,
+          catalogPrice: Number.isFinite(Number(p.catalogPrice)) ? Number(p.catalogPrice) : Number(p.price) || 0,
+          quantity: p.quantity,
+          image: p.image,
         })),
         coupon,
         existingCoupon,
@@ -821,9 +841,9 @@ export default function Dashboard() {
             >
               <button
                 type="button"
-                disabled={selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0) === 0}
+                disabled={selectedProducts.reduce((s, p) => s + (Number.isFinite(Number(p.price)) ? Number(p.price) : 0) * p.quantity, 0) === 0}
                 onClick={() => {
-                  if (selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0) > 0) {
+                  if (selectedProducts.reduce((s, p) => s + (Number.isFinite(Number(p.price)) ? Number(p.price) : 0) * p.quantity, 0) > 0) {
                     setCouponEnabled(!couponEnabled);
                     setCouponValue("");
                     setSelectedStoreCoupon(null);
@@ -831,7 +851,7 @@ export default function Dashboard() {
                   }
                 }}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all w-full ${
-                  selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0) === 0
+                  selectedProducts.reduce((s, p) => s + (Number.isFinite(Number(p.price)) ? Number(p.price) : 0) * p.quantity, 0) === 0
                     ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
                     : couponEnabled
                       ? "bg-violet-50 border-violet-300 text-violet-700"
@@ -895,7 +915,7 @@ export default function Dashboard() {
                             </span>
                           </div>
                           {(() => {
-                            const total = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
+                            const total = selectedProducts.reduce((s, p) => s + (Number.isFinite(Number(p.price)) ? Number(p.price) : 0) * p.quantity, 0);
                             const customCoupon = parseCustomPayAmount(couponValue, total);
                             return (
                               <>
@@ -925,7 +945,7 @@ export default function Dashboard() {
                       )}
 
                       {(() => {
-                        const total = selectedProducts.reduce((s, p) => s + p.price * p.quantity, 0);
+                        const total = selectedProducts.reduce((s, p) => s + (Number.isFinite(Number(p.price)) ? Number(p.price) : 0) * p.quantity, 0);
                         if (total <= 0) return null;
 
                         if (couponMode === "existing" && selectedStoreCoupon) {

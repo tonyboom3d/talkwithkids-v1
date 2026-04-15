@@ -128,6 +128,16 @@ function safeParseCheckoutSessionData(value) {
 
 const NON_PAYABLE_STATUSES = new Set(['paid', 'paid_completed', 'cancelled', 'error']);
 
+function buildDraftFallbackFromRecord(record) {
+    const couponDetails = safeParseJson(record?.couponDetails, null);
+    return {
+        products: safeParseJson(record?.products, []),
+        orderChangeNotes: String(record?.orderChangeNotes || ''),
+        couponCode: String(couponDetails?.code || '').trim() || null,
+        lockCouponCode: normalizeOrderStatus(record?.status) === 'paid_pending_details',
+    };
+}
+
 function computePublicPriceDisplay(record, couponDetails) {
     const subtotal = Math.max(0, Number(record.totalPrice) || 0);
     let payPrice = subtotal;
@@ -323,13 +333,21 @@ export async function createPublicCheckoutForOrder(dynamicLinkId) {
             return { ok: false, code: 'ORDER_NOT_PAYABLE', message: 'לא ניתן לשלם עבור הזמנה זו' };
         }
 
-        const sessionData = safeParseCheckoutSessionData(record.checkoutSessionData);
-        if (!sessionData || !sessionData.draft) {
-            console.error(`${LOG_PREFIX} Missing checkoutSessionData for record ${record._id}`);
-            return { ok: false, code: 'CHECKOUT_DRAFT_MISSING', message: 'פרטי ההזמנה לתשלום לא נמצאו. אנא פנו לשירות לקוחות.' };
+        let sessionData = safeParseCheckoutSessionData(record.checkoutSessionData);
+        let draft = sessionData?.draft;
+        if (!draft) {
+            // Backward-compatibility and resiliency: rebuild draft from order fields
+            // when checkoutSessionData is missing/empty on old or partially migrated records.
+            draft = buildDraftFallbackFromRecord(record);
+            sessionData = {
+                version: 1,
+                draft,
+                history: [],
+                latest: null,
+            };
+            console.warn(`${LOG_PREFIX} checkoutSessionData missing; using fallback draft for record ${record._id}`);
         }
 
-        const { draft } = sessionData;
         console.log(`${LOG_PREFIX} Creating checkout from draft for record ${record._id}`);
 
         const checkoutResult = await createDashboardCheckout({

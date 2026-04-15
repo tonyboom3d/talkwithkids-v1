@@ -543,6 +543,20 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
     const isMarkedPaid = orderData.paymentStatus === 'paid';
     const isMarkedPartial = orderData.paymentStatus === 'paid_partial';
     const orderSubtotal = Math.max(0, Number(orderData.totalPrice) || 0);
+
+    const orderProducts = orderData.products || [];
+    const invalidProduct = orderProducts.find((p) => {
+        const price = Number(p.price);
+        return !Number.isFinite(price) || price < 0;
+    });
+    if (invalidProduct) {
+        throw new Error(`מחיר לא תקין עבור המוצר "${invalidProduct.name || invalidProduct.id}" — חייב להיות 0 ומעלה`);
+    }
+    const computedTotal = orderProducts.reduce((sum, p) => sum + (Number(p.price) || 0) * (Math.max(1, Number(p.quantity) || 1)), 0);
+    if (computedTotal < 0) {
+        throw new Error('סכום ההזמנה לא יכול להיות שלילי');
+    }
+
     const requestedPartialPaidAmount = Number(orderData.partialPayment?.amountPaid);
     const hasPartialPaymentInput = orderData.partialPayment?.amountPaid != null && orderData.partialPayment?.amountPaid !== '';
     const requestedActualPaidAmount = Number(orderData.actualPaidAmount);
@@ -630,6 +644,13 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
 
     const normalizedPhone = await normalizeIsraeliPhone(orderData.customer.phone || "");
 
+    const checkoutDraft = buildCheckoutSessionData({
+        products: orderData.products,
+        orderChangeNotes: orderData.orderChanges || '',
+        couponCode: couponResult?.code || null,
+        lockCouponCode: isMarkedPaid,
+    });
+
     const record = {
         orderNumber: '',
         deliveryNumber: '',
@@ -666,29 +687,31 @@ export async function createOrderRecord(orderData, employeeId, employeeName = ''
         customerName: orderData.customer.firstName + (orderData.customer.lastName ? ' ' + orderData.customer.lastName : ''),
         customerPhone: normalizedPhone || '',
         customerEmail: orderData.customer.email || '',
+        checkoutSessionData: JSON.stringify(checkoutDraft),
         errors: '',
         completedOrderData: '',
     };
 
+    const checkoutSessionDataJson = JSON.stringify(checkoutDraft);
+    console.log(`${LOG_PREFIX} [DEBUG] checkoutDraft built, length=${checkoutSessionDataJson.length}, draft products count=${checkoutDraft?.draft?.products?.length}`);
+
     const inserted = await wixData.insert('DashboardOrders', record, { suppressAuth: true });
     console.log(`${LOG_PREFIX} Order record inserted: ${inserted._id}`);
+    console.log(`${LOG_PREFIX} [DEBUG] After insert, inserted.checkoutSessionData=${JSON.stringify(inserted.checkoutSessionData).slice(0, 80)} (empty means field not in CMS schema)`);
 
     const dynamicId = inserted._id.substring(0, 16);
     const dynamicOrderUrl = buildDashboardOrderUrl(dynamicId);
 
-    const checkoutDraft = buildCheckoutSessionData({
-        products: orderData.products,
-        orderChangeNotes: orderData.orderChanges || '',
-        couponCode: couponResult?.code || null,
-        lockCouponCode: isMarkedPaid,
-    });
-
-    await wixData.update('DashboardOrders', {
+    const updatePayloadForDebug = {
         ...inserted,
         dynamicLinkId: dynamicId,
         dynamicOrderUrl,
-        checkoutSessionData: JSON.stringify(checkoutDraft),
-    }, { suppressAuth: true });
+        checkoutSessionData: checkoutSessionDataJson,
+    };
+    console.log(`${LOG_PREFIX} [DEBUG] About to update, checkoutSessionData in payload length=${updatePayloadForDebug.checkoutSessionData?.length}`);
+
+    const updated = await wixData.update('DashboardOrders', updatePayloadForDebug, { suppressAuth: true });
+    console.log(`${LOG_PREFIX} [DEBUG] After update, updated.checkoutSessionData=${JSON.stringify(updated.checkoutSessionData).slice(0, 80)} (empty means field not in CMS schema)`);
 
     console.log(`${LOG_PREFIX} Order record ready, checkout deferred to customer click: dynamicLinkId=${dynamicId}`);
 

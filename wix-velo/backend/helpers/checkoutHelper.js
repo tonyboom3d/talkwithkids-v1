@@ -46,13 +46,30 @@ export async function createDashboardCheckout(orderData) {
     if (!catalogItemId) {
       throw new Error('חסר מזהה מוצר (id) — נדרש מוצר מהקטלוג');
     }
-    return {
+
+    const lineItem = {
       quantity: Math.max(1, Number(p.quantity) || 1),
       catalogReference: {
         appId: WIX_STORES_CATALOG_APP_ID,
         catalogItemId: String(catalogItemId),
       },
     };
+
+    const effectivePrice = Number(p.price);
+    const catalogPrice = Number(p.catalogPrice);
+    if (
+      Number.isFinite(effectivePrice) &&
+      Number.isFinite(catalogPrice) &&
+      effectivePrice >= 0 &&
+      effectivePrice < catalogPrice
+    ) {
+      lineItem.catalogOverrideFields = {
+        fullPrice: catalogPrice.toFixed(2),
+        price: effectivePrice.toFixed(2),
+      };
+    }
+
+    return lineItem;
   });
 
   if (lineItems.length === 0) {
