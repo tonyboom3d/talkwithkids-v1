@@ -362,22 +362,22 @@ export default function OrdersTable({
             <Table dir="rtl">
               <TableHeader>
                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
-                  <TableHead className="text-right text-xs font-medium text-slate-500 w-12" />
-                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">תאריך שליחה</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[160px]">שם לקוח</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">טלפון</TableHead>
-                        <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[90px]">וואטסאפ</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">סה"כ הזמנה</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">שולם בפועל</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[110px]">יתרה</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 w-8 px-1" />
+                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[100px] px-2">תאריך</TableHead>
+                  <TableHead className="sticky right-0 bg-slate-50/95 z-10 text-right text-xs font-medium text-slate-500 min-w-[120px] px-2">שם לקוח</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[96px] px-2">טלפון</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[60px] px-2">W/A</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[80px] px-2">סה"כ</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[80px] px-2">שולם</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[72px] px-2">יתרה</TableHead>
                   {showProfitColumn && (
-                    <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">רווח עמלה</TableHead>
+                    <TableHead className="text-right text-xs font-medium text-slate-500 w-[80px] px-2">רווח</TableHead>
                   )}
-                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">סטטוס</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">מס׳ הזמנה</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">מס׳ משלוח תפוז</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">מי יצר/ה</TableHead>
-                  <TableHead className="text-left text-xs font-medium text-slate-500 w-12" />
+                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[90px] px-2">סטטוס</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[90px] px-2">הזמנה</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[90px] px-2">משלוח</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[90px] px-2">יצר/ה</TableHead>
+                  <TableHead className="text-left text-xs font-medium text-slate-500 w-8 px-1" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -401,14 +401,14 @@ export default function OrdersTable({
                         className="group cursor-pointer hover:bg-slate-50/70"
                         onClick={() => setExpandedRowId(isExpanded ? null : order.rowId)}
                       >
-                        <TableCell className="text-center">
+                        <TableCell className="text-center px-1 py-2">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button
                                 type="button"
                                 onClick={(event) => event.stopPropagation()}
                                 disabled={isError}
-                                className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 opacity-0 transition-all hover:bg-slate-100 group-hover:opacity-100 focus:opacity-100"
+                                className="mx-auto flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 opacity-0 transition-all hover:bg-slate-100 group-hover:opacity-100 focus:opacity-100"
                               >
                                 <MoreHorizontal className="w-4 h-4" />
                               </button>
@@ -448,78 +448,69 @@ export default function OrdersTable({
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
-                        <TableCell className="text-xs text-slate-500 whitespace-nowrap">
-                          {order.sentDate ? moment(order.sentDate).format("DD/MM/YY HH:mm") : "—"}
+                        <TableCell className="text-xs text-slate-500 whitespace-nowrap px-2 py-2">
+                          {order.sentDate ? moment(order.sentDate).format("DD/MM HH:mm") : "—"}
                         </TableCell>
-                        <TableCell className="text-sm font-medium text-slate-700">
+                        <TableCell className="sticky right-0 bg-white group-hover:bg-slate-50/70 z-10 text-xs font-medium text-slate-700 px-2 py-2 max-w-[120px] truncate">
                           {order.customerName || "—"}
                         </TableCell>
-                        <TableCell className="text-sm text-slate-600 text-right tabular-nums" dir="ltr">
+                        <TableCell className="text-xs text-slate-600 text-right tabular-nums px-2 py-2" dir="ltr">
                           {order.customerPhone || "—"}
                         </TableCell>
-                        <TableCell className="text-right whitespace-nowrap">
+                        <TableCell className="text-right whitespace-nowrap px-2 py-2">
                           {order.whatsappDeliveryStatus === "success" ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
-                              <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                              נשלח
-                            </span>
+                            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" title="נשלח" />
                           ) : order.whatsappDeliveryStatus === "requested" ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-sky-700">
-                              <RefreshCw className="w-3.5 h-3.5" />
-                              ממתין לעדכון
-                            </span>
+                            <RefreshCw className="w-3 h-3 text-sky-500" title="ממתין" />
                           ) : order.whatsappDeliveryStatus === "failed" ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-red-700">
-                              <CircleAlert className="w-4 h-4" />
-                              נכשל
-                            </span>
+                            <CircleAlert className="w-3 h-3 text-red-500" title="נכשל" />
                           ) : (
                             <span className="text-xs text-slate-400">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm font-semibold text-slate-800 whitespace-nowrap">
-                          ₪{order.totalAmount.toLocaleString("he-IL")}
+                        <TableCell className="text-xs font-semibold text-slate-800 whitespace-nowrap px-2 py-2">
+                          {order.totalAmount.toLocaleString("he-IL")}
                         </TableCell>
-                        <TableCell className="text-right whitespace-nowrap">
+                        <TableCell className="text-right whitespace-nowrap px-2 py-2">
                           {renderPaidAmountCell(order)}
                         </TableCell>
-                        <TableCell className="text-right whitespace-nowrap">
+                        <TableCell className="text-right whitespace-nowrap px-2 py-2">
                           {renderRemainingAmountCell(order)}
                         </TableCell>
                         {showProfitColumn && (
-                          <TableCell className="text-right whitespace-nowrap">
+                          <TableCell className="text-right whitespace-nowrap px-2 py-2">
                             {isPaidDisplayStatus(order.displayStatus) ? (
                               <div>
-                                <div className="text-sm font-semibold text-emerald-700">
+                                <div className="text-xs font-semibold text-emerald-700">
                                   ₪{(order.profitAmount ?? 0).toLocaleString("he-IL")}
                                 </div>
-                                <div className="text-[11px] text-slate-400">
+                                <div className="text-[10px] text-slate-400">
                                   {order.profitPercent != null ? `${order.profitPercent}%` : "—"}
                                 </div>
                               </div>
                             ) : (
-                              <span className="text-xs text-slate-400">לא שולם</span>
+                              <span className="text-xs text-slate-400">—</span>
                             )}
                           </TableCell>
                         )}
-                        <TableCell>
+                        <TableCell className="px-2 py-2">
                           <Badge
                             variant="outline"
-                            className={`inline-flex whitespace-nowrap text-[11px] border-0 font-medium ${order.statusCfg.className}`}
+                            className={`inline-flex whitespace-nowrap text-[10px] border-0 font-medium px-1.5 ${order.statusCfg.className}`}
                           >
                             {order.statusCfg.label}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-xs font-mono text-slate-500 whitespace-nowrap">
+                        <TableCell className="text-[11px] font-mono text-slate-500 whitespace-nowrap px-2 py-2">
                           {order.orderNumber}
                         </TableCell>
-                        <TableCell className="text-xs font-mono text-slate-500 whitespace-nowrap">
+                        <TableCell className="text-[11px] font-mono text-slate-500 whitespace-nowrap px-2 py-2">
                           {order.deliveryNumber}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right px-2 py-2">
                           {order.creatorName && order.creatorName !== "—" ? (
                             <span
-                              className={`inline-flex max-w-full items-center gap-1 rounded-full border py-0.5 pl-1.5 pr-2 text-[11px] font-medium ${
+                              className={`inline-flex max-w-[80px] items-center gap-1 rounded-full border py-0.5 pl-1 pr-1.5 text-[10px] font-medium ${
                                 order.creatorTagColor
                                   ? ""
                                   : "border-slate-200 bg-slate-50 text-slate-700"
@@ -528,26 +519,22 @@ export default function OrdersTable({
                               style={creatorTagStyleFromColor(order.creatorTagColor)}
                             >
                               <span className="min-w-0 truncate">{order.creatorName}</span>
-                              <UserRound
-                                className={`h-3 w-3 shrink-0 ${order.creatorTagColor ? "text-current opacity-90" : "text-slate-500"}`}
-                                aria-hidden
-                              />
                             </span>
                           ) : (
-                            <span className="text-sm text-slate-400">—</span>
+                            <span className="text-xs text-slate-400">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-left">
+                        <TableCell className="text-left px-1 py-2">
                           <button
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
                               setExpandedRowId(isExpanded ? null : order.rowId);
                             }}
-                            className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-100"
+                            className="ml-auto flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-100"
                             aria-label={isExpanded ? "סגור פרטים" : "פתח פרטים"}
                           >
-                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                           </button>
                         </TableCell>
                       </TableRow>
