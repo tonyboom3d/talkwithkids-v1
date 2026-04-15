@@ -358,7 +358,7 @@ export default function OrdersTable({
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto overflow-y-visible px-1">
+          <div className="overflow-x-auto overflow-y-visible">
             <Table dir="rtl">
               <TableHeader>
                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
@@ -554,16 +554,17 @@ export default function OrdersTable({
 
                       {isExpanded && (
                         <TableRow className="bg-slate-50/60 hover:bg-slate-50/60">
-                          <TableCell colSpan={showProfitColumn ? 14 : 13} className="p-4">
+                          <TableCell colSpan={showProfitColumn ? 14 : 13} className="p-0">
                             <AnimatePresence initial={false}>
                               <motion.div
                                 initial={{ opacity: 0, height: 0, y: -4, scale: 0.985 }}
                                 animate={{ opacity: 1, height: "auto", y: 0, scale: 1 }}
                                 exit={{ opacity: 0, height: 0, y: -4, scale: 0.985 }}
                                 transition={{ duration: 0.22, ease: "easeOut" }}
-                                className="overflow-visible"
+                                className="overflow-hidden"
                               >
-                                <div className="rounded-2xl border border-slate-200/80 bg-white p-3 md:p-4 space-y-4" dir="rtl">
+                                <div className="w-full p-4">
+                                <div className="rounded-2xl border border-slate-200/80 bg-white p-3 md:p-4 space-y-4 w-full box-border" dir="rtl">
                                   <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div className="text-right">
                                       <p className="text-sm font-semibold text-slate-800">{order.customerName || "ללא שם"}</p>
@@ -635,9 +636,9 @@ export default function OrdersTable({
                                     </div>
                                   )}
 
-                                  <div className="grid gap-3 md:grid-cols-2 items-start">
-                                    <Accordion type="multiple" className="space-y-3 min-w-0">
-                                      <AccordionItem value={`${order.rowId}-customer`} className="min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full items-start">
+                                    <Accordion type="multiple" className="space-y-3 w-full min-w-0">
+                                      <AccordionItem value={`${order.rowId}-customer`} className="w-full min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
                                         <AccordionTrigger className="min-h-[72px] py-0 text-right hover:no-underline">
                                           <span className="flex w-full min-w-0 items-center justify-between gap-3">
                                             <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 shrink-0">
@@ -764,7 +765,7 @@ export default function OrdersTable({
                                         </AccordionContent>
                                       </AccordionItem>
 
-                                      <AccordionItem value={`${order.rowId}-products`} className="min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
+                                      <AccordionItem value={`${order.rowId}-products`} className="w-full min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
                                         <AccordionTrigger className="min-h-[72px] py-0 text-right hover:no-underline">
                                           <span className="flex w-full min-w-0 items-center justify-between gap-2 text-sm font-semibold text-slate-700">
                                             <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 shrink-0">
@@ -832,8 +833,8 @@ export default function OrdersTable({
                                       </AccordionItem>
                                     </Accordion>
 
-                                    <Accordion type="multiple" className="space-y-3 min-w-0">
-                                      <AccordionItem value={`${order.rowId}-timeline`} className="min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
+                                    <Accordion type="multiple" className="space-y-3 w-full min-w-0">
+                                      <AccordionItem value={`${order.rowId}-timeline`} className="w-full min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
                                         <AccordionTrigger className="min-h-[72px] py-0 text-right hover:no-underline">
                                           <span className="flex w-full min-w-0 items-center justify-between gap-3">
                                             <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 shrink-0">
@@ -890,7 +891,7 @@ export default function OrdersTable({
                                         </AccordionContent>
                                       </AccordionItem>
 
-                                      <AccordionItem value={`${order.rowId}-add-note`} className="min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
+                                      <AccordionItem value={`${order.rowId}-add-note`} className="w-full min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
                                         <AccordionTrigger className="min-h-[72px] py-0 text-right hover:no-underline">
                                           <span className="flex w-full min-w-0 items-center justify-between gap-3">
                                             <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 shrink-0">
@@ -931,6 +932,7 @@ export default function OrdersTable({
                                       </AccordionItem>
                                     </Accordion>
                                   </div>
+                                </div>
                                 </div>
                               </motion.div>
                             </AnimatePresence>
