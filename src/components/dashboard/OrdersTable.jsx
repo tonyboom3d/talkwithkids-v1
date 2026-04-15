@@ -90,25 +90,6 @@ function getActorBadgeText(event) {
   return "משתמש/ת מורשה";
 }
 
-function ActionButton({ icon: Icon, label, onClick, className = "", variant = "outline", disabled = false }) {
-  return (
-    <Button
-      type="button"
-      variant={variant}
-      size="sm"
-      onClick={(event) => {
-        event.stopPropagation();
-        onClick?.(event);
-      }}
-      disabled={disabled}
-      className={`gap-1.5 h-8 text-xs ${className}`}
-    >
-      <Icon className="w-3.5 h-3.5" />
-      {label}
-    </Button>
-  );
-}
-
 export default function OrdersTable({
   orders,
   isLoading,
@@ -263,11 +244,8 @@ export default function OrdersTable({
     if (order.displayStatus === "paid_partial" && order.partialPaidAmount > 0) {
       return (
         <div className="text-right whitespace-nowrap">
-          <div className="text-sm font-semibold text-orange-700">
+          <div className="text-sm font-semibold text-emerald-900">
             ₪{order.partialPaidAmount.toLocaleString("he-IL")}
-          </div>
-          <div className="text-[11px] text-slate-400">
-            יתרה: ₪{(order.remainingPaymentAmount ?? 0).toLocaleString("he-IL")}
           </div>
         </div>
       );
@@ -276,7 +254,7 @@ export default function OrdersTable({
     if (order.partialPaidAmount > 0 && order.couponDetails?.source === "auto_paid" && isPaidDisplayStatus(order.displayStatus)) {
       return (
         <div className="text-right whitespace-nowrap">
-          <div className="text-sm font-semibold text-emerald-700">
+          <div className="text-sm font-semibold text-emerald-900">
             ₪{order.partialPaidAmount.toLocaleString("he-IL")}
           </div>
           <div className="text-[11px] text-slate-400">
@@ -291,13 +269,35 @@ export default function OrdersTable({
         ? order.subtotalAmount
         : order.totalAmount;
       return (
-        <span className="text-sm font-semibold text-emerald-700 whitespace-nowrap">
+        <span className="text-sm font-semibold text-emerald-900 whitespace-nowrap">
           ₪{fullyPaidAmount.toLocaleString("he-IL")}
         </span>
       );
     }
 
     return <span className="text-xs text-slate-400">—</span>;
+  };
+
+  const renderRemainingAmountCell = (order) => {
+    const cancelledOrError = order.displayStatus === "cancelled" || order.displayStatus === "error";
+    if (cancelledOrError) {
+      return <span className="text-xs text-slate-400 whitespace-nowrap">—</span>;
+    }
+
+    let remainingAmount = 0;
+    if (order.displayStatus === "paid_partial") {
+      remainingAmount = Math.max(0, Number(order.remainingPaymentAmount ?? 0));
+    } else if (isPaidDisplayStatus(order.displayStatus)) {
+      remainingAmount = 0;
+    } else {
+      remainingAmount = Math.max(0, Number(order.totalAmount ?? 0));
+    }
+
+    return (
+      <span className="text-sm font-semibold whitespace-nowrap text-[#C2410B]">
+        ₪{remainingAmount.toLocaleString("he-IL")}
+      </span>
+    );
   };
 
   return (
@@ -369,6 +369,7 @@ export default function OrdersTable({
                         <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[90px]">וואטסאפ</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">סה"כ הזמנה</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[120px]">שולם בפועל</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[110px]">יתרה</TableHead>
                   {showProfitColumn && (
                     <TableHead className="text-right text-xs font-medium text-slate-500 min-w-[140px]">רווח עמלה</TableHead>
                   )}
@@ -385,6 +386,15 @@ export default function OrdersTable({
                   const isBusy = busyAction.rowId === order.rowId;
                   const isCancelled = order.displayStatus === "cancelled";
                   const isError = order.displayStatus === "error";
+                  const latestTimelineEvent = order.timeline.length > 0
+                    ? order.timeline[order.timeline.length - 1]
+                    : null;
+                  const latestTimelineText = latestTimelineEvent
+                    ? (latestTimelineEvent.text || latestTimelineEvent.detail || "עודכן אירוע בהזמנה")
+                    : "אין עדכונים";
+                  const latestTimelineDate = latestTimelineEvent?.date
+                    ? moment(latestTimelineEvent.date).format("DD/MM/YY HH:mm")
+                    : "";
                   return (
                     <React.Fragment key={order.rowId}>
                       <TableRow
@@ -473,6 +483,9 @@ export default function OrdersTable({
                         <TableCell className="text-right whitespace-nowrap">
                           {renderPaidAmountCell(order)}
                         </TableCell>
+                        <TableCell className="text-right whitespace-nowrap">
+                          {renderRemainingAmountCell(order)}
+                        </TableCell>
                         {showProfitColumn && (
                           <TableCell className="text-right whitespace-nowrap">
                             {isPaidDisplayStatus(order.displayStatus) ? (
@@ -541,7 +554,7 @@ export default function OrdersTable({
 
                       {isExpanded && (
                         <TableRow className="bg-slate-50/60 hover:bg-slate-50/60">
-                          <TableCell colSpan={showProfitColumn ? 13 : 12} className="p-4">
+                          <TableCell colSpan={showProfitColumn ? 14 : 13} className="p-4">
                             <AnimatePresence initial={false}>
                               <motion.div
                                 initial={{ opacity: 0, height: 0, y: -4, scale: 0.985 }}
@@ -560,33 +573,53 @@ export default function OrdersTable({
                                         <span>{order.sentDate ? moment(order.sentDate).format("DD/MM/YYYY HH:mm") : "—"}</span>
                                       </div>
                                     </div>
-                                    <div className="flex flex-wrap items-center justify-end gap-2">
-                                      <ActionButton
-                                        icon={MessageCircleMore}
-                                        label="שליחה חוזרת לוואטסאפ"
-                                        disabled={!order.publicOrderUrl || !onResendWhatsapp || isBusy || isCancelled}
-                                        className="border-[#30D46B] bg-[#30D46B] text-black hover:bg-[#28b85f] hover:text-black"
-                                        onClick={() => setResendConfirmOrder(order)}
-                                      />
-                                      <ActionButton
-                                        icon={Copy}
-                                        label="העתקת קישור"
-                                        disabled={!order.publicOrderUrl || !onCopyToClipboard}
-                                        onClick={() => handleCopyLink(order)}
-                                      />
-                                      <ActionButton
-                                        icon={Workflow}
-                                        label="שינוי סטטוס"
-                                        disabled={!onUpdateStatus || isBusy}
-                                        onClick={() => openStatusDialog(order)}
-                                      />
-                                      <ActionButton
-                                        icon={XCircle}
-                                        label="ביטול"
-                                        disabled={!onDeleteOrder || isBusy}
-                                        onClick={() => setDeleteOrderState(order)}
-                                        className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                                      />
+                                    <div className="flex items-center justify-end">
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={(event) => event.stopPropagation()}
+                                            className="h-9 gap-1.5"
+                                          >
+                                            <MoreHorizontal className="h-4 w-4" />
+                                            פעולות נוספות
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-56" dir="rtl">
+                                          <DropdownMenuItem
+                                            disabled={!order.publicOrderUrl || !onResendWhatsapp || isBusy || isCancelled || isError}
+                                            onClick={() => setResendConfirmOrder(order)}
+                                          >
+                                            <MessageCircleMore className="w-4 h-4" />
+                                            שליחה חוזרת לוואטסאפ
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            disabled={!order.publicOrderUrl || !onCopyToClipboard || isError}
+                                            onClick={() => handleCopyLink(order)}
+                                          >
+                                            <Copy className="w-4 h-4" />
+                                            העתקת קישור
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            disabled={!onUpdateStatus || isBusy || isError}
+                                            onClick={() => openStatusDialog(order)}
+                                          >
+                                            <Workflow className="w-4 h-4" />
+                                            שינוי סטטוס
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem
+                                            className="text-red-600 focus:text-red-700"
+                                            disabled={!onDeleteOrder || isBusy || isError}
+                                            onClick={() => setDeleteOrderState(order)}
+                                          >
+                                            <XCircle className="w-4 h-4" />
+                                            ביטול הזמנה
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
                                     </div>
                                   </div>
 
@@ -602,107 +635,124 @@ export default function OrdersTable({
                                     </div>
                                   )}
 
-                                  <div className="grid gap-3 lg:grid-cols-[1.15fr_0.85fr]">
-                                    <div className="space-y-3">
-                                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
-                                          <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
-                                            <UserRound className="w-3.5 h-3.5" />
-                                            <span>לקוח</span>
-                                          </div>
-                                          <p className="text-sm font-medium text-slate-700">{order.customerName || "—"}</p>
-                                        </div>
-                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
-                                          <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
-                                            <Phone className="w-3.5 h-3.5" />
-                                            <span>טלפון</span>
-                                          </div>
-                                          <p className="text-sm text-slate-700 tabular-nums" dir="ltr">{order.customerPhone || "—"}</p>
-                                        </div>
-                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
-                                          <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
-                                            <CalendarDays className="w-3.5 h-3.5" />
-                                            <span>תאריך יצירה</span>
-                                          </div>
-                                          <p className="text-sm text-slate-700">{order.orderDate ? moment(order.orderDate).format("DD/MM/YYYY HH:mm") : "—"}</p>
-                                        </div>
-                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
-                                          <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
-                                            <Workflow className="w-3.5 h-3.5" />
-                                            <span>סטטוס</span>
-                                          </div>
-                                          <Badge
-                                            variant="outline"
-                                            className={`inline-flex whitespace-nowrap text-[11px] border-0 font-medium ${order.statusCfg.className}`}
-                                          >
-                                            {order.statusCfg.label}
-                                          </Badge>
-                                        </div>
-                                        {order.displayStatus === "paid_partial" && order.partialPaidAmount > 0 && (
-                                          <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5 text-right">
-                                            <div className="mb-1 flex items-center justify-end gap-2 text-xs text-orange-700">
-                                              <CreditCard className="w-3.5 h-3.5" />
-                                              <span>שולם מראש</span>
-                                            </div>
-                                            <p className="text-sm font-semibold text-orange-800">
-                                              ₪{order.partialPaidAmount.toLocaleString("he-IL")}
-                                            </p>
-                                          </div>
-                                        )}
-                                        {order.displayStatus === "paid_partial" && order.partialPaidAmount > 0 && (
-                                          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
+                                  <Accordion type="multiple" className="grid gap-3 md:grid-cols-2 items-start">
+                                    <AccordionItem value={`${order.rowId}-customer`} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 h-fit">
+                                      <AccordionTrigger className="py-3 text-right hover:no-underline">
+                                        <span className="flex w-full items-center justify-end gap-2 text-sm font-semibold text-slate-700">
+                                          <UserRound className="w-4 h-4 text-slate-400" />
+                                          פרטי לקוח ותשלום
+                                        </span>
+                                      </AccordionTrigger>
+                                      <AccordionContent className="pb-3 pt-1">
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right">
                                             <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
-                                              <CreditCard className="w-3.5 h-3.5" />
-                                              <span>יתרה לתשלום</span>
+                                              <UserRound className="w-3.5 h-3.5" />
+                                              <span>לקוח</span>
                                             </div>
-                                            <p className="text-sm font-semibold text-slate-700">
-                                              ₪{(order.remainingPaymentAmount ?? 0).toLocaleString("he-IL")}
-                                            </p>
+                                            <p className="text-sm font-medium text-slate-700">{order.customerName || "—"}</p>
                                           </div>
-                                        )}
-                                        {order.displayStatus !== "paid_partial" && order.partialPaidAmount > 0 && order.couponDetails?.source === "auto_paid" && (
-                                          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-right">
-                                            <div className="mb-1 flex items-center justify-end gap-2 text-xs text-emerald-700">
-                                              <CreditCard className="w-3.5 h-3.5" />
-                                              <span>שולם בפועל</span>
+                                          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right">
+                                            <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
+                                              <Phone className="w-3.5 h-3.5" />
+                                              <span>טלפון</span>
                                             </div>
-                                            <p className="text-sm font-semibold text-emerald-800">
-                                              ₪{order.partialPaidAmount.toLocaleString("he-IL")}
-                                            </p>
+                                            <p className="text-sm text-slate-700 tabular-nums" dir="ltr">{order.customerPhone || "—"}</p>
                                           </div>
-                                        )}
-                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right">
-                                          <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
-                                            <UserRound className="w-3.5 h-3.5" />
-                                            <span>נוצרה על ידי</span>
+                                          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right">
+                                            <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
+                                              <CalendarDays className="w-3.5 h-3.5" />
+                                              <span>תאריך יצירה</span>
+                                            </div>
+                                            <p className="text-sm text-slate-700">{order.orderDate ? moment(order.orderDate).format("DD/MM/YYYY HH:mm") : "—"}</p>
                                           </div>
-                                          {order.creatorName && order.creatorName !== "—" ? (
-                                            <span
-                                              className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-medium ${
-                                                order.creatorTagColor
-                                                  ? ""
-                                                  : "border-slate-200 bg-slate-50 text-slate-800"
-                                              }`}
-                                              dir="ltr"
-                                              style={creatorTagStyleFromColor(order.creatorTagColor)}
+                                          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right">
+                                            <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
+                                              <Workflow className="w-3.5 h-3.5" />
+                                              <span>סטטוס</span>
+                                            </div>
+                                            <Badge
+                                              variant="outline"
+                                              className={`inline-flex whitespace-nowrap text-[11px] border-0 font-medium ${order.statusCfg.className}`}
                                             >
-                                              <span className="min-w-0 truncate">{order.creatorName}</span>
-                                              <UserRound
-                                                className={`h-3.5 w-3.5 shrink-0 ${order.creatorTagColor ? "text-current opacity-90" : "text-slate-500"}`}
-                                                aria-hidden
-                                              />
-                                            </span>
-                                          ) : (
-                                            <p className="text-sm text-slate-700">—</p>
+                                              {order.statusCfg.label}
+                                            </Badge>
+                                          </div>
+                                          {order.displayStatus === "paid_partial" && order.partialPaidAmount > 0 && (
+                                            <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5 text-right">
+                                              <div className="mb-1 flex items-center justify-end gap-2 text-xs text-orange-700">
+                                                <CreditCard className="w-3.5 h-3.5" />
+                                                <span>שולם מראש</span>
+                                              </div>
+                                              <p className="text-sm font-semibold text-orange-800">
+                                                ₪{order.partialPaidAmount.toLocaleString("he-IL")}
+                                              </p>
+                                            </div>
                                           )}
+                                          {order.displayStatus === "paid_partial" && order.partialPaidAmount > 0 && (
+                                            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right">
+                                              <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
+                                                <CreditCard className="w-3.5 h-3.5" />
+                                                <span>יתרה לתשלום</span>
+                                              </div>
+                                              <p className="text-sm font-semibold text-slate-700">
+                                                ₪{(order.remainingPaymentAmount ?? 0).toLocaleString("he-IL")}
+                                              </p>
+                                            </div>
+                                          )}
+                                          {order.displayStatus !== "paid_partial" && order.partialPaidAmount > 0 && order.couponDetails?.source === "auto_paid" && (
+                                            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-right">
+                                              <div className="mb-1 flex items-center justify-end gap-2 text-xs text-emerald-700">
+                                                <CreditCard className="w-3.5 h-3.5" />
+                                                <span>שולם בפועל</span>
+                                              </div>
+                                              <p className="text-sm font-semibold text-emerald-800">
+                                                ₪{order.partialPaidAmount.toLocaleString("he-IL")}
+                                              </p>
+                                            </div>
+                                          )}
+                                          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right">
+                                            <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
+                                              <UserRound className="w-3.5 h-3.5" />
+                                              <span>נוצרה על ידי</span>
+                                            </div>
+                                            {order.creatorName && order.creatorName !== "—" ? (
+                                              <span
+                                                className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-medium ${
+                                                  order.creatorTagColor
+                                                    ? ""
+                                                    : "border-slate-200 bg-slate-50 text-slate-800"
+                                                }`}
+                                                dir="ltr"
+                                                style={creatorTagStyleFromColor(order.creatorTagColor)}
+                                              >
+                                                <span className="min-w-0 truncate">{order.creatorName}</span>
+                                                <UserRound
+                                                  className={`h-3.5 w-3.5 shrink-0 ${order.creatorTagColor ? "text-current opacity-90" : "text-slate-500"}`}
+                                                  aria-hidden
+                                                />
+                                              </span>
+                                            ) : (
+                                              <p className="text-sm text-slate-700">—</p>
+                                            )}
+                                          </div>
                                         </div>
-                                      </div>
+                                      </AccordionContent>
+                                    </AccordionItem>
 
-                                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
-                                        <div className="mb-3 flex w-full items-center justify-end gap-2 text-right">
-                                          <Package className="w-4 h-4 text-slate-400" />
-                                          <span className="text-sm font-semibold text-slate-700">מוצרים</span>
-                                        </div>
+                                    <AccordionItem value={`${order.rowId}-products`} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 h-fit">
+                                      <AccordionTrigger className="py-3 text-right hover:no-underline">
+                                        <span className="flex w-full items-center justify-between gap-2 text-sm font-semibold text-slate-700">
+                                          <span className="text-sm font-bold text-slate-800">
+                                            סה"כ לתשלום: {order.totalAmount.toLocaleString("he-IL")} ש"ח
+                                          </span>
+                                          <span className="inline-flex items-center gap-2">
+                                            <Package className="w-4 h-4 text-slate-400" />
+                                            מוצרים
+                                          </span>
+                                        </span>
+                                      </AccordionTrigger>
+                                      <AccordionContent className="pb-3 pt-1">
                                         <TooltipProvider delayDuration={120}>
                                           <div className="space-y-2">
                                             {order.products.length > 0 ? order.products.map((product, index) => {
@@ -754,17 +804,10 @@ export default function OrdersTable({
                                             )}
                                           </div>
                                         </TooltipProvider>
-                                        <div className="mt-3 border-t border-slate-200 pt-3 text-right">
-                                          <span className="text-base font-bold text-slate-800">
-                                            סה"כ לתשלום: {order.totalAmount.toLocaleString("he-IL")} ש"ח
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
+                                      </AccordionContent>
+                                    </AccordionItem>
 
-                                    <div className="space-y-3">
-                                      <Accordion type="multiple" className="space-y-3">
-                                        <AccordionItem value={`${order.rowId}-details`} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0">
+                                    <AccordionItem value={`${order.rowId}-details`} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 h-fit">
                                           <AccordionTrigger className="py-3 text-right hover:no-underline">
                                             <span className="flex w-full items-center justify-end gap-2 text-sm font-semibold text-slate-700">
                                               <CreditCard className="w-4 h-4 text-slate-400" />
@@ -795,13 +838,25 @@ export default function OrdersTable({
                                               )}
                                             </div>
                                           </AccordionContent>
-                                        </AccordionItem>
+                                    </AccordionItem>
 
-                                        <AccordionItem value={`${order.rowId}-timeline`} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0">
+                                    <AccordionItem value={`${order.rowId}-timeline`} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 h-fit">
                                           <AccordionTrigger className="py-3 text-right hover:no-underline">
-                                            <span className="flex w-full items-center justify-end gap-2 text-sm font-semibold text-slate-700">
-                                              <Workflow className="w-4 h-4 text-slate-400" />
-                                              תרשים זרימה
+                                            <span className="flex w-full items-center justify-between gap-3">
+                                              <span className="min-w-0 text-right">
+                                                {latestTimelineDate && (
+                                                  <span className="block text-[10px] text-slate-400 leading-4">
+                                                    {latestTimelineDate}
+                                                  </span>
+                                                )}
+                                                <span className="block text-xs text-slate-600 truncate whitespace-nowrap max-w-[190px]">
+                                                  {latestTimelineText}
+                                                </span>
+                                              </span>
+                                              <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 shrink-0">
+                                                <Workflow className="w-4 h-4 text-slate-400" />
+                                                פעולות אחרונות
+                                              </span>
                                             </span>
                                           </AccordionTrigger>
                                           <AccordionContent className="pb-3 pt-1">
@@ -837,12 +892,12 @@ export default function OrdersTable({
                                                 })}
                                               </div>
                                             ) : (
-                                              <p className="text-sm text-slate-400 text-right">אין תרשים זרימה זמין להזמנה זו</p>
+                                              <p className="text-sm text-slate-400 text-right">אין פעולות להצגה עבור הזמנה זו</p>
                                             )}
                                           </AccordionContent>
-                                        </AccordionItem>
+                                    </AccordionItem>
 
-                                        <AccordionItem value={`${order.rowId}-add-note`} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0">
+                                    <AccordionItem value={`${order.rowId}-add-note`} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 h-fit">
                                           <AccordionTrigger className="py-3 text-right hover:no-underline">
                                             <span className="flex w-full items-center justify-end gap-2 text-sm font-semibold text-slate-700">
                                               <MessageSquarePlus className="w-4 h-4 text-slate-400" />
@@ -877,10 +932,8 @@ export default function OrdersTable({
                                               </div>
                                             </div>
                                           </AccordionContent>
-                                        </AccordionItem>
-                                      </Accordion>
-                                    </div>
-                                  </div>
+                                    </AccordionItem>
+                                  </Accordion>
                                 </div>
                               </motion.div>
                             </AnimatePresence>
