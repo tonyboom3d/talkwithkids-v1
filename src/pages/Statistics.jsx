@@ -299,12 +299,12 @@ export default function Statistics() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f8f8] p-6" dir="rtl">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen bg-[#f8f8f8] p-3 md:p-6" dir="rtl">
+      <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-start justify-between gap-4 flex-wrap"
+          className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-4 flex-wrap"
         >
           <div>
             <h1 className="text-xl font-bold text-slate-900">סטטיסטיקות</h1>
@@ -332,7 +332,7 @@ export default function Statistics() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-4"
+              className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4"
             >
               {[
                 { label: "סה\"כ הכנסות (שולמו)", value: `₪${totalRevenue.toLocaleString()}`, icon: TrendingUp, color: "text-emerald-600 bg-emerald-50" },
@@ -340,24 +340,24 @@ export default function Statistics() {
                 { label: "הזמנות ששולמו", value: paidCount, icon: CreditCard, color: "text-violet-600 bg-violet-50" },
                 { label: "אחוז המרה", value: `${conversionRate}%`, icon: Percent, color: "text-amber-600 bg-amber-50" },
               ].map(({ label, value, icon: Icon, color }) => (
-                <div key={label} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
-                    <Icon className="w-5 h-5" />
+                <div key={label} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-3 md:p-4 flex items-center gap-3 md:gap-4">
+                  <div className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+                    <Icon className="w-4 h-4 md:w-5 md:h-5" />
                   </div>
-                  <div>
-                    <div className="text-lg font-bold text-slate-800">{value}</div>
-                    <div className="text-xs text-slate-400">{label}</div>
+                  <div className="min-w-0">
+                    <div className="text-base md:text-lg font-bold text-slate-800 truncate">{value}</div>
+                    <div className="text-xs text-slate-400 truncate">{label}</div>
                   </div>
                 </div>
               ))}
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5"
+                className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-3 md:p-5"
               >
                 <h3 className="text-sm font-semibold text-slate-700 mb-4">הכנסות לפי יום (שולמו)</h3>
                 {byDay.length === 0 ? (
@@ -378,7 +378,7 @@ export default function Statistics() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.12 }}
-                className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5"
+                className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-3 md:p-5"
               >
                 <h3 className="text-sm font-semibold text-slate-700 mb-4">סטטוס תשלומים</h3>
                 {filteredOrders.length === 0 ? (
@@ -417,7 +417,7 @@ export default function Statistics() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.13 }}
-                className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 md:col-span-2"
+                className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-3 md:p-5 md:col-span-2"
               >
                 <div className="flex items-start gap-2 mb-1">
                   <CircleDot className="w-5 h-5 text-violet-500 shrink-0 mt-0.5" aria-hidden />
@@ -506,7 +506,7 @@ export default function Statistics() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.14 }}
-                className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 md:col-span-2"
+                className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-3 md:p-5 md:col-span-2"
               >
                 <div className="mb-3 flex items-start justify-between gap-3 flex-wrap">
                   <div>
@@ -532,8 +532,8 @@ export default function Statistics() {
                 {productStats.length === 0 ? (
                   <p className="text-sm text-slate-400 text-center py-8">אין נתונים בטווח שנבחר</p>
                 ) : (
-                  <div dir="rtl" className="rounded-xl border border-slate-100 overflow-hidden">
-                    <Table>
+                  <div dir="rtl" className="rounded-xl border border-slate-100 overflow-x-auto">
+                    <Table className="min-w-[480px]">
                       <TableHeader>
                         <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
                           <TableHead className="w-12 text-center text-slate-600 font-semibold">#</TableHead>

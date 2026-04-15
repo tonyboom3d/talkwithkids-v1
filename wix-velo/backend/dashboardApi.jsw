@@ -476,16 +476,39 @@ function normalizeCreatedCouponInput(couponInput, subtotal) {
     };
 }
 
-async function sendDashboardCheckoutWebhook({ customerName, customerPhone, dynamicLinkId }) {
+const DASHBOARD_PRODUCT_MAP = {
+    '601524a9-3754-fdb1-b1ad-72d45bf79061': 'ערכה מלאה להכנה לכיתה א',
+    '41befb02-2d67-d385-aab7-942efbae5c6a': 'ערכה מלאה להכנה לכיתה א - כל השיעורים פתוחים',
+    'c141f4fc-ab21-3333-1fa2-314cb077af36': 'תוכנית הכשרה מקצועית ועסקית',
+};
+
+function resolveProductNameFromOrder(record) {
+    const prods = safeParseJson(record.products, []);
+    if (!Array.isArray(prods)) return '';
+    for (const prod of prods) {
+        const id = String(prod.id || prod.productId || '').trim();
+        if (id && DASHBOARD_PRODUCT_MAP[id]) {
+            return DASHBOARD_PRODUCT_MAP[id];
+        }
+    }
+    return '';
+}
+
+function resolvePaymentStatusLabel(status) {
+    if (status === 'paid' || status === 'paid_completed' || status === 'paid_pending_details') return 'שולם';
+    if (status === 'paid_partial') return 'שולם חלקית';
+    return 'לא שולם';
+}
+
+async function sendDashboardCheckoutWebhook({ customerName, customerPhone, dynamicLinkId, productName, paymentStatus }) {
     const paymentUrl = buildDashboardOrderUrl(dynamicLinkId);
     const payload = {
         customerName: customerName || '',
         customerPhone: customerPhone || '',
-        paymentUrl,
-        paymentLink: paymentUrl,
-        payment_url: paymentUrl,
         dynamic_payment_link: paymentUrl,
         dynamicLinkId: String(dynamicLinkId || '').trim(),
+        productName: productName || '',
+        paymentStatus: paymentStatus || 'לא שולם',
     };
     try {
         const res = await fetch(DASHBOARD_CHECKOUT_WEBHOOK_URL, {
@@ -512,6 +535,8 @@ async function deliverOrderToWhatsapp(record, employeeName, { isResend = false }
         customerName: record.customerName || '',
         customerPhone: record.customerPhone || '',
         dynamicLinkId: dyn,
+        productName: resolveProductNameFromOrder(record),
+        paymentStatus: resolvePaymentStatusLabel(record.status),
     });
 
     const paymentUrl = buildDashboardOrderUrl(dyn);

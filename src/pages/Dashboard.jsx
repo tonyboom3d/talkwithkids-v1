@@ -662,13 +662,13 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-3 py-4 space-y-4 md:px-6 md:py-8 md:space-y-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex items-center justify-between"
+          className="flex items-center justify-between flex-wrap gap-2"
         >
           <div className="text-right">
             <h1 className="text-xl font-bold text-slate-900">ניהול הזמנות</h1>
@@ -686,7 +686,7 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.1 }}
-          className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 space-y-6"
+          className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-3 space-y-4 md:p-6 md:space-y-6"
         >
           <CustomerSection
             isDemo={isDemo}
@@ -1062,7 +1062,7 @@ export default function Dashboard() {
             transition={{ duration: 0.25, delay: 0.2 }}
             className="space-y-4"
           >
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-[18px] h-[18px] text-slate-400" />

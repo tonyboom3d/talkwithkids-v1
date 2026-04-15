@@ -294,9 +294,9 @@ export default function MySales() {
   const activeFilterCount = (dateRange.from || dateRange.to ? 1 : 0) + selectedStatuses.length;
 
   return (
-    <div className="min-h-screen bg-[#f8f8f8] p-6" dir="rtl">
-      <div className="max-w-6xl mx-auto space-y-6 relative">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+    <div className="min-h-screen bg-[#f8f8f8] p-3 md:p-6" dir="rtl">
+      <div className="max-w-6xl mx-auto space-y-4 md:space-y-6 relative">
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-xl font-bold text-slate-900">המכירות שלי</h1>
             <p className="text-sm text-slate-400 mt-0.5">
@@ -307,7 +307,7 @@ export default function MySales() {
                   : "מוצגות רק ההזמנות שנוצרו על ידך"}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="border-slate-200 text-slate-500">
               {canViewOthers ? "צפייה: כל ההזמנות" : "צפייה: ההזמנות שלי"}
             </Badge>
@@ -326,7 +326,7 @@ export default function MySales() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.03 }}
-          className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 space-y-4 overflow-visible"
+          className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-3 md:p-4 space-y-4 overflow-visible"
         >
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="text-right">
@@ -372,20 +372,20 @@ export default function MySales() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {[
             { label: "הכנסות", value: `₪${totalRevenue.toLocaleString()}`, icon: TrendingUp, color: "text-emerald-600 bg-emerald-50" },
             { label: "הזמנות", value: filteredOrders.length, icon: ShoppingBag, color: "text-blue-600 bg-blue-50" },
             { label: "שולמו", value: paidCount, icon: CreditCard, color: "text-violet-600 bg-violet-50" },
             { label: "ממוצע להזמנה", value: `₪${avgOrder.toLocaleString()}`, icon: Users, color: "text-amber-600 bg-amber-50" },
           ].map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 flex items-center gap-4">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
-                <Icon className="w-5 h-5" />
+            <div key={label} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-3 md:p-4 flex items-center gap-3 md:gap-4">
+              <div className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+                <Icon className="w-4 h-4 md:w-5 md:h-5" />
               </div>
-              <div>
-                <div className="text-lg font-bold text-slate-800">{value}</div>
-                <div className="text-xs text-slate-400">{label}</div>
+              <div className="min-w-0">
+                <div className="text-base md:text-lg font-bold text-slate-800 truncate">{value}</div>
+                <div className="text-xs text-slate-400 truncate">{label}</div>
               </div>
             </div>
           ))}

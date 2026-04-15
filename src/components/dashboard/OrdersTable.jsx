@@ -316,7 +316,7 @@ export default function OrdersTable({
       transition={{ duration: 0.35, delay: 0.2 }}
       className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-visible"
     >
-      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap" dir="rtl">
+      <div className="px-3 py-3 md:px-6 md:py-4 border-b border-slate-100 flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4 flex-wrap" dir="rtl">
         <div className="flex items-center gap-3 flex-wrap shrink-0">
           <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2 shrink-0">
             <CreditCard className="w-4 h-4 text-slate-400" />
@@ -328,7 +328,7 @@ export default function OrdersTable({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3 flex-1 min-w-0 justify-end">
+        <div className="flex items-center gap-2 flex-wrap md:flex-nowrap md:flex-1 md:min-w-0 justify-end">
           {onRefresh && (
             <Button
               type="button"
@@ -336,7 +336,7 @@ export default function OrdersTable({
               size="sm"
               onClick={onRefresh}
               disabled={isLoading}
-              className="h-9 gap-2 border-slate-200 text-slate-600"
+              className="h-9 gap-2 border-slate-200 text-slate-600 shrink-0"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
               ריענון
@@ -345,13 +345,13 @@ export default function OrdersTable({
           <Badge variant="outline" className="text-slate-500 border-slate-200 text-xs shrink-0">
             {filtered.length} הזמנות
           </Badge>
-          <div className="relative max-w-sm w-full">
+          <div className="relative w-full md:max-w-sm">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
-              placeholder="חיפוש לפי שם, טלפון, מס׳ הזמנה או יוצרת ההזמנה..."
+              placeholder="חיפוש לפי שם, טלפון, מס׳ הזמנה..."
               value={search}
               onChange={(e) => handleSearch(e.target.value)}
-              className="pr-9 h-9 text-sm border-slate-200 text-right"
+              className="pr-9 h-9 text-sm border-slate-200 text-right w-full"
               dir="rtl"
             />
           </div>
@@ -368,7 +368,7 @@ export default function OrdersTable({
       ) : (
         <>
           <div className="overflow-x-auto overflow-y-visible">
-            <Table dir="rtl" className="w-full table-fixed">
+            <Table dir="rtl" className="w-full table-fixed min-w-[800px]">
               <TableHeader>
                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
                   <TableHead className="text-right text-xs font-medium text-slate-500 w-8 px-1" />
@@ -956,7 +956,7 @@ export default function OrdersTable({
           </div>
 
           {totalPages > 1 && (
-            <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between" dir="rtl">
+            <div className="px-3 py-3 md:px-6 border-t border-slate-100 flex items-center justify-between" dir="rtl">
               <Button
                 variant="ghost"
                 size="sm"
