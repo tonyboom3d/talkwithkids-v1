@@ -1,4 +1,5 @@
 import { checkout } from 'wix-ecom-backend';
+import { elevate } from 'wix-auth';
 
 /** מזהה אפליקציית Wix Stores לקטלוג (מתועד ב-createCheckout) */
 const WIX_STORES_CATALOG_APP_ID = '215238eb-22a5-4c36-9e7b-e7c08025e04e';
@@ -41,6 +42,8 @@ export function appendCheckoutToHistory(sessionData, checkoutId, checkoutUrl, so
 }
 
 export async function createDashboardCheckout(orderData) {
+  const elevatedCreateCheckout = elevate(checkout.createCheckout);
+
   const lineItems = (orderData.products || []).map((p) => {
     const catalogItemId = p.id || p.productId;
     if (!catalogItemId) {
@@ -57,14 +60,13 @@ export async function createDashboardCheckout(orderData) {
 
     const effectivePrice = Number(p.price);
     const catalogPrice = Number(p.catalogPrice);
-    if (
-      Number.isFinite(effectivePrice) &&
-      Number.isFinite(catalogPrice) &&
-      effectivePrice >= 0 &&
-      effectivePrice < catalogPrice
-    ) {
+    if (Number.isFinite(effectivePrice) && effectivePrice >= 0) {
+      const fullPriceBase =
+        Number.isFinite(catalogPrice) && catalogPrice > 0
+          ? catalogPrice
+          : effectivePrice;
       lineItem.catalogOverrideFields = {
-        fullPrice: catalogPrice.toFixed(2),
+        fullPrice: fullPriceBase.toFixed(2),
         price: effectivePrice.toFixed(2),
       };
     }
@@ -86,7 +88,7 @@ export async function createDashboardCheckout(orderData) {
   }
 
   const checkoutOptions = {
-    channelType: 'OTHER_PLATFORM',
+    channelType: 'WEB',
     lineItems,
     checkoutInfo,
   };
@@ -98,8 +100,8 @@ export async function createDashboardCheckout(orderData) {
     checkoutOptions.lockCouponCode = !!orderData.lockCouponCode;
   }
 
-  const checkoutObj = await checkout.createCheckout(checkoutOptions);
-  const urlResult = await checkout.getCheckoutUrl(checkoutObj._id);
+  const checkoutObj = await elevatedCreateCheckout(checkoutOptions);
+  const urlResult = await checkout.getCheckoutUrl(checkoutObj._id, {});
 
   return {
     checkoutId: checkoutObj._id,

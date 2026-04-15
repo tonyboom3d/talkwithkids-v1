@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -701,135 +703,182 @@ export default function OrdersTable({
                                           <Package className="w-4 h-4 text-slate-400" />
                                           <span className="text-sm font-semibold text-slate-700">מוצרים</span>
                                         </div>
-                                        <div className="space-y-2">
-                                        {order.products.length > 0 ? order.products.map((product, index) => (
-                                            <div key={`${order.rowId}-product-${index}`} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
-                                              <div className="flex items-center justify-between gap-3">
-                                                <span className="text-sm font-semibold text-slate-700">
-                                                  ₪{Number((product.price || 0) * (product.quantity || 0)).toLocaleString("he-IL")}
-                                                </span>
-                                                <div className="text-right">
-                                                  <p className="text-sm text-slate-700">{product.name || "מוצר"}</p>
-                                                  <p className="text-xs text-slate-400">כמות: {product.quantity || 1}</p>
+                                        <TooltipProvider delayDuration={120}>
+                                          <div className="space-y-2">
+                                            {order.products.length > 0 ? order.products.map((product, index) => {
+                                              const productImage = String(product.image || product.imageUrl || "").trim();
+                                              const lineTotal = Number((product.price || 0) * (product.quantity || 0));
+                                              return (
+                                                <div key={`${order.rowId}-product-${index}`} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                                                  <div className="flex items-center justify-between gap-3" dir="rtl">
+                                                    <div className="flex items-center justify-end gap-2 text-right">
+                                                      <div className="text-right" dir="rtl">
+                                                        <p className="text-sm text-slate-700">{product.name || "מוצר"}</p>
+                                                        <p className="text-xs text-slate-400">כמות: {product.quantity || 1}</p>
+                                                      </div>
+                                                      {productImage && (
+                                                        <Tooltip>
+                                                          <TooltipTrigger asChild>
+                                                            <button
+                                                              type="button"
+                                                              onClick={(event) => event.stopPropagation()}
+                                                              className="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100"
+                                                              aria-label={`תצוגה מוגדלת למוצר ${product.name || ""}`}
+                                                            >
+                                                              <img
+                                                                src={productImage}
+                                                                alt={product.name || "תמונת מוצר"}
+                                                                className="h-full w-full object-cover"
+                                                                loading="lazy"
+                                                              />
+                                                            </button>
+                                                          </TooltipTrigger>
+                                                          <TooltipContent side="left" className="border border-slate-200 bg-white p-1.5 shadow-lg">
+                                                            <img
+                                                              src={productImage}
+                                                              alt={product.name || "תצוגה מוגדלת"}
+                                                              className="h-40 w-40 rounded-md object-cover"
+                                                            />
+                                                          </TooltipContent>
+                                                        </Tooltip>
+                                                      )}
+                                                    </div>
+                                                    <span className="text-sm font-semibold text-slate-700">
+                                                      {lineTotal.toLocaleString("he-IL")} ש"ח
+                                                    </span>
+                                                  </div>
                                                 </div>
-                                              </div>
-                                            </div>
-                                          )) : (
-                                          <p className="text-sm text-slate-400 text-right">אין פרטי מוצרים להצגה</p>
-                                          )}
-                                        </div>
-                                        <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                                              );
+                                            }) : (
+                                              <p className="text-sm text-slate-400 text-right">אין פרטי מוצרים להצגה</p>
+                                            )}
+                                          </div>
+                                        </TooltipProvider>
+                                        <div className="mt-3 border-t border-slate-200 pt-3 text-right">
                                           <span className="text-base font-bold text-slate-800">
-                                            ₪{order.totalAmount.toLocaleString("he-IL")}
+                                            סה"כ לתשלום: {order.totalAmount.toLocaleString("he-IL")} ש"ח
                                           </span>
-                                          <span className="text-sm text-slate-500">סה״כ הזמנה</span>
                                         </div>
                                       </div>
                                     </div>
 
                                     <div className="space-y-3">
-                                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
-                                        <div className="mb-2 flex w-full items-center justify-end gap-2 text-right">
-                                          <CreditCard className="w-4 h-4 text-slate-400" />
-                                          <span className="text-sm font-semibold text-slate-700">פרטים נוספים</span>
-                                        </div>
-                                        <div className="space-y-2 text-right">
-                                          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                                            <p className="text-xs text-slate-400 mb-1">מס׳ הזמנה</p>
-                                            <p className="text-sm font-mono text-slate-600">{order.orderNumber}</p>
-                                          </div>
-                                          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                                            <p className="text-xs text-slate-400 mb-1">מס׳ משלוח תפוז</p>
-                                            <p className="text-sm font-mono text-slate-600">{order.deliveryNumber}</p>
-                                          </div>
-                                          {order.orderChangeNotes && (
-                                            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                                              <p className="text-xs text-amber-700 mb-1">שינויים בערכה</p>
-                                              <p className="text-sm text-amber-900">{order.orderChangeNotes}</p>
-                                            </div>
-                                          )}
-                                          {order.notes && (
-                                            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                                              <p className="text-xs text-slate-400 mb-1">הערות פנימיות</p>
-                                              <p className="text-sm text-slate-600">{order.notes}</p>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
-                                        <div className="mb-3 flex w-full items-center justify-end gap-2 text-right">
-                                          <Workflow className="w-4 h-4 text-slate-400" />
-                                          <span className="text-sm font-semibold text-slate-700">תרשים זרימה</span>
-                                        </div>
-                                        {order.timeline.length > 0 ? (
-                                          <div className="space-y-2.5">
-                                            {order.timeline.map((event, index) => {
-                                              const action = event.action || event.type || "event";
-                                              return (
-                                                <div key={`${order.rowId}-timeline-${index}`} className="flex items-start gap-2.5">
-                                                  <div className="flex flex-col items-center shrink-0">
-                                                    <div className={`h-2.5 w-2.5 rounded-full ${timelineDotClass(action)}`} />
-                                                    {index < order.timeline.length - 1 && (
-                                                      <div className="w-px min-h-[28px] bg-slate-200" />
-                                                    )}
-                                                  </div>
-                                                  <div className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right">
-                                                    <div className="mb-1 flex items-center justify-between gap-2">
-                                                      <span className="text-[11px] text-slate-400">
-                                                        {event.date ? moment(event.date).format("DD/MM/YY HH:mm") : "—"}
-                                                      </span>
-                                                      <Badge variant="outline" className="text-[10px] border-slate-200 text-slate-500">
-                                                        {event.actorType === "employee" && event.by
-                                                          ? `${getActorBadgeText(event)} · ${event.by}`
-                                                          : getActorBadgeText(event)}
-                                                      </Badge>
-                                                    </div>
-                                                    <p className="text-sm text-slate-700">
-                                                      {event.text || event.detail || "עודכן אירוע בהזמנה"}
-                                                    </p>
-                                                  </div>
+                                      <Accordion type="multiple" className="space-y-3">
+                                        <AccordionItem value={`${order.rowId}-details`} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0">
+                                          <AccordionTrigger className="py-3 text-right hover:no-underline">
+                                            <span className="flex w-full items-center justify-end gap-2 text-sm font-semibold text-slate-700">
+                                              <CreditCard className="w-4 h-4 text-slate-400" />
+                                              פרטים נוספים
+                                            </span>
+                                          </AccordionTrigger>
+                                          <AccordionContent className="pb-3 pt-1">
+                                            <div className="space-y-2 text-right">
+                                              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                                <p className="text-xs text-slate-400 mb-1">מס׳ הזמנה</p>
+                                                <p className="text-sm font-mono text-slate-600">{order.orderNumber}</p>
+                                              </div>
+                                              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                                <p className="text-xs text-slate-400 mb-1">מס׳ משלוח תפוז</p>
+                                                <p className="text-sm font-mono text-slate-600">{order.deliveryNumber}</p>
+                                              </div>
+                                              {order.orderChangeNotes && (
+                                                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                                                  <p className="text-xs text-amber-700 mb-1">שינויים בערכה</p>
+                                                  <p className="text-sm text-amber-900">{order.orderChangeNotes}</p>
                                                 </div>
-                                              );
-                                            })}
-                                          </div>
-                                        ) : (
-                                          <p className="text-sm text-slate-400 text-right">אין תרשים זרימה זמין להזמנה זו</p>
-                                        )}
-                                      </div>
+                                              )}
+                                              {order.notes && (
+                                                <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                                  <p className="text-xs text-slate-400 mb-1">הערות פנימיות</p>
+                                                  <p className="text-sm text-slate-600">{order.notes}</p>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </AccordionContent>
+                                        </AccordionItem>
 
-                                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
-                                        <div className="mb-3 flex w-full items-center justify-end gap-2 text-right">
-                                          <MessageSquarePlus className="w-4 h-4 text-slate-400" />
-                                          <span className="text-sm font-semibold text-slate-700">הוספת הערה</span>
-                                        </div>
-                                        <div className="space-y-2">
-                                          <Textarea
-                                            value={noteDrafts[order.rowId] || ""}
-                                            onChange={(event) =>
-                                              setNoteDrafts((prev) => ({ ...prev, [order.rowId]: event.target.value }))
-                                            }
-                                            placeholder="כתבי הערה שתתווסף לתרשים הזרימה..."
-                                            className="min-h-[76px] resize-none border-slate-200 bg-white text-right"
-                                            dir="rtl"
-                                            disabled={!onAddNote || isBusy || isError}
-                                          />
-                                          <div className="flex items-center justify-end">
-                                            <Button
-                                              type="button"
-                                              size="sm"
-                                              onClick={(event) => {
-                                                event.stopPropagation();
-                                                handleSaveNote(order);
-                                              }}
-                                              disabled={!String(noteDrafts[order.rowId] || "").trim() || !onAddNote || isBusy || isError}
-                                              className="bg-slate-900 hover:bg-slate-800 text-white"
-                                            >
-                                              שמירת הערה
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      </div>
+                                        <AccordionItem value={`${order.rowId}-timeline`} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0">
+                                          <AccordionTrigger className="py-3 text-right hover:no-underline">
+                                            <span className="flex w-full items-center justify-end gap-2 text-sm font-semibold text-slate-700">
+                                              <Workflow className="w-4 h-4 text-slate-400" />
+                                              תרשים זרימה
+                                            </span>
+                                          </AccordionTrigger>
+                                          <AccordionContent className="pb-3 pt-1">
+                                            {order.timeline.length > 0 ? (
+                                              <div className="space-y-2.5">
+                                                {order.timeline.map((event, index) => {
+                                                  const action = event.action || event.type || "event";
+                                                  return (
+                                                    <div key={`${order.rowId}-timeline-${index}`} className="flex items-start gap-2.5">
+                                                      <div className="flex flex-col items-center shrink-0">
+                                                        <div className={`h-2.5 w-2.5 rounded-full ${timelineDotClass(action)}`} />
+                                                        {index < order.timeline.length - 1 && (
+                                                          <div className="w-px min-h-[28px] bg-slate-200" />
+                                                        )}
+                                                      </div>
+                                                      <div className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right">
+                                                        <div className="mb-1 flex items-center justify-between gap-2">
+                                                          <span className="text-[11px] text-slate-400">
+                                                            {event.date ? moment(event.date).format("DD/MM/YY HH:mm") : "—"}
+                                                          </span>
+                                                          <Badge variant="outline" className="text-[10px] border-slate-200 text-slate-500">
+                                                            {event.actorType === "employee" && event.by
+                                                              ? `${getActorBadgeText(event)} · ${event.by}`
+                                                              : getActorBadgeText(event)}
+                                                          </Badge>
+                                                        </div>
+                                                        <p className="text-sm text-slate-700">
+                                                          {event.text || event.detail || "עודכן אירוע בהזמנה"}
+                                                        </p>
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            ) : (
+                                              <p className="text-sm text-slate-400 text-right">אין תרשים זרימה זמין להזמנה זו</p>
+                                            )}
+                                          </AccordionContent>
+                                        </AccordionItem>
+
+                                        <AccordionItem value={`${order.rowId}-add-note`} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0">
+                                          <AccordionTrigger className="py-3 text-right hover:no-underline">
+                                            <span className="flex w-full items-center justify-end gap-2 text-sm font-semibold text-slate-700">
+                                              <MessageSquarePlus className="w-4 h-4 text-slate-400" />
+                                              הוספת הערה
+                                            </span>
+                                          </AccordionTrigger>
+                                          <AccordionContent className="pb-3 pt-1">
+                                            <div className="space-y-2">
+                                              <Textarea
+                                                value={noteDrafts[order.rowId] || ""}
+                                                onChange={(event) =>
+                                                  setNoteDrafts((prev) => ({ ...prev, [order.rowId]: event.target.value }))
+                                                }
+                                                placeholder="כתבי הערה שתתווסף לתרשים הזרימה..."
+                                                className="min-h-[76px] resize-none border-slate-200 bg-white text-right"
+                                                dir="rtl"
+                                                disabled={!onAddNote || isBusy || isError}
+                                              />
+                                              <div className="flex items-center justify-end">
+                                                <Button
+                                                  type="button"
+                                                  size="sm"
+                                                  onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    handleSaveNote(order);
+                                                  }}
+                                                  disabled={!String(noteDrafts[order.rowId] || "").trim() || !onAddNote || isBusy || isError}
+                                                  className="bg-slate-900 hover:bg-slate-800 text-white"
+                                                >
+                                                  שמירת הערה
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          </AccordionContent>
+                                        </AccordionItem>
+                                      </Accordion>
                                     </div>
                                   </div>
                                 </div>
