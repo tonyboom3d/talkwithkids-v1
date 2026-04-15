@@ -31,7 +31,7 @@ export default function Layout({ children, currentPageName }) {
 
       <div className="flex flex-col md:flex-row min-h-screen bg-[#f8f8f8]">
         <aside
-          className="w-full h-12 md:w-16 md:h-auto bg-white border-b border-slate-200 md:border-b-0 md:border-l flex flex-row md:flex-col shrink-0 relative z-20"
+          className="w-full h-12 md:w-16 md:h-auto bg-white border-b border-slate-200 md:border-b-0 md:border-l flex flex-row md:flex-col shrink-0 sticky top-0 z-30"
         >
           <div className="h-12 md:h-14 px-3 md:px-0 flex items-center justify-center md:border-b border-slate-100 shrink-0">
             <span className="text-xs font-bold text-slate-500 tracking-wide">TWK</span>

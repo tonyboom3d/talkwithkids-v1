@@ -382,8 +382,8 @@ export default function OrdersTable({
                   {showProfitColumn && (
                     <TableHead className="text-right text-xs font-medium text-slate-500 px-1">רווח</TableHead>
                   )}
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">סטטוס</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">הזמנה</TableHead>
+                                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1 w-[80px]">סטטוס</TableHead>
+                                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1 w-[72px]">הזמנה</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">משלוח</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">יצר/ה</TableHead>
                   <TableHead className="text-left text-xs font-medium text-slate-500 w-8 px-1" />
@@ -515,14 +515,14 @@ export default function OrdersTable({
                             )}
                           </TableCell>
                         )}
-                        <TableCell className="px-1 py-2">
-                          <Badge
-                            variant="outline"
-                            className={`inline-flex whitespace-nowrap text-[10px] border-0 font-medium px-1.5 ${order.statusCfg.className}`}
-                          >
-                            {order.statusCfg.label}
-                          </Badge>
-                        </TableCell>
+                                        <TableCell className="px-1 py-2 max-w-[80px] overflow-hidden">
+                                          <Badge
+                                            variant="outline"
+                                            className={`inline-flex max-w-full truncate text-[10px] border-0 font-medium px-1.5 ${order.statusCfg.className}`}
+                                          >
+                                            <span className="truncate">{order.statusCfg.label}</span>
+                                          </Badge>
+                                        </TableCell>
                         <TableCell className="text-[11px] font-mono text-slate-500 whitespace-nowrap px-1 py-2">
                           {order.orderNumber}
                         </TableCell>
@@ -572,9 +572,9 @@ export default function OrdersTable({
                                 transition={{ duration: 0.22, ease: "easeOut" }}
                                 className="overflow-hidden"
                               >
-                                <div className="w-full p-4">
-                                <div className="rounded-2xl border border-slate-200/80 bg-white p-3 md:p-4 space-y-4 w-full box-border" dir="rtl">
-                                  <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="w-full p-2 md:p-4">
+                                <div className="rounded-2xl border border-slate-200/80 bg-white p-2.5 md:p-4 space-y-3 w-full box-border" dir="rtl">
+                                  <div className="flex flex-wrap items-start justify-between gap-2">
                                     <div className="text-right">
                                       <p className="text-sm font-semibold text-slate-800">{order.customerName || "ללא שם"}</p>
                                       <div className="mt-1 flex flex-wrap items-center justify-end gap-2 text-xs text-slate-400">
@@ -645,102 +645,102 @@ export default function OrdersTable({
                                     </div>
                                   )}
 
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full items-start">
-                                    <Accordion type="multiple" className="space-y-3 w-full min-w-0">
-                                      <AccordionItem value={`${order.rowId}-customer`} className="w-full min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
-                                        <AccordionTrigger className="min-h-[72px] py-0 text-right hover:no-underline">
-                                          <span className="flex w-full min-w-0 items-center justify-between gap-3">
-                                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 shrink-0">
-                                              <UserRound className="w-4 h-4 text-slate-400" />
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 w-full items-start">
+                                    <Accordion type="multiple" className="space-y-2 md:space-y-3 w-full min-w-0">
+                                      <AccordionItem value={`${order.rowId}-customer`} className="w-full min-h-[56px] md:min-h-[72px] rounded-xl md:rounded-2xl border border-slate-200 bg-slate-50/70 px-2.5 md:px-3 border-b-0 overflow-hidden">
+                                        <AccordionTrigger className="min-h-[56px] md:min-h-[72px] py-0 text-right hover:no-underline">
+                                          <span className="flex w-full min-w-0 items-center justify-between gap-2 md:gap-3">
+                                            <span className="inline-flex items-center gap-1.5 md:gap-2 text-xs md:text-sm font-semibold text-slate-700 shrink-0">
+                                              <UserRound className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-400" />
                                               פרטי לקוח ותשלום
                                             </span>
                                             <span className="min-w-0 flex-1" />
                                           </span>
                                         </AccordionTrigger>
-                                        <AccordionContent className="pb-3 pt-1">
-                                          <div className="grid gap-2 sm:grid-cols-2">
-                                            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right">
-                                              <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
-                                                <UserRound className="w-3.5 h-3.5" />
+                                        <AccordionContent className="pb-2 md:pb-3 pt-1">
+                                          <div className="grid gap-1.5 md:gap-2 grid-cols-2">
+                                            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
+                                              <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
+                                                <UserRound className="w-3 h-3" />
                                                 <span>לקוח</span>
                                               </div>
-                                              <p className="text-sm font-medium text-slate-700">{order.customerName || "—"}</p>
+                                              <p className="text-xs md:text-sm font-medium text-slate-700 truncate">{order.customerName || "—"}</p>
                                             </div>
-                                            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right">
-                                              <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
-                                                <Phone className="w-3.5 h-3.5" />
+                                            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
+                                              <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
+                                                <Phone className="w-3 h-3" />
                                                 <span>טלפון</span>
                                               </div>
-                                              <p className="text-sm text-slate-700 tabular-nums" dir="ltr">{order.customerPhone || "—"}</p>
+                                              <p className="text-xs md:text-sm text-slate-700 tabular-nums" dir="ltr">{order.customerPhone || "—"}</p>
                                             </div>
-                                            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right">
-                                              <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
-                                                <CalendarDays className="w-3.5 h-3.5" />
+                                            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
+                                              <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
+                                                <CalendarDays className="w-3 h-3" />
                                                 <span>תאריך יצירה</span>
                                               </div>
-                                              <p className="text-sm text-slate-700">{order.orderDate ? moment(order.orderDate).format("DD/MM/YYYY HH:mm") : "—"}</p>
+                                              <p className="text-xs md:text-sm text-slate-700">{order.orderDate ? moment(order.orderDate).format("DD/MM/YY HH:mm") : "—"}</p>
                                             </div>
-                                            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right">
-                                              <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
-                                                <Workflow className="w-3.5 h-3.5" />
+                                            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
+                                              <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
+                                                <Workflow className="w-3 h-3" />
                                                 <span>סטטוס</span>
                                               </div>
                                               <Badge
                                                 variant="outline"
-                                                className={`inline-flex whitespace-nowrap text-[11px] border-0 font-medium ${order.statusCfg.className}`}
+                                                className={`inline-flex whitespace-nowrap text-[10px] border-0 font-medium ${order.statusCfg.className}`}
                                               >
                                                 {order.statusCfg.label}
                                               </Badge>
                                             </div>
-                                            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right">
-                                              <p className="text-xs text-slate-400 mb-1">מס׳ הזמנה</p>
-                                              <p className="text-sm font-mono text-slate-600">{order.orderNumber}</p>
+                                            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
+                                              <p className="text-[10px] text-slate-400 mb-0.5">מס׳ הזמנה</p>
+                                              <p className="text-xs md:text-sm font-mono text-slate-600 truncate">{order.orderNumber}</p>
                                             </div>
-                                            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right">
-                                              <p className="text-xs text-slate-400 mb-1">מס׳ משלוח תפוז</p>
-                                              <p className="text-sm font-mono text-slate-600">{order.deliveryNumber}</p>
+                                            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
+                                              <p className="text-[10px] text-slate-400 mb-0.5">מס׳ משלוח תפוז</p>
+                                              <p className="text-xs md:text-sm font-mono text-slate-600 truncate">{order.deliveryNumber}</p>
                                             </div>
                                             {order.displayStatus === "paid_partial" && order.partialPaidAmount > 0 && (
-                                              <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5 text-right">
-                                                <div className="mb-1 flex items-center justify-end gap-2 text-xs text-orange-700">
-                                                  <CreditCard className="w-3.5 h-3.5" />
+                                              <div className="rounded-lg border border-orange-200 bg-orange-50 px-2 py-1.5 md:px-3 md:py-2.5 text-right">
+                                                <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-orange-700">
+                                                  <CreditCard className="w-3 h-3" />
                                                   <span>שולם מראש</span>
                                                 </div>
-                                                <p className="text-sm font-semibold text-orange-800">
+                                                <p className="text-xs md:text-sm font-semibold text-orange-800">
                                                   ₪{order.partialPaidAmount.toLocaleString("he-IL")}
                                                 </p>
                                               </div>
                                             )}
                                             {order.displayStatus === "paid_partial" && order.partialPaidAmount > 0 && (
-                                              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right">
-                                                <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
-                                                  <CreditCard className="w-3.5 h-3.5" />
+                                              <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
+                                                <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
+                                                  <CreditCard className="w-3 h-3" />
                                                   <span>יתרה לתשלום</span>
                                                 </div>
-                                                <p className="text-sm font-semibold text-[#C2410B]">
+                                                <p className="text-xs md:text-sm font-semibold text-[#C2410B]">
                                                   ₪{(order.remainingPaymentAmount ?? 0).toLocaleString("he-IL")}
                                                 </p>
                                               </div>
                                             )}
                                             {order.displayStatus !== "paid_partial" && order.partialPaidAmount > 0 && order.couponDetails?.source === "auto_paid" && (
-                                              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-right">
-                                                <div className="mb-1 flex items-center justify-end gap-2 text-xs text-emerald-700">
-                                                  <CreditCard className="w-3.5 h-3.5" />
+                                              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1.5 md:px-3 md:py-2.5 text-right">
+                                                <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-emerald-700">
+                                                  <CreditCard className="w-3 h-3" />
                                                   <span>שולם בפועל</span>
                                                 </div>
-                                                <p className="text-sm font-semibold text-emerald-900">
+                                                <p className="text-xs md:text-sm font-semibold text-emerald-900">
                                                   ₪{order.partialPaidAmount.toLocaleString("he-IL")}
                                                 </p>
                                               </div>
                                             )}
-                                            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right">
-                                              <div className="mb-1 flex items-center justify-end gap-2 text-xs text-slate-400">
-                                                <UserRound className="w-3.5 h-3.5" />
+                                            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
+                                              <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
+                                                <UserRound className="w-3 h-3" />
                                                 <span>נוצרה על ידי</span>
                                               </div>
                                               {order.creatorName && order.creatorName !== "—" ? (
                                                 <span
-                                                  className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-medium ${
+                                                  className={`inline-flex max-w-full items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium ${
                                                     order.creatorTagColor
                                                       ? ""
                                                       : "border-slate-200 bg-slate-50 text-slate-800"
@@ -750,39 +750,39 @@ export default function OrdersTable({
                                                 >
                                                   <span className="min-w-0 truncate">{order.creatorName}</span>
                                                   <UserRound
-                                                    className={`h-3.5 w-3.5 shrink-0 ${order.creatorTagColor ? "text-current opacity-90" : "text-slate-500"}`}
+                                                    className={`h-3 w-3 shrink-0 ${order.creatorTagColor ? "text-current opacity-90" : "text-slate-500"}`}
                                                     aria-hidden
                                                   />
                                                 </span>
                                               ) : (
-                                                <p className="text-sm text-slate-700">—</p>
+                                                <p className="text-xs text-slate-700">—</p>
                                               )}
                                             </div>
                                             {order.orderChangeNotes && (
-                                              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 sm:col-span-2">
-                                                <p className="text-xs text-amber-700 mb-1 text-right">שינויים בערכה</p>
-                                                <p className="text-sm text-amber-900 text-right">{order.orderChangeNotes}</p>
+                                              <div className="col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 md:px-3 md:py-2">
+                                                <p className="text-[10px] text-amber-700 mb-0.5 text-right">שינויים בערכה</p>
+                                                <p className="text-xs md:text-sm text-amber-900 text-right">{order.orderChangeNotes}</p>
                                               </div>
                                             )}
                                             {order.notes && (
-                                              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 sm:col-span-2">
-                                                <p className="text-xs text-slate-400 mb-1 text-right">הערות פנימיות</p>
-                                                <p className="text-sm text-slate-600 text-right">{order.notes}</p>
+                                              <div className="col-span-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2">
+                                                <p className="text-[10px] text-slate-400 mb-0.5 text-right">הערות פנימיות</p>
+                                                <p className="text-xs md:text-sm text-slate-600 text-right">{order.notes}</p>
                                               </div>
                                             )}
                                           </div>
                                         </AccordionContent>
                                       </AccordionItem>
 
-                                      <AccordionItem value={`${order.rowId}-products`} className="w-full min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
-                                        <AccordionTrigger className="min-h-[72px] py-0 text-right hover:no-underline">
-                                          <span className="flex w-full min-w-0 items-center justify-between gap-2 text-sm font-semibold text-slate-700">
-                                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 shrink-0">
-                                              <Package className="w-4 h-4 text-slate-400" />
+                                      <AccordionItem value={`${order.rowId}-products`} className="w-full min-h-[56px] md:min-h-[72px] rounded-xl md:rounded-2xl border border-slate-200 bg-slate-50/70 px-2.5 md:px-3 border-b-0 overflow-hidden">
+                                        <AccordionTrigger className="min-h-[56px] md:min-h-[72px] py-0 text-right hover:no-underline">
+                                          <span className="flex w-full min-w-0 items-center justify-between gap-2 text-xs md:text-sm font-semibold text-slate-700">
+                                            <span className="inline-flex items-center gap-1.5 md:gap-2 text-xs md:text-sm font-semibold text-slate-700 shrink-0">
+                                              <Package className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-400" />
                                               מוצרים
                                             </span>
-                                            <span className="truncate text-sm font-bold text-slate-800 text-right">
-                                              סה"כ לתשלום: {order.totalAmount.toLocaleString("he-IL")} ש"ח
+                                            <span className="truncate text-xs md:text-sm font-bold text-slate-800 text-right">
+                                              סה"כ: {order.totalAmount.toLocaleString("he-IL")} ש"ח
                                             </span>
                                           </span>
                                         </AccordionTrigger>
@@ -793,12 +793,12 @@ export default function OrdersTable({
                                                 const productImage = String(product.image || product.imageUrl || "").trim();
                                                 const lineTotal = Number((product.price || 0) * (product.quantity || 0));
                                                 return (
-                                                  <div key={`${order.rowId}-product-${index}`} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
-                                                    <div className="flex items-center justify-between gap-3" dir="rtl">
-                                                      <div className="flex min-w-0 items-center justify-end gap-2 text-right">
+                                                  <div key={`${order.rowId}-product-${index}`} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5">
+                                                    <div className="flex items-center justify-between gap-2 md:gap-3" dir="rtl">
+                                                      <div className="flex min-w-0 items-center justify-end gap-1.5 md:gap-2 text-right">
                                                         <div className="min-w-0 text-right" dir="rtl">
-                                                          <p className="truncate text-sm text-slate-700">{product.name || "מוצר"}</p>
-                                                          <p className="text-xs text-slate-400">כמות: {product.quantity || 1}</p>
+                                                          <p className="truncate text-xs md:text-sm text-slate-700">{product.name || "מוצר"}</p>
+                                                          <p className="text-[10px] md:text-xs text-slate-400">כמות: {product.quantity || 1}</p>
                                                         </div>
                                                         {productImage && (
                                                           <Tooltip>
@@ -827,14 +827,14 @@ export default function OrdersTable({
                                                           </Tooltip>
                                                         )}
                                                       </div>
-                                                      <span className="shrink-0 text-sm font-semibold text-slate-700">
+                                                      <span className="shrink-0 text-xs md:text-sm font-semibold text-slate-700">
                                                         {lineTotal.toLocaleString("he-IL")} ש"ח
                                                       </span>
                                                     </div>
                                                   </div>
                                                 );
                                               }) : (
-                                                <p className="text-sm text-slate-400 text-right">אין פרטי מוצרים להצגה</p>
+                                                <p className="text-xs text-slate-400 text-right">אין פרטי מוצרים להצגה</p>
                                               )}
                                             </div>
                                           </TooltipProvider>
@@ -842,12 +842,12 @@ export default function OrdersTable({
                                       </AccordionItem>
                                     </Accordion>
 
-                                    <Accordion type="multiple" className="space-y-3 w-full min-w-0">
-                                      <AccordionItem value={`${order.rowId}-timeline`} className="w-full min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
-                                        <AccordionTrigger className="min-h-[72px] py-0 text-right hover:no-underline">
-                                          <span className="flex w-full min-w-0 items-center justify-between gap-3">
-                                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 shrink-0">
-                                              <Workflow className="w-4 h-4 text-slate-400" />
+                                    <Accordion type="multiple" className="space-y-2 md:space-y-3 w-full min-w-0">
+                                      <AccordionItem value={`${order.rowId}-timeline`} className="w-full min-h-[56px] md:min-h-[72px] rounded-xl md:rounded-2xl border border-slate-200 bg-slate-50/70 px-2.5 md:px-3 border-b-0 overflow-hidden">
+                                        <AccordionTrigger className="min-h-[56px] md:min-h-[72px] py-0 text-right hover:no-underline">
+                                          <span className="flex w-full min-w-0 items-center justify-between gap-2 md:gap-3">
+                                            <span className="inline-flex items-center gap-1.5 md:gap-2 text-xs md:text-sm font-semibold text-slate-700 shrink-0">
+                                              <Workflow className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-400" />
                                               פעולות אחרונות
                                             </span>
                                             <span className="min-w-0 flex-1 text-right">
@@ -856,28 +856,28 @@ export default function OrdersTable({
                                                   {latestTimelineDate}
                                                 </span>
                                               )}
-                                              <span className="block truncate whitespace-nowrap text-xs text-slate-600">
+                                              <span className="block truncate whitespace-nowrap text-[11px] md:text-xs text-slate-600">
                                                 {latestTimelineText}
                                               </span>
                                             </span>
                                           </span>
                                         </AccordionTrigger>
-                                        <AccordionContent className="pb-3 pt-1">
+                                        <AccordionContent className="pb-2 md:pb-3 pt-1">
                                           {order.timeline.length > 0 ? (
-                                            <div className="space-y-2.5">
+                                            <div className="space-y-2">
                                               {order.timeline.map((event, index) => {
                                                 const action = event.action || event.type || "event";
                                                 return (
-                                                  <div key={`${order.rowId}-timeline-${index}`} className="flex items-start gap-2.5">
+                                                  <div key={`${order.rowId}-timeline-${index}`} className="flex items-start gap-2">
                                                     <div className="flex flex-col items-center shrink-0">
-                                                      <div className={`h-2.5 w-2.5 rounded-full ${timelineDotClass(action)}`} />
+                                                      <div className={`h-2 w-2 rounded-full ${timelineDotClass(action)}`} />
                                                       {index < order.timeline.length - 1 && (
-                                                        <div className="w-px min-h-[28px] bg-slate-200" />
+                                                        <div className="w-px min-h-[24px] bg-slate-200" />
                                                       )}
                                                     </div>
-                                                    <div className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right">
-                                                      <div className="mb-1 flex items-center justify-between gap-2">
-                                                        <span className="text-[11px] text-slate-400">
+                                                    <div className="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2 text-right">
+                                                      <div className="mb-0.5 flex items-center justify-between gap-2">
+                                                        <span className="text-[10px] text-slate-400">
                                                           {event.date ? moment(event.date).format("DD/MM/YY HH:mm") : "—"}
                                                         </span>
                                                         <Badge variant="outline" className="text-[10px] border-slate-200 text-slate-500">
@@ -886,7 +886,7 @@ export default function OrdersTable({
                                                             : getActorBadgeText(event)}
                                                         </Badge>
                                                       </div>
-                                                      <p className="text-sm text-slate-700">
+                                                      <p className="text-xs md:text-sm text-slate-700">
                                                         {event.text || event.detail || "עודכן אירוע בהזמנה"}
                                                       </p>
                                                     </div>
@@ -895,22 +895,22 @@ export default function OrdersTable({
                                               })}
                                             </div>
                                           ) : (
-                                            <p className="text-sm text-slate-400 text-right">אין פעולות להצגה עבור הזמנה זו</p>
+                                            <p className="text-xs text-slate-400 text-right">אין פעולות להצגה עבור הזמנה זו</p>
                                           )}
                                         </AccordionContent>
                                       </AccordionItem>
 
-                                      <AccordionItem value={`${order.rowId}-add-note`} className="w-full min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
-                                        <AccordionTrigger className="min-h-[72px] py-0 text-right hover:no-underline">
-                                          <span className="flex w-full min-w-0 items-center justify-between gap-3">
-                                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 shrink-0">
-                                              <MessageSquarePlus className="w-4 h-4 text-slate-400" />
+                                      <AccordionItem value={`${order.rowId}-add-note`} className="w-full min-h-[56px] md:min-h-[72px] rounded-xl md:rounded-2xl border border-slate-200 bg-slate-50/70 px-2.5 md:px-3 border-b-0 overflow-hidden">
+                                        <AccordionTrigger className="min-h-[56px] md:min-h-[72px] py-0 text-right hover:no-underline">
+                                          <span className="flex w-full min-w-0 items-center justify-between gap-2 md:gap-3">
+                                            <span className="inline-flex items-center gap-1.5 md:gap-2 text-xs md:text-sm font-semibold text-slate-700 shrink-0">
+                                              <MessageSquarePlus className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-400" />
                                               הוספת הערה
                                             </span>
                                             <span className="min-w-0 flex-1" />
                                           </span>
                                         </AccordionTrigger>
-                                        <AccordionContent className="pb-3 pt-1">
+                                        <AccordionContent className="pb-2 md:pb-3 pt-1">
                                           <div className="space-y-2">
                                             <Textarea
                                               value={noteDrafts[order.rowId] || ""}
@@ -918,7 +918,7 @@ export default function OrdersTable({
                                                 setNoteDrafts((prev) => ({ ...prev, [order.rowId]: event.target.value }))
                                               }
                                               placeholder="כתבי הערה שתתווסף לתרשים הזרימה..."
-                                              className="min-h-[76px] resize-none border-slate-200 bg-white text-right"
+                                              className="min-h-[64px] md:min-h-[76px] resize-none border-slate-200 bg-white text-right text-sm"
                                               dir="rtl"
                                               disabled={!onAddNote || isBusy || isError}
                                             />
