@@ -257,9 +257,6 @@ export default function OrdersTable({
           <div className="text-sm font-semibold text-emerald-900">
             ₪{order.partialPaidAmount.toLocaleString("he-IL")}
           </div>
-          <div className="text-[11px] text-slate-400">
-            שולם בפועל
-          </div>
         </div>
       );
     }
@@ -276,6 +273,18 @@ export default function OrdersTable({
     }
 
     return <span className="text-xs text-slate-400">—</span>;
+  };
+
+  const resolveActualPaidAmount = (order) => {
+    if (!isPaidDisplayStatus(order.displayStatus)) return 0;
+    if (order.displayStatus === "paid_partial") return Math.max(0, Number(order.partialPaidAmount || 0));
+    if (order.couponDetails?.source === "auto_paid" && Number(order.partialPaidAmount) > 0) {
+      return Math.max(0, Number(order.partialPaidAmount || 0));
+    }
+    const fullyPaidAmount = order.couponDetails?.source === "auto_paid"
+      ? Number(order.subtotalAmount ?? 0)
+      : Number(order.totalAmount ?? 0);
+    return Math.max(0, fullyPaidAmount);
   };
 
   const renderRemainingAmountCell = (order) => {
@@ -359,24 +368,24 @@ export default function OrdersTable({
       ) : (
         <>
           <div className="overflow-x-auto overflow-y-visible">
-            <Table dir="rtl">
+            <Table dir="rtl" className="w-full table-fixed">
               <TableHeader>
                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
                   <TableHead className="text-right text-xs font-medium text-slate-500 w-8 px-1" />
-                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[100px] px-2">תאריך</TableHead>
-                  <TableHead className="sticky right-0 bg-slate-50/95 z-10 text-right text-xs font-medium text-slate-500 min-w-[120px] px-2">שם לקוח</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[96px] px-2">טלפון</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[60px] px-2">W/A</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[80px] px-2">סה"כ</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[80px] px-2">שולם</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[72px] px-2">יתרה</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">תאריך</TableHead>
+                  <TableHead className="sticky right-0 bg-slate-50/95 z-10 text-right text-xs font-medium text-slate-500 px-1">שם לקוח</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">טלפון</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">W/A</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">סה"כ</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">שולם</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">יתרה</TableHead>
                   {showProfitColumn && (
-                    <TableHead className="text-right text-xs font-medium text-slate-500 w-[80px] px-2">רווח</TableHead>
+                    <TableHead className="text-right text-xs font-medium text-slate-500 px-1">רווח</TableHead>
                   )}
-                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[90px] px-2">סטטוס</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[90px] px-2">הזמנה</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[90px] px-2">משלוח</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 w-[90px] px-2">יצר/ה</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">סטטוס</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">הזמנה</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">משלוח</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">יצר/ה</TableHead>
                   <TableHead className="text-left text-xs font-medium text-slate-500 w-8 px-1" />
                 </TableRow>
               </TableHeader>
@@ -448,16 +457,16 @@ export default function OrdersTable({
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
-                        <TableCell className="text-xs text-slate-500 whitespace-nowrap px-2 py-2">
+                        <TableCell className="text-xs text-slate-500 whitespace-nowrap px-1 py-2">
                           {order.sentDate ? moment(order.sentDate).format("DD/MM HH:mm") : "—"}
                         </TableCell>
-                        <TableCell className="sticky right-0 bg-white group-hover:bg-slate-50/70 z-10 text-xs font-medium text-slate-700 px-2 py-2 max-w-[120px] truncate">
+                        <TableCell className="sticky right-0 bg-white group-hover:bg-slate-50/70 z-10 text-xs font-medium text-slate-700 px-1 py-2 max-w-[140px] truncate">
                           {order.customerName || "—"}
                         </TableCell>
-                        <TableCell className="text-xs text-slate-600 text-right tabular-nums px-2 py-2" dir="ltr">
+                        <TableCell className="text-xs text-slate-600 text-right tabular-nums px-1 py-2" dir="ltr">
                           {order.customerPhone || "—"}
                         </TableCell>
-                        <TableCell className="text-right whitespace-nowrap px-2 py-2">
+                        <TableCell className="text-right whitespace-nowrap px-1 py-2">
                           {order.whatsappDeliveryStatus === "success" ? (
                             <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" title="נשלח" />
                           ) : order.whatsappDeliveryStatus === "requested" ? (
@@ -468,17 +477,30 @@ export default function OrdersTable({
                             <span className="text-xs text-slate-400">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-xs font-semibold text-slate-800 whitespace-nowrap px-2 py-2">
-                          {order.totalAmount.toLocaleString("he-IL")}
+                        <TableCell className="text-right whitespace-nowrap px-1 py-2">
+                          <div className="font-semibold text-slate-800 tabular-nums text-xs">
+                            ₪{order.totalAmount.toLocaleString("he-IL")}
+                          </div>
+                          {isPaidDisplayStatus(order.displayStatus) && (() => {
+                            const actualPaid = resolveActualPaidAmount(order);
+                            const total = Math.max(0, Number(order.totalAmount ?? 0));
+                            if (!Number.isFinite(actualPaid) || actualPaid <= 0) return null;
+                            if (Math.round(actualPaid) === Math.round(total)) return null;
+                            return (
+                              <div className="text-[10px] font-semibold text-emerald-900 tabular-nums">
+                                ₪{actualPaid.toLocaleString("he-IL")}
+                              </div>
+                            );
+                          })()}
                         </TableCell>
-                        <TableCell className="text-right whitespace-nowrap px-2 py-2">
+                        <TableCell className="text-right whitespace-nowrap px-1 py-2">
                           {renderPaidAmountCell(order)}
                         </TableCell>
-                        <TableCell className="text-right whitespace-nowrap px-2 py-2">
+                        <TableCell className="text-right whitespace-nowrap px-1 py-2">
                           {renderRemainingAmountCell(order)}
                         </TableCell>
                         {showProfitColumn && (
-                          <TableCell className="text-right whitespace-nowrap px-2 py-2">
+                          <TableCell className="text-right whitespace-nowrap px-1 py-2">
                             {isPaidDisplayStatus(order.displayStatus) ? (
                               <div>
                                 <div className="text-xs font-semibold text-emerald-700">
@@ -493,7 +515,7 @@ export default function OrdersTable({
                             )}
                           </TableCell>
                         )}
-                        <TableCell className="px-2 py-2">
+                        <TableCell className="px-1 py-2">
                           <Badge
                             variant="outline"
                             className={`inline-flex whitespace-nowrap text-[10px] border-0 font-medium px-1.5 ${order.statusCfg.className}`}
@@ -501,13 +523,13 @@ export default function OrdersTable({
                             {order.statusCfg.label}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-[11px] font-mono text-slate-500 whitespace-nowrap px-2 py-2">
+                        <TableCell className="text-[11px] font-mono text-slate-500 whitespace-nowrap px-1 py-2">
                           {order.orderNumber}
                         </TableCell>
-                        <TableCell className="text-[11px] font-mono text-slate-500 whitespace-nowrap px-2 py-2">
+                        <TableCell className="text-[11px] font-mono text-slate-500 whitespace-nowrap px-1 py-2">
                           {order.deliveryNumber}
                         </TableCell>
-                        <TableCell className="text-right px-2 py-2">
+                        <TableCell className="text-right px-1 py-2">
                           {order.creatorName && order.creatorName !== "—" ? (
                             <span
                               className={`inline-flex max-w-[80px] items-center gap-1 rounded-full border py-0.5 pl-1 pr-1.5 text-[10px] font-medium ${

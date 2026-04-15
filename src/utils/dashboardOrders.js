@@ -209,7 +209,7 @@ export function normalizeOrder(order, options = {}) {
     normalized.totalAmount = rawSubtotal;
     normalized.remainingPaymentAmount = 0;
   }
-  normalized.orderNumber = rawOrderNumber || (normalized.displayStatus === "paid_pending_details" ? "-" : "ממתין לתשלום");
+  normalized.orderNumber = rawOrderNumber || (normalized.displayStatus === "paid_pending_details" ? "ממתין להשלמה" : "ממתין לתשלום");
   normalized.statusCfg = STATUS_CONFIG[normalized.displayStatus] || STATUS_CONFIG.sent;
   normalized.couponSummary = getCouponSummary(couponDetails);
   normalized.whatsappDeliveryStatus = resolveWhatsappDeliveryStatus(normalized);

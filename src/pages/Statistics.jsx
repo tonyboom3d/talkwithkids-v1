@@ -131,8 +131,8 @@ export default function Statistics() {
   );
 
   const creatorOptions = useMemo(() => {
-    return buildCreatorOptions(normalizedOrders);
-  }, [normalizedOrders]);
+    return canViewOthers ? buildCreatorOptions(normalizedOrders) : [];
+  }, [canViewOthers, normalizedOrders]);
 
   /** אתחול רשימת נבחרות כשטוענים הזמנות (רק אם עדיין ריק, כדי לא לדרוס בחירה ידנית) */
   useEffect(() => {
@@ -158,9 +158,10 @@ export default function Statistics() {
       dateFiltered,
       canViewOthers,
       includeAllCreators,
-      selectedCreatorKeys
+      selectedCreatorKeys,
+      user
     );
-  }, [dateFiltered, canViewOthers, includeAllCreators, selectedCreatorKeys]);
+  }, [dateFiltered, canViewOthers, includeAllCreators, selectedCreatorKeys, user]);
 
   const paidOrders = useMemo(
     () => filteredOrders.filter((o) => isPaidDisplayStatus(o.displayStatus)),

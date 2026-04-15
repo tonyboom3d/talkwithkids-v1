@@ -141,10 +141,13 @@ export default function Dashboard() {
   const [includeAllCreators, setIncludeAllCreators] = useState(true);
   const [selectedCreatorKeys, setSelectedCreatorKeys] = useState(() => new Set());
 
-  const creatorOptions = useMemo(() => buildCreatorOptions(orders), [orders]);
+  const creatorOptions = useMemo(
+    () => (canViewOthers ? buildCreatorOptions(orders) : []),
+    [canViewOthers, orders]
+  );
   const visibleOrders = useMemo(
-    () => filterOrdersByCreators(orders, canViewOthers, includeAllCreators, selectedCreatorKeys),
-    [orders, canViewOthers, includeAllCreators, selectedCreatorKeys]
+    () => filterOrdersByCreators(orders, canViewOthers, includeAllCreators, selectedCreatorKeys, user),
+    [orders, canViewOthers, includeAllCreators, selectedCreatorKeys, user]
   );
   const selectedProductsTotal = useMemo(
     () => selectedProducts.reduce((sum, product) => {

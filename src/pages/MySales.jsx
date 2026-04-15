@@ -111,7 +111,10 @@ export default function MySales() {
     [orders, commissionRate]
   );
 
-  const creatorOptions = useMemo(() => buildCreatorOptions(orders), [orders]);
+  const creatorOptions = useMemo(
+    () => (canViewOthers ? buildCreatorOptions(orders) : []),
+    [canViewOthers, orders]
+  );
 
   useEffect(() => {
     if (!canViewOthers || creatorOptions.length === 0) return;
@@ -136,9 +139,10 @@ export default function MySales() {
       dateAndStatusFiltered,
       canViewOthers,
       includeAllCreators,
-      selectedCreatorKeys
+      selectedCreatorKeys,
+      user
     );
-  }, [normalizedOrders, dateRange, selectedStatuses, canViewOthers, includeAllCreators, selectedCreatorKeys]);
+  }, [normalizedOrders, dateRange, selectedStatuses, canViewOthers, includeAllCreators, selectedCreatorKeys, user]);
 
   const paidOrders = useMemo(
     () => filteredOrders.filter((order) => isPaidDisplayStatus(order.displayStatus)),

@@ -29,6 +29,31 @@ export function getOrderCreatorLabel(order) {
   return creatorName || "לא ידוע";
 }
 
+function normalizeComparableName(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function orderBelongsToCurrentUser(order, currentUser) {
+  if (!currentUser) return true;
+
+  const currentUserId = String(
+    currentUser?.id || currentUser?.employeeId || currentUser?.createdByRef || ""
+  ).trim();
+  if (currentUserId && getOrderCreatorKey(order) === currentUserId) {
+    return true;
+  }
+
+  const currentUserName = normalizeComparableName(
+    currentUser?.displayName || currentUser?.name || ""
+  );
+  if (!currentUserName) return false;
+
+  return normalizeComparableName(getOrderCreatorLabel(order)) === currentUserName;
+}
+
 export function buildCreatorOptions(orders = []) {
   const creatorMap = new Map();
 
@@ -44,10 +69,22 @@ export function buildCreatorOptions(orders = []) {
     .sort((a, b) => a.label.localeCompare(b.label, "he"));
 }
 
-export function filterOrdersByCreators(orders = [], canViewOthers, includeAllCreators, selectedCreatorKeys) {
-  if (!canViewOthers || includeAllCreators) {
-    return orders;
+export function filterOrdersByCreators(
+  orders = [],
+  canViewOthers,
+  includeAllCreators,
+  selectedCreatorKeys,
+  currentUser = null
+) {
+  const safeOrders = orders || [];
+
+  if (!canViewOthers) {
+    return safeOrders.filter((order) => orderBelongsToCurrentUser(order, currentUser));
   }
 
-  return (orders || []).filter((order) => selectedCreatorKeys.has(getOrderCreatorKey(order)));
+  if (includeAllCreators) {
+    return safeOrders;
+  }
+
+  return safeOrders.filter((order) => selectedCreatorKeys.has(getOrderCreatorKey(order)));
 }
