@@ -358,7 +358,7 @@ export default function OrdersTable({
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-visible px-1">
             <Table dir="rtl">
               <TableHeader>
                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
@@ -639,9 +639,12 @@ export default function OrdersTable({
                                     <Accordion type="multiple" className="space-y-3 min-w-0">
                                       <AccordionItem value={`${order.rowId}-customer`} className="min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
                                         <AccordionTrigger className="min-h-[72px] py-0 text-right hover:no-underline">
-                                          <span className="flex w-full items-center justify-end gap-2 text-sm font-semibold text-slate-700">
-                                            <UserRound className="w-4 h-4 text-slate-400" />
-                                            פרטי לקוח ותשלום
+                                          <span className="flex w-full min-w-0 items-center justify-between gap-3">
+                                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 shrink-0">
+                                              <UserRound className="w-4 h-4 text-slate-400" />
+                                              פרטי לקוח ותשלום
+                                            </span>
+                                            <span className="min-w-0 flex-1" />
                                           </span>
                                         </AccordionTrigger>
                                         <AccordionContent className="pb-3 pt-1">
@@ -764,7 +767,7 @@ export default function OrdersTable({
                                       <AccordionItem value={`${order.rowId}-products`} className="min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
                                         <AccordionTrigger className="min-h-[72px] py-0 text-right hover:no-underline">
                                           <span className="flex w-full min-w-0 items-center justify-between gap-2 text-sm font-semibold text-slate-700">
-                                            <span className="inline-flex items-center gap-2 shrink-0">
+                                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 shrink-0">
                                               <Package className="w-4 h-4 text-slate-400" />
                                               מוצרים
                                             </span>
@@ -889,9 +892,12 @@ export default function OrdersTable({
 
                                       <AccordionItem value={`${order.rowId}-add-note`} className="min-h-[72px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 border-b-0 overflow-hidden">
                                         <AccordionTrigger className="min-h-[72px] py-0 text-right hover:no-underline">
-                                          <span className="flex w-full items-center justify-end gap-2 text-sm font-semibold text-slate-700">
-                                            <MessageSquarePlus className="w-4 h-4 text-slate-400" />
-                                            הוספת הערה
+                                          <span className="flex w-full min-w-0 items-center justify-between gap-3">
+                                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 shrink-0">
+                                              <MessageSquarePlus className="w-4 h-4 text-slate-400" />
+                                              הוספת הערה
+                                            </span>
+                                            <span className="min-w-0 flex-1" />
                                           </span>
                                         </AccordionTrigger>
                                         <AccordionContent className="pb-3 pt-1">
