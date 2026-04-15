@@ -3,6 +3,8 @@ import { postMessageClient } from './postMessageClient';
 
 const IframeAuthContext = createContext();
 
+const AUTH_TIMEOUT_MS = 8000;
+
 export const IframeAuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [canViewOthers, setCanViewOthers] = useState(false);
@@ -11,7 +13,10 @@ export const IframeAuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    let resolved = false;
+
     const unsubReady = postMessageClient.on('USER_READY', (payload) => {
+      resolved = true;
       console.log('[UI] User ready:', payload.user?.displayName);
       setUser(payload.user);
       setCanViewOthers(!!payload.canViewOthers);
@@ -22,17 +27,27 @@ export const IframeAuthProvider = ({ children }) => {
 
     const unsubError = postMessageClient.on('ERROR', (payload) => {
       if (payload.action === 'INIT' || payload.action === 'GET_USER') {
+        resolved = true;
         console.error('[UI] Auth error:', payload.message);
         setError(payload);
         setIsLoading(false);
       }
     });
 
+    const timeoutId = setTimeout(() => {
+      if (!resolved) {
+        console.error('[UI] Auth timeout — no USER_READY received');
+        setError({ code: 'TIMEOUT', action: 'INIT', message: 'timeout' });
+        setIsLoading(false);
+      }
+    }, AUTH_TIMEOUT_MS);
+
     postMessageClient.init();
 
     return () => {
       unsubReady();
       unsubError();
+      clearTimeout(timeoutId);
       postMessageClient.destroy();
     };
   }, []);

@@ -7,6 +7,7 @@ import PageNotFound from './lib/PageNotFound';
 import { IframeAuthProvider, useAuth } from '@/lib/IframeAuthContext';
 import { Loader2 } from 'lucide-react';
 import { APP_VERSION } from '@/config/appVersion';
+import { useState, useEffect } from 'react';
 
 /** GitHub project site uses /repo-name/; custom domain uses /. Detect at runtime. */
 function routerBasename() {
@@ -28,24 +29,56 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
 
 const AuthenticatedApp = () => {
   const { isLoading, error } = useAuth();
+  const [slowLoad, setSlowLoad] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) return;
+    const id = setTimeout(() => setSlowLoad(true), 3500);
+    return () => clearTimeout(id);
+  }, [isLoading]);
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-[#fafafa]">
+      <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-[#fafafa]" dir="rtl">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-        <p className="text-sm text-slate-500 font-medium" dir="rtl">רק רגע, טוענים לך את הדף...</p>
+        <p className="text-sm text-slate-500 font-medium">רק רגע, טוענים לך את הדף...</p>
+        {slowLoad && (
+          <p className="text-xs text-slate-400 text-center max-w-[240px] leading-relaxed">
+            לוקח קצת יותר זמן מהרגיל... נסי לטעון מחדש אם זה נמשך
+          </p>
+        )}
       </div>
     );
   }
 
   if (error) {
+    const isTimeout = error.code === 'TIMEOUT';
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-[#fafafa]" dir="rtl">
-        <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
-          <span className="text-2xl">⚠️</span>
+      <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-[#fafafa] px-6" dir="rtl">
+        <div className="w-16 h-16 rounded-full bg-red-50 border border-red-200 flex items-center justify-center">
+          <span className="text-2xl">{isTimeout ? '⏱️' : '⚠️'}</span>
         </div>
-        <p className="text-sm text-slate-600 font-medium">אין גישה לדאשבורד</p>
-        <p className="text-xs text-slate-400">{error.message || 'אנא נסו שנית מאוחר יותר'}</p>
+        <div className="text-center space-y-1.5 max-w-xs">
+          <p className="text-base font-semibold text-slate-800">
+            {isTimeout ? 'לא ניתן להתחבר' : 'שגיאת התחברות'}
+          </p>
+          <p className="text-sm text-slate-500 leading-relaxed">
+            {isTimeout
+              ? 'הדאשבורד לא קיבל תגובה מהדף הראשי. ייתכן שיש בעיית רשת או שהדף לא נטען כראוי.'
+              : (error.message && error.message !== 'timeout'
+                  ? error.message
+                  : 'אירעה שגיאה בעת ניסיון ההתחברות.')}
+          </p>
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 transition-colors"
+        >
+          ריענון הדף
+        </button>
+        <p className="text-[11px] text-slate-400 text-center max-w-xs leading-relaxed">
+          אם הבעיה ממשיכה, נסה לסגור ולפתוח מחדש את הדף בוויקס
+        </p>
       </div>
     );
   }
