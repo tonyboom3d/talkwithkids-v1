@@ -481,7 +481,7 @@ export default function OrdersTable({
                           <div className="font-semibold text-slate-800 tabular-nums text-xs">
                             ₪{order.totalAmount.toLocaleString("he-IL")}
                           </div>
-                          {isPaidDisplayStatus(order.displayStatus) && (() => {
+                          {isPaidDisplayStatus(order.displayStatus) && (() => { 
                             const actualPaid = resolveActualPaidAmount(order);
                             const total = Math.max(0, Number(order.totalAmount ?? 0));
                             if (!Number.isFinite(actualPaid) || actualPaid <= 0) return null;
