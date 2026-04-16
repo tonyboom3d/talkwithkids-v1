@@ -42,14 +42,6 @@ export const DEMO_STORE_COUPONS = [
   },
 ];
 
-export const DEMO_CUSTOMERS = [
-  { id: "c1", firstName: "יוסי", lastName: "כהן", email: "yossi@email.com", phone: "050-1234567" },
-  { id: "c2", firstName: "מיכל", lastName: "לוי", email: "michal@email.com", phone: "052-9876543" },
-  { id: "c3", firstName: "אבי", lastName: "ישראלי", email: "", phone: "054-5551234" },
-  { id: "c4", firstName: "רונית", lastName: "דוד", email: "ronit.d@email.com", phone: "" },
-  { id: "c5", firstName: "דני", lastName: "שמעוני", email: "dani.s@email.com", phone: "058-7778899" },
-];
-
 export const DEMO_ORDERS = [
   {
     id: "ORD-1001",

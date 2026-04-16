@@ -116,7 +116,6 @@ export default function Dashboard() {
 
   const [customerData, setCustomerData] = useState({ firstName: "", lastName: "", phone: "" });
   const [allowNonIsraeliPhone, setAllowNonIsraeliPhone] = useState(false);
-  const [selectedContact, setSelectedContact] = useState(null);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [paymentStatus, setPaymentStatus] = useState("unpaid");
   const [notes, setNotes] = useState("");
@@ -358,7 +357,7 @@ export default function Dashboard() {
           firstName: nameParts.firstName,
           lastName: nameParts.lastName,
           phone: phoneTrim,
-          contactId: selectedContact?.id || null,
+          contactId: null,
         },
         products: selectedProducts.map(p => ({
           id: p.id,
@@ -403,7 +402,6 @@ export default function Dashboard() {
   const resetForm = () => {
     setCustomerData({ firstName: "", lastName: "", phone: "" });
     setAllowNonIsraeliPhone(false);
-    setSelectedContact(null);
     setSelectedProducts([]);
     setPaymentStatus("unpaid");
     setNotes("");
@@ -689,13 +687,10 @@ export default function Dashboard() {
           className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-3 space-y-4 md:p-6 md:space-y-6"
         >
           <CustomerSection
-            isDemo={isDemo}
             customerData={customerData}
             setCustomerData={setCustomerData}
             paymentStatus={paymentStatus}
             setPaymentStatus={setPaymentStatus}
-            selectedContact={selectedContact}
-            setSelectedContact={setSelectedContact}
             allowNonIsraeliPhone={allowNonIsraeliPhone}
             setAllowNonIsraeliPhone={setAllowNonIsraeliPhone}
           />
