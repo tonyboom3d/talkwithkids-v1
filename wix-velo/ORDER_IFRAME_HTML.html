@@ -52,6 +52,17 @@
       justify-content: center;
     }
 
+    /* שגיאת הזמנה: תוכן בראש המסך */
+    .app-shell.app-shell--error {
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding-top: 10px;
+    }
+
+    .app-shell.app-shell--error #errorScreen {
+      width: 100%;
+    }
+
     .screen {
       width: 100%;
       display: none;
@@ -169,12 +180,14 @@
     }
 
     .hero-panel {
-      background: linear-gradient(160deg, rgba(238, 63, 110, 0.96), rgba(201, 44, 89, 0.96));
-      color: var(--white);
+      background: var(--white);
+      border: 1px solid var(--line);
+      color: var(--text);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       min-height: 100%;
+      box-shadow: 0 1px 0 rgba(201, 44, 89, 0.06);
     }
 
     .eyebrow {
@@ -184,9 +197,12 @@
       width: fit-content;
       padding: 8px 14px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.18);
+      background: rgba(238, 63, 110, 0.1);
+      border: 1px solid rgba(238, 63, 110, 0.18);
+      color: var(--pink-dark);
       font-size: 0.9rem;
       letter-spacing: 0.01em;
+      font-weight: 700;
     }
 
     .hero-title {
@@ -194,13 +210,14 @@
       font-size: 2.15rem;
       line-height: 1.25;
       font-weight: 700;
+      color: var(--pink-dark);
     }
 
     .hero-subtitle {
       margin: 0;
       font-size: 1.05rem;
       line-height: 1.95;
-      color: rgba(255, 255, 255, 0.9);
+      color: var(--text);
       max-width: 520px;
     }
 
@@ -214,25 +231,33 @@
       border-radius: 999px;
       font-size: 0.96rem;
       font-weight: 700;
-      background: rgba(255, 255, 255, 0.16);
-      color: var(--white);
-      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(238, 63, 110, 0.1);
+      color: var(--pink-dark);
+      border: 1px solid rgba(238, 63, 110, 0.22);
     }
 
     .status-chip.waiting {
-      background: rgba(255, 255, 255, 0.16);
+      background: rgba(238, 63, 110, 0.1);
+      color: var(--pink-dark);
+      border-color: rgba(238, 63, 110, 0.22);
     }
 
     .status-chip.info {
-      background: rgba(155, 182, 193, 0.22);
+      background: rgba(155, 182, 193, 0.2);
+      color: #4a6570;
+      border-color: rgba(155, 182, 193, 0.45);
     }
 
     .status-chip.success {
-      background: rgba(92, 183, 136, 0.22);
+      background: rgba(92, 183, 136, 0.18);
+      color: #1f6b47;
+      border-color: rgba(92, 183, 136, 0.4);
     }
 
     .status-chip.danger {
-      background: rgba(95, 24, 47, 0.28);
+      background: rgba(201, 44, 89, 0.12);
+      color: #7a1538;
+      border-color: rgba(201, 44, 89, 0.28);
     }
 
     .cta-button {
@@ -248,9 +273,9 @@
       font-weight: 700;
       text-decoration: none;
       cursor: pointer;
-      color: var(--pink-dark);
-      background: var(--white);
-      box-shadow: 0 16px 34px rgba(86, 21, 44, 0.18);
+      color: var(--white);
+      background: linear-gradient(180deg, #d43262 0%, var(--pink-dark) 100%);
+      box-shadow: 0 14px 32px rgba(201, 44, 89, 0.35);
       transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
       animation: pulse 1.8s ease-in-out infinite;
       overflow: hidden;
@@ -268,9 +293,9 @@
       background: linear-gradient(
         90deg,
         rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.2) 15%,
-        rgba(255, 255, 255, 0.85) 50%,
-        rgba(255, 255, 255, 0.2) 85%,
+        rgba(255, 255, 255, 0.08) 15%,
+        rgba(255, 255, 255, 0.35) 50%,
+        rgba(255, 255, 255, 0.08) 85%,
         rgba(255, 255, 255, 0) 100%
       );
       pointer-events: none;
@@ -279,7 +304,7 @@
 
     .cta-button:hover {
       transform: translateY(-2px);
-      box-shadow: 0 20px 38px rgba(86, 21, 44, 0.22);
+      box-shadow: 0 18px 40px rgba(201, 44, 89, 0.42);
     }
 
     .cta-button:active {
@@ -310,7 +335,7 @@
     .hero-price-label-inline {
       font-size: 0.78rem;
       font-weight: 600;
-      color: rgba(255, 255, 255, 0.82);
+      color: var(--muted);
     }
 
     .hero-price-coupon-wrap {
@@ -332,14 +357,14 @@
     .hero-price-mini-label {
       font-size: 0.72rem;
       font-weight: 600;
-      color: rgba(255, 255, 255, 0.78);
+      color: var(--muted);
     }
 
     .price-strikethrough {
       text-decoration: line-through;
       text-decoration-thickness: 2px;
-      text-decoration-color: rgba(255, 255, 255, 0.65);
-      color: rgba(255, 255, 255, 0.88);
+      text-decoration-color: rgba(124, 115, 130, 0.45);
+      color: var(--muted);
       font-size: 1rem;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
@@ -348,9 +373,8 @@
     .price-final {
       font-size: 1.22rem;
       font-weight: 800;
-      color: #fff;
+      color: var(--pink-dark);
       font-variant-numeric: tabular-nums;
-      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
     }
 
     .hero-price-single-wrap .price-final {
@@ -855,10 +879,18 @@
         line-height: 1.6;
       }
     }
+
+    /* כותרת שגיאה קומפקטית יותר במסכים צרים */
+    @media (max-width: 400px) {
+      .error-title {
+        font-size: 1.05rem;
+        line-height: 1.35;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-shell" id="appShell">
     <section id="loadingScreen" class="screen is-visible">
       <div class="card loader-card">
         <div class="loader-ring" aria-hidden="true"></div>
@@ -945,11 +977,10 @@
     <section id="errorScreen" class="screen">
       <div class="card error-card">
         <h1 id="errorTitle" class="error-title">אופס... לא מצאתי את ההזמנה שלך</h1>
-        <p id="errorText" class="error-text">השירות לקוחות שלנו ישמחו לעזור לך</p>
+        <p id="errorText" class="error-text">נסי לרענן את העמוד ואם עדיין זה לא עזר אפשר ליצור איתנו קשר</p>
         <a class="support-link" href="http://wa.me/972526111404" target="_blank" rel="noopener noreferrer">
           מעבר לשירות לקוחות
         </a>
-        <p id="supportNote" class="support-note">אם הגעת לכאן דרך קישור ישן או לא תקין, אפשר ליצור איתנו קשר ונשמח לבדוק עבורך.</p>
       </div>
     </section>
   </div>
@@ -988,6 +1019,7 @@
       var heroPriceOriginal = document.getElementById("heroPriceOriginal");
       var heroPricePay = document.getElementById("heroPricePay");
       var heroPriceSingle = document.getElementById("heroPriceSingle");
+      var appShell = document.getElementById("appShell");
       var isRedirecting = false;
 
       function showScreen(target) {
@@ -995,6 +1027,9 @@
           node.classList.remove("is-visible");
         });
         target.classList.add("is-visible");
+        if (appShell) {
+          appShell.classList.toggle("app-shell--error", target === errorScreen);
+        }
       }
 
       function formatPrice(value) {
@@ -1192,8 +1227,7 @@
           });
         }
         errorTitle.textContent = message;
-        errorText.textContent = "השירות לקוחות שלנו ישמחו לעזור לך";
-        supportNote.textContent = "אם הגעת לכאן דרך קישור ישן או לא תקין, אפשר ליצור איתנו קשר ונשמח לבדוק עבורך.";
+        errorText.textContent = "נסי לרענן את העמוד ואם עדיין זה לא עזר אפשר ליצור איתנו קשר";
         showScreen(errorScreen);
       }
 

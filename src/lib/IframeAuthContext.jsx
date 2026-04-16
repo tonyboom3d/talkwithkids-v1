@@ -3,7 +3,8 @@ import { postMessageClient } from './postMessageClient';
 
 const IframeAuthContext = createContext();
 
-const AUTH_TIMEOUT_MS = 8000;
+/** מובייל / רשת איטית: ה-bundle נטען לאט; ה-timeout הקודם (8s) הספיק להיכשל לפני mount */
+const AUTH_TIMEOUT_MS = 20000;
 
 export const IframeAuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -17,7 +18,7 @@ export const IframeAuthProvider = ({ children }) => {
 
     const unsubReady = postMessageClient.on('USER_READY', (payload) => {
       resolved = true;
-      console.log('[UI] User ready:', payload.user?.displayName);
+      console.info('[TWK-AUTH] USER_READY', { user: payload.user?.displayName });
       setUser(payload.user);
       setCanViewOthers(!!payload.canViewOthers);
       setCommissionRate(payload.commissionRate || 0);
@@ -28,7 +29,7 @@ export const IframeAuthProvider = ({ children }) => {
     const unsubError = postMessageClient.on('ERROR', (payload) => {
       if (payload.action === 'INIT' || payload.action === 'GET_USER') {
         resolved = true;
-        console.error('[UI] Auth error:', payload.message);
+        console.error('[TWK-AUTH] ERROR from parent', payload);
         setError(payload);
         setIsLoading(false);
       }
@@ -36,7 +37,16 @@ export const IframeAuthProvider = ({ children }) => {
 
     const timeoutId = setTimeout(() => {
       if (!resolved) {
-        console.error('[UI] Auth timeout — no USER_READY received');
+        try {
+          const ref = typeof document !== 'undefined' ? document.referrer : '';
+          console.error('[TWK-AUTH] Timeout — no USER_READY', {
+            ms: AUTH_TIMEOUT_MS,
+            referrer: ref || '(empty)',
+            hint: 'Velo re-sends USER_READY on INIT; check www vs non-www and network.',
+          });
+        } catch (e) {
+          console.error('[TWK-AUTH] Auth timeout — no USER_READY received');
+        }
         setError({ code: 'TIMEOUT', action: 'INIT', message: 'timeout' });
         setIsLoading(false);
       }

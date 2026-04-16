@@ -27,6 +27,27 @@ const LOG_PREFIX = '[VELO-PAGE]';
 
 let currentEmployee = null;
 
+function buildUserReadyPayload() {
+  if (!currentEmployee) return null;
+  return {
+    user: {
+      id: currentEmployee._id,
+      memberId: currentEmployee.memberId,
+      displayName: currentEmployee.displayName,
+    },
+    canViewOthers: currentEmployee.canViewOtherRecords,
+    commissionRate: currentEmployee.commissionRate,
+  };
+}
+
+/** נשלח שוב כשה-iframe שולח INIT — במובייל ה-USER_READY הראשון עלול להגיע לפני שהמאזין ב-React נרשם */
+function emitUserReady() {
+  const payload = buildUserReadyPayload();
+  if (!payload) return;
+  sendToIframe('USER_READY', payload);
+  console.log(`${LOG_PREFIX} USER_READY → iframe (${currentEmployee.displayName})`);
+}
+
 $w.onReady(async () => {
   console.log(`${LOG_PREFIX} Page ready, initializing...`);
 
@@ -52,17 +73,7 @@ $w.onReady(async () => {
       memberId: member._id,
     };
 
-    sendToIframe('USER_READY', {
-      user: {
-        id: employee._id,
-        memberId: member._id,
-        displayName: employee.displayName,
-      },
-      canViewOthers: employee.canViewOtherRecords,
-      commissionRate: employee.commissionRate,
-    });
-
-    console.log(`${LOG_PREFIX} User ready: ${employee.displayName}`);
+    emitUserReady();
   } catch (err) {
     console.error(`${LOG_PREFIX} Init error:`, err);
     sendToIframe('ERROR', { code: 'INIT_FAILED', message: err.message, action: 'INIT' });
@@ -88,7 +99,10 @@ async function handleIframeMessage(data) {
   try {
     switch (action) {
       case 'INIT':
-        // Already handled in $w.onReady
+        if (currentEmployee) {
+          console.log(`${LOG_PREFIX} INIT from iframe — re-sending USER_READY (fixes slow mobile load)`);
+          emitUserReady();
+        }
         break;
 
       case 'GET_ORDERS': {

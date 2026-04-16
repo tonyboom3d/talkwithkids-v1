@@ -1,5 +1,7 @@
 /** מקור דף האם בוויקס (iframe). כשפותחים את הדאשבורד ישירות ב-GitHub Pages, parent הוא אותו חלון — חייבים targetOrigin תואם. */
 const WIX_PARENT_ORIGIN = 'https://www.talkwithkids.co.il';
+/** וויקס לעיתים מגיש apex ללא www; postMessage דורש התאמה מדויקת ל־origin של החלון האב */
+const WIX_PARENT_ORIGINS = [WIX_PARENT_ORIGIN, 'https://talkwithkids.co.il'];
 const MSG_TYPE = 'TWK_MSG';
 
 let requestIdCounter = 0;
@@ -14,12 +16,21 @@ function postMessageTargetOrigin() {
   }
   const fromEnv = import.meta.env.VITE_POST_MESSAGE_TARGET_ORIGIN;
   if (fromEnv) return fromEnv;
+  try {
+    const ref = document.referrer;
+    if (ref) {
+      const o = new URL(ref).origin;
+      if (WIX_PARENT_ORIGINS.includes(o)) return o;
+    }
+  } catch (e) {
+    /* ignore */
+  }
   return WIX_PARENT_ORIGIN;
 }
 
 function isTrustedMessageOrigin(origin) {
   if (origin === window.location.origin) return true;
-  if (origin === WIX_PARENT_ORIGIN) return true;
+  if (WIX_PARENT_ORIGINS.includes(origin)) return true;
   const extra = import.meta.env.VITE_EXTRA_ALLOWED_MESSAGE_ORIGINS;
   if (extra) {
     return extra.split(',').map((s) => s.trim()).includes(origin);
@@ -59,6 +70,18 @@ function handleMessage(event) {
 
 function init() {
   window.addEventListener('message', handleMessage);
+  try {
+    const standalone = typeof window !== 'undefined' && window.parent === window;
+    const targetOrigin = postMessageTargetOrigin();
+    const ref = typeof document !== 'undefined' ? document.referrer : '';
+    console.info('[TWK-MSG] init', {
+      standalone,
+      postTargetOrigin: targetOrigin,
+      referrerSnippet: ref ? ref.slice(0, 160) : '(empty)',
+    });
+  } catch (e) {
+    console.warn('[TWK-MSG] init diagnostic failed', e);
+  }
   send('INIT');
 }
 
