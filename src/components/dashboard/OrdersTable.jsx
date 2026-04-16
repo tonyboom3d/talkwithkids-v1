@@ -373,7 +373,7 @@ export default function OrdersTable({
                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
                   <TableHead className="text-right text-xs font-medium text-slate-500 w-8 px-1" />
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">תאריך</TableHead>
-                  <TableHead className="sticky right-0 bg-slate-50/95 z-10 text-right text-xs font-medium text-slate-500 px-1">שם לקוח</TableHead>
+                  <TableHead className="sticky right-0 z-[12] bg-slate-50 text-right text-xs font-medium text-slate-500 px-1 shadow-[inset_1px_0_0_0_rgb(226_232_240)]">שם לקוח</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">טלפון</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">W/A</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">סה"כ</TableHead>
@@ -460,8 +460,8 @@ export default function OrdersTable({
                         <TableCell className="text-xs text-slate-500 whitespace-nowrap px-1 py-2">
                           {order.sentDate ? moment(order.sentDate).format("DD/MM HH:mm") : "—"}
                         </TableCell>
-                        <TableCell className="sticky right-0 bg-white group-hover:bg-slate-50/70 z-10 text-xs font-medium text-slate-700 px-1 py-2 max-w-[140px] truncate">
-                          {order.customerName || "—"}
+                        <TableCell className="sticky right-0 z-[11] max-w-[min(140px,32vw)] bg-white px-1 py-2 text-xs font-medium text-slate-700 shadow-[inset_1px_0_0_0_rgb(226_232_240)] [transform:translateZ(0)] group-hover:bg-slate-50">
+                          <span className="block truncate">{order.customerName || "—"}</span>
                         </TableCell>
                         <TableCell className="text-xs text-slate-600 text-right tabular-nums px-1 py-2" dir="ltr">
                           {order.customerPhone || "—"}

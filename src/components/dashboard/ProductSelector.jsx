@@ -146,7 +146,7 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -4, scale: 0.98 }}
               transition={{ duration: 0.15 }}
-              className="absolute z-30 top-full mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden"
+              className="absolute z-30 top-full mt-1.5 w-full min-w-0 max-w-[100vw] bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden sm:max-w-none"
             >
               <div className="p-3 border-b border-slate-100">
                 <div className="relative">
@@ -162,7 +162,7 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                 </div>
               </div>
 
-              <div className="max-h-64 overflow-y-auto" dir="ltr">
+              <div className="max-h-[min(16rem,45dvh)] overflow-y-auto overscroll-contain sm:max-h-64" dir="rtl">
                 {isLoading ? (
                   <LoadingSpinner text="טוען מוצרים..." />
                 ) : filteredProducts.length === 0 ? (
@@ -178,33 +178,35 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                       <button
                         key={product.id}
                         type="button"
-                        dir="ltr"
                         onClick={() => addProduct(product)}
-                        className={`w-full px-4 py-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 transition-colors border-b border-slate-50 last:border-0 ${
-                          isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'
-                        }`}
+                        className={`w-full min-w-0 px-3 py-3 text-right transition-colors border-b border-slate-50 last:border-0 sm:px-4
+                          flex flex-col gap-2.5 items-stretch max-sm:[direction:rtl]
+                          sm:[direction:ltr] sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-2
+                          ${isSelected ? "bg-blue-50/50" : "hover:bg-slate-50 active:bg-slate-100"}`}
                       >
-                        <div className="flex shrink-0 items-center gap-2 justify-self-start">
-                          {listPrice != null && (
-                            <span className="text-sm font-medium text-slate-600 tabular-nums whitespace-nowrap" dir="ltr">
-                              ₪{listPrice.toLocaleString("he-IL")}
-                            </span>
-                          )}
-                          {isSelected && (
-                            <Badge className="bg-blue-100 text-blue-700 text-xs border-0 shrink-0">נבחר</Badge>
-                          )}
-                        </div>
-                        <span className="text-base text-slate-700 truncate text-right min-w-0 justify-self-stretch self-center" dir="rtl">
+                        <span className="text-[15px] leading-snug text-slate-800 sm:order-2 sm:min-w-0 sm:truncate sm:text-right sm:[direction:rtl]">
                           {product.name}
                         </span>
-                        <div className="justify-self-end shrink-0">
-                          {product.image && (
-                            <img
-                              src={product.image}
-                              alt=""
-                              className="w-10 h-10 rounded-lg object-cover border border-slate-100"
-                            />
-                          )}
+                        <div className="flex flex-row items-center justify-between gap-2 sm:contents">
+                          <div className="flex shrink-0 flex-row-reverse items-center gap-2 sm:flex-row sm:order-1 sm:justify-self-start">
+                            {listPrice != null && (
+                              <span className="text-sm font-medium text-slate-600 tabular-nums whitespace-nowrap" dir="ltr">
+                                ₪{listPrice.toLocaleString("he-IL")}
+                              </span>
+                            )}
+                            {isSelected && (
+                              <Badge className="border-0 bg-blue-100 text-xs text-blue-700 shrink-0">נבחר</Badge>
+                            )}
+                          </div>
+                          <div className="shrink-0 sm:order-3 sm:justify-self-end">
+                            {product.image ? (
+                              <img
+                                src={product.image}
+                                alt=""
+                                className="h-10 w-10 rounded-lg border border-slate-100 object-cover"
+                              />
+                            ) : null}
+                          </div>
                         </div>
                       </button>
                     );
@@ -239,62 +241,87 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                   className="space-y-1"
                 >
                   <div
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 border ${
+                    className={`flex flex-col gap-3 rounded-lg px-3 py-2.5 border sm:flex-row sm:items-center sm:gap-3 ${
                       isPriceOverridden
                         ? "bg-amber-50 border-amber-200"
                         : "bg-slate-50 border-slate-100"
                     }`}
                     dir="rtl"
                   >
-                    {product.image && (
-                      <img src={product.image} alt="" className="w-11 h-11 rounded-lg object-cover border border-slate-100 shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0 text-right space-y-0.5">
-                      <span className="text-base text-slate-700 block">{product.name}</span>
-                      <span className="text-sm text-slate-500 tabular-nums">
-                        סה״כ שורה: ₪{lineTotal.toLocaleString("he-IL")}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-1 shrink-0" dir="ltr">
-                      <span className="text-xs text-slate-500 text-right w-full" dir="rtl">
-                        מחיר ליחידה{isPriceOverridden && <span className="mr-1 text-amber-600 font-medium">(מחיר מותאם)</span>}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <Input
-                          type="number"
-                          min="0"
-                          max={catalogPrice}
-                          step="0.01"
-                          value={product.price === '' ? '' : product.price}
-                          onChange={(e) => updateUnitPrice(product.id, e.target.value)}
-                          onBlur={() => commitUnitPrice(product.id)}
-                          className={`h-8 w-24 text-sm text-right tabular-nums ${
-                            isPriceOverridden ? "border-amber-300 bg-white" : "border-slate-200"
-                          }`}
-                          dir="ltr"
-                        />
-                        <span className="text-sm text-slate-500 shrink-0">₪</span>
-                      </div>
-                      {catalogPrice > 0 && (
-                        <span className="text-[10px] text-slate-400 tabular-nums" dir="rtl">
-                          מחיר קטלוג: ₪{catalogPrice.toLocaleString("he-IL")}
-                        </span>
+                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                      {product.image && (
+                        <img src={product.image} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-slate-100 object-cover" />
                       )}
+                      <div className="min-w-0 flex-1 space-y-0.5 text-right">
+                        <span className="block text-base text-slate-700">{product.name}</span>
+                        <span className="text-sm text-slate-500 tabular-nums">
+                          סה״כ שורה: ₪{lineTotal.toLocaleString("he-IL")}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeProduct(product.id)}
+                        className="shrink-0 p-1 text-slate-400 transition-colors hover:text-red-500"
+                        aria-label="הסרת מוצר"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button type="button" onClick={() => updateQuantity(product.id, 1)} className="w-8 h-8 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors">
-                        <Plus className="w-4 h-4 text-slate-600" />
-                      </button>
-                      <span className="text-base font-medium text-slate-700 w-7 text-center tabular-nums">{product.quantity}</span>
-                      <button type="button" onClick={() => updateQuantity(product.id, -1)} className="w-8 h-8 rounded-md bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors">
-                        <Minus className="w-4 h-4 text-slate-600" />
-                      </button>
+                    <div
+                      className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-t border-slate-200/60 pt-2 sm:flex-nowrap sm:border-0 sm:pt-0"
+                      dir="ltr"
+                    >
+                      <div className="flex min-w-0 flex-col items-end gap-1">
+                        <span className="w-full text-right text-xs text-slate-500" dir="rtl">
+                          מחיר ליחידה
+                          {isPriceOverridden && (
+                            <span className="mr-1 font-medium text-amber-600">(מחיר מותאם)</span>
+                          )}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            min="0"
+                            max={catalogPrice}
+                            step="0.01"
+                            value={product.price === "" ? "" : product.price}
+                            onChange={(e) => updateUnitPrice(product.id, e.target.value)}
+                            onBlur={() => commitUnitPrice(product.id)}
+                            className={`h-8 w-[5.5rem] max-w-[40vw] text-sm tabular-nums sm:w-24 ${
+                              isPriceOverridden ? "border-amber-300 bg-white" : "border-slate-200"
+                            } text-right`}
+                            dir="ltr"
+                          />
+                          <span className="shrink-0 text-sm text-slate-500">₪</span>
+                        </div>
+                        {catalogPrice > 0 && (
+                          <span className="text-[10px] text-slate-400 tabular-nums" dir="rtl">
+                            מחיר קטלוג: ₪{catalogPrice.toLocaleString("he-IL")}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(product.id, 1)}
+                          className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white transition-colors hover:bg-slate-100"
+                        >
+                          <Plus className="h-4 w-4 text-slate-600" />
+                        </button>
+                        <span className="w-7 text-center text-base font-medium tabular-nums text-slate-700">
+                          {product.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(product.id, -1)}
+                          className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white transition-colors hover:bg-slate-100"
+                        >
+                          <Minus className="h-4 w-4 text-slate-600" />
+                        </button>
+                      </div>
                     </div>
-                    <button type="button" onClick={() => removeProduct(product.id)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0 p-1">
-                      <X className="w-5 h-5" />
-                    </button>
                   </div>
                 </motion.div>
               );
