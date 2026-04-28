@@ -17,7 +17,7 @@ import {
   Scatter,
   CartesianGrid,
 } from "recharts";
-import { TrendingUp, ShoppingBag, CreditCard, Percent, Loader2, CircleDot } from "lucide-react";
+import { TrendingUp, ShoppingBag, CreditCard, Percent, Loader2, CircleDot, Users } from "lucide-react";
 import moment from "moment";
 import DateRangePicker from "../components/dashboard/DateRangePicker";
 import EmployeeFilterField from "../components/dashboard/EmployeeFilterField";
@@ -275,6 +275,18 @@ export default function Statistics() {
     const pad = span > 0 ? Math.max(span * 0.06, maxY * 0.02) : Math.max(maxY * 0.08, 50);
     return [Math.max(0, minY - pad), maxY + pad];
   }, [salesScatterPoints]);
+
+  const employeeStats = useMemo(() => {
+    if (!canViewOthers) return [];
+    const map = {};
+    paidOrders.forEach((o) => {
+      const name = o.creatorName || "ללא שם";
+      if (!map[name]) map[name] = { name, count: 0, revenue: 0 };
+      map[name].count += 1;
+      map[name].revenue += Number(o.totalAmount) || 0;
+    });
+    return Object.values(map).sort((a, b) => b.count - a.count);
+  }, [paidOrders, canViewOthers]);
 
   const unpaidCount = Math.max(0, filteredOrders.length - paidCount);
   const paymentPie = [
@@ -581,6 +593,52 @@ export default function Statistics() {
                   </div>
                 )}
               </motion.div>
+
+
+              {canViewOthers && employeeStats.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-3 md:p-5 md:col-span-2"
+                >
+                  <div className="mb-3 flex items-start gap-2">
+                    <Users className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" aria-hidden />
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-700">עסקאות שהושלמו לפי עובדת</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">מציג רק עסקאות ששולמו בפועל (לפי טווח תאריכים שנבחר)</p>
+                    </div>
+                  </div>
+                  <div dir="rtl" className="rounded-xl border border-slate-100 overflow-x-auto">
+                    <Table className="min-w-[360px]">
+                      <TableHeader>
+                        <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+                          <TableHead className="w-10 text-center text-slate-600 font-semibold">#</TableHead>
+                          <TableHead className="text-right text-slate-600 font-semibold">עובדת</TableHead>
+                          <TableHead className="w-32 text-center tabular-nums text-slate-600 font-semibold">עסקאות שולמו</TableHead>
+                          <TableHead className="w-36 text-left tabular-nums text-slate-600 font-semibold">סה״כ הכנסות</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {employeeStats.map((row, i) => (
+                          <TableRow key={row.name}>
+                            <TableCell className="text-center tabular-nums text-slate-500 font-medium">{i + 1}</TableCell>
+                            <TableCell className="text-right font-medium text-slate-800">{row.name}</TableCell>
+                            <TableCell className="text-center tabular-nums">
+                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-50 text-indigo-700 font-bold text-sm">
+                                {row.count}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-left tabular-nums text-emerald-700 font-medium">
+                              ₪{row.revenue.toLocaleString("he-IL")}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </motion.div>
+              )}
             </div>
           </>
         )}

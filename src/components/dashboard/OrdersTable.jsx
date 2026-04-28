@@ -572,7 +572,7 @@ export default function OrdersTable({
                                 transition={{ duration: 0.22, ease: "easeOut" }}
                                 className="overflow-hidden"
                               >
-                                <div className="w-full p-2 md:p-4">
+                                <div className="p-2 md:p-4 sticky md:static right-0 md:right-auto max-w-[100vw] md:max-w-none" style={{boxSizing:'border-box'}}>
                                 <div className="rounded-2xl border border-slate-200/80 bg-white p-2.5 md:p-4 space-y-3 w-full box-border" dir="rtl">
                                   <div className="flex flex-wrap items-start justify-between gap-2">
                                     <div className="text-right">

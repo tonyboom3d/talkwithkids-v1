@@ -347,6 +347,53 @@
       flex-wrap: wrap;
     }
 
+    .hero-price-three-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .hero-price-three-line {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .hero-price-three-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      min-width: 100px;
+      text-align: left;
+    }
+
+    .price-three-original {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-decoration: line-through;
+      text-decoration-thickness: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .price-three-paid {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1f6b47;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hero-price-three-divider {
+      width: 80%;
+      max-width: 220px;
+      height: 1px;
+      background: rgba(155, 182, 193, 0.3);
+      margin: 1px auto;
+    }
+
     .hero-price-coupon-line {
       display: flex;
       flex-direction: row;
@@ -934,6 +981,21 @@
               <span class="hero-price-label-inline">מחיר לתשלום</span>
               <span id="heroPriceSingle" class="price-final"></span>
             </div>
+            <div id="heroPriceThreeWrap" class="hero-price-three-wrap" style="display: none;">
+              <div class="hero-price-three-line">
+                <span class="hero-price-three-label">מחיר מלא</span>
+                <span id="heroPriceThreeOriginal" class="price-three-original"></span>
+              </div>
+              <div class="hero-price-three-line">
+                <span class="hero-price-three-label">שולם בפועל</span>
+                <span id="heroPriceThreePaid" class="price-three-paid"></span>
+              </div>
+              <div class="hero-price-three-divider"></div>
+              <div class="hero-price-three-line">
+                <span class="hero-price-three-label">נותר לתשלום</span>
+                <span id="heroPriceThreeRemaining" class="price-final"></span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -988,7 +1050,7 @@
   <div id="redirectOverlay" class="redirect-overlay" aria-hidden="true">
     <div class="card redirect-card">
       <div class="redirect-ring" aria-hidden="true"></div>
-      <h2 class="redirect-title">מעבירה אותך לתשלום...</h2>
+      <h2 class="redirect-title">מיד תועברי להזמנה שלך</h2>
       <p class="redirect-text">עוד רגע תועברי לעמוד התשלום המאובטח.</p>
     </div>
   </div>
@@ -1019,6 +1081,10 @@
       var heroPriceOriginal = document.getElementById("heroPriceOriginal");
       var heroPricePay = document.getElementById("heroPricePay");
       var heroPriceSingle = document.getElementById("heroPriceSingle");
+      var heroPriceThreeWrap = document.getElementById("heroPriceThreeWrap");
+      var heroPriceThreeOriginal = document.getElementById("heroPriceThreeOriginal");
+      var heroPriceThreePaid = document.getElementById("heroPriceThreePaid");
+      var heroPriceThreeRemaining = document.getElementById("heroPriceThreeRemaining");
       var appShell = document.getElementById("appShell");
       var isRedirecting = false;
 
@@ -1070,18 +1136,30 @@
         }
         var pay = order.payPrice != null ? order.payPrice : order.totalPrice;
         var orig = order.originalPrice != null ? order.originalPrice : order.totalPrice;
-        var showCompare =
+        var actualPaid = Number(order.actualPaidAmount) || 0;
+        var showThreeWay = actualPaid > 0 && Number(pay) > 0.009 && Math.abs(Number(orig) - actualPaid) > 0.009;
+        var showCompare = !showThreeWay && (
           order.showCouponPriceCompare === true ||
-          (order.hasCoupon && Math.abs(Number(orig) - Number(pay)) > 0.009);
+          (order.hasCoupon && Math.abs(Number(orig) - Number(pay)) > 0.009)
+        );
         heroPriceRow.style.display = "block";
-        if (showCompare) {
+        if (showThreeWay) {
+          heroPriceCouponWrap.style.display = "none";
+          heroPriceSingleWrap.style.display = "none";
+          heroPriceThreeWrap.style.display = "flex";
+          heroPriceThreeOriginal.textContent = formatPrice(orig);
+          heroPriceThreePaid.textContent = formatPrice(actualPaid);
+          heroPriceThreeRemaining.textContent = formatPrice(pay);
+        } else if (showCompare) {
           heroPriceCouponWrap.style.display = "flex";
           heroPriceSingleWrap.style.display = "none";
+          heroPriceThreeWrap.style.display = "none";
           heroPriceOriginal.textContent = formatPrice(orig);
           heroPricePay.textContent = formatPrice(pay);
         } else {
           heroPriceCouponWrap.style.display = "none";
           heroPriceSingleWrap.style.display = "flex";
+          heroPriceThreeWrap.style.display = "none";
           heroPriceSingle.textContent = formatPrice(pay);
         }
       }

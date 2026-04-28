@@ -150,7 +150,12 @@ function computePublicPriceDisplay(record, couponDetails) {
                 ? Math.max(0, Number(couponDetails.subtotal))
                 : subtotal;
         } else if (couponDetails.source === 'auto_paid') {
-            payPrice = 0;
+            const actualPaid = Math.max(0, Number(couponDetails.actualPaidAmount) || 0);
+            if (actualPaid > 0 && actualPaid < subtotal) {
+                payPrice = Math.max(0, subtotal - actualPaid);
+            } else {
+                payPrice = 0;
+            }
             originalPrice = subtotal;
         } else if (couponDetails.source === 'create') {
             if (couponDetails.type === 'percent') {
@@ -254,10 +259,24 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
         }
 
         const couponDetails = safeParseJson(record.couponDetails, null);
-        const statusConfig = getPublicStatusConfig(record.status);
+        let statusConfig = getPublicStatusConfig(record.status);
         const products = normalizePublicProducts(record.products);
         const priceDisplay = computePublicPriceDisplay(record, couponDetails);
         const showHeroPrice = !isPaidOrderStatus(record.status);
+
+        // כאשר עובדת מסמנת "שולם" עם סכום חלקי — מציגים ללקוחה פירוט יתרה לתשלום
+        const autoActualPaid = Math.max(0, Number(couponDetails?.actualPaidAmount) || 0);
+        const isPartialAutoPayment = couponDetails?.source === 'auto_paid'
+            && autoActualPaid > 0
+            && autoActualPaid < Number(record.totalPrice || 0);
+        if (isPartialAutoPayment) {
+            statusConfig = {
+                text: 'ההזמנה שולמה חלקית. נותר להשלים את יתרת התשלום.',
+                tone: 'info',
+                ctaLabel: 'המשיכי לתשלום יתרה >>',
+                canContinue: true,
+            };
+        }
         console.log(`${LOG_PREFIX} CMS record`, {
             id: record._id,
             checkoutId: record.checkoutId,
@@ -286,6 +305,7 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
                 showHeroPrice,
                 couponDetailsText: formatPublicCouponDetails(couponDetails),
                 hasCoupon: !!couponDetails,
+                actualPaidAmount: isPartialAutoPayment ? autoActualPaid : 0,
                 status: normalizeOrderStatus(record.status) || 'sent',
                 statusText: statusConfig.text,
                 statusTone: statusConfig.tone,

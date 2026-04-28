@@ -141,15 +141,16 @@ export default function DateRangePicker({ value, onChange }) {
 
       {open && (
         <div
-          className="absolute top-full mt-2 left-0 z-50 bg-white rounded-2xl border border-slate-200 shadow-xl p-4 flex gap-4
-            w-max max-w-[calc(100vw-1.5rem)] sm:min-w-[520px] sm:max-w-none"
+          className="absolute top-full mt-2 right-0 z-50 bg-white rounded-2xl border border-slate-200 shadow-xl p-3 sm:p-4
+            flex flex-col sm:flex-row gap-3 sm:gap-4
+            w-[calc(100vw-2rem)] sm:w-max sm:min-w-[520px] sm:max-w-none"
         >
           {/* Presets */}
-          <div className="flex flex-col gap-1 border-l border-slate-100 pl-4 min-w-[130px]">
-            <p className="text-[10px] text-slate-400 font-semibold uppercase mb-1">קיצורים</p>
+          <div className="flex flex-row sm:flex-col gap-1 overflow-x-auto pb-2 sm:pb-0 border-b sm:border-b-0 sm:border-l border-slate-100 sm:pl-4 sm:min-w-[130px] shrink-0">
+            <p className="text-[10px] text-slate-400 font-semibold uppercase shrink-0 self-center sm:self-auto sm:mb-1">קיצורים</p>
             {PRESETS.map(p => (
               <button key={p.label} onClick={() => handlePreset(p)}
-                className="text-right text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 px-2 py-1.5 rounded-lg transition-colors">
+                className="text-right text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 px-2 py-1.5 rounded-lg transition-colors whitespace-nowrap shrink-0">
                 {p.label}
               </button>
             ))}

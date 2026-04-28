@@ -31,13 +31,13 @@ export default function Layout({ children, currentPageName }) {
 
       <div className="flex flex-col md:flex-row min-h-screen bg-[#f8f8f8]">
         <aside
-          className="w-full h-12 md:w-16 md:h-auto bg-white border-b border-slate-200 md:border-b-0 md:border-l flex flex-row md:flex-col shrink-0 sticky top-0 z-30"
+          className="w-full h-14 md:w-16 md:h-auto bg-white border-b border-slate-200 md:border-b-0 md:border-l flex flex-row md:flex-col shrink-0 sticky top-0 z-30"
         >
-          <div className="h-12 md:h-14 px-3 md:px-0 flex items-center justify-center md:border-b border-slate-100 shrink-0">
+          <div className="h-14 md:h-14 px-3 md:px-0 flex items-center justify-center md:border-b border-slate-100 shrink-0">
             <span className="text-xs font-bold text-slate-500 tracking-wide">TWK</span>
           </div>
 
-          <nav className="flex flex-row md:flex-col flex-1 md:flex-none py-0 md:py-3 md:space-y-0.5 px-1 md:px-2 items-center overflow-x-auto md:overflow-visible gap-0.5 md:gap-0">
+          <nav className="flex flex-row md:flex-col flex-1 md:flex-none pt-1.5 pb-0 md:py-3 md:space-y-0.5 px-1 md:px-2 items-center overflow-x-auto md:overflow-visible gap-0.5 md:gap-0">
             {navItems.map(({ label, page, icon: Icon }) => {
               const isActive = currentPageName === page;
               return (
@@ -45,7 +45,7 @@ export default function Layout({ children, currentPageName }) {
                   key={page}
                   to={createPageUrl(page)}
                   title={label}
-                  className={`group relative flex items-center gap-3 px-3 py-2 md:py-2.5 rounded-lg transition-all text-sm font-medium justify-center shrink-0
+                  className={`group relative flex items-center gap-3 px-3 md:py-2.5 rounded-lg transition-all text-sm font-medium justify-center shrink-0 self-stretch md:self-auto
                     ${isActive
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
