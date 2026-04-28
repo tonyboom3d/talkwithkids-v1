@@ -1140,8 +1140,11 @@
         var pay = order.payPrice != null ? order.payPrice : order.totalPrice;
         var orig = order.originalPrice != null ? order.originalPrice : order.totalPrice;
         var actualPaid = Number(order.actualPaidAmount) || 0;
-        // תצוגת שלוש-שורות: רק כשיש paid_partial (actualPaidAmount > 0 מ-backend) וקיימת יתרה
-        var showThreeWay = actualPaid > 0 && Number(pay) > 0.009 && Math.abs(Number(orig) - actualPaid) > 0.009;
+        // תצוגת שלוש-שורות:
+        //   1. partial_paid — שולם חלק, קיימת יתרה לתשלום
+        //   2. auto_paid (isAlreadyPaid) — תמיד: סה"כ הזמנה / שולם בפועל / יתרה
+        var showThreeWay = (actualPaid > 0 && Number(pay) > 0.009 && Math.abs(Number(orig) - actualPaid) > 0.009)
+                        || (order.isAlreadyPaid && actualPaid > 0);
         var showCompare = !showThreeWay && !order.isAlreadyPaid && (
           order.showCouponPriceCompare === true ||
           (order.hasCoupon && Math.abs(Number(orig) - Number(pay)) > 0.009)
@@ -1152,8 +1155,10 @@
           heroPriceSingleWrap.style.display = "none";
           heroPriceThreeWrap.style.display = "flex";
           heroPriceThreeOriginal.textContent = formatPrice(orig);
+          // עבור auto_paid: actualPaid הוא השולם; עבור partial_paid: actualPaid < orig
           heroPriceThreePaid.textContent = formatPrice(actualPaid);
-          heroPriceThreeRemaining.textContent = formatPrice(pay);
+          // יתרה — עבור auto_paid שולם הכל: payPrice=0; עבור partial_paid: payPrice=remaining
+          heroPriceThreeRemaining.textContent = formatPrice(Number(pay));
         } else if (showCompare) {
           heroPriceCouponWrap.style.display = "flex";
           heroPriceSingleWrap.style.display = "none";
@@ -1164,8 +1169,7 @@
           heroPriceCouponWrap.style.display = "none";
           heroPriceSingleWrap.style.display = "flex";
           heroPriceThreeWrap.style.display = "none";
-          // עבור הזמנה ששולמה ידנית — מציגים "מחיר ששולם" במקום "מחיר לתשלום"
-          heroPriceSingleLabel.textContent = order.isAlreadyPaid ? "מחיר ששולם" : "מחיר לתשלום";
+          heroPriceSingleLabel.textContent = "מחיר לתשלום";
           heroPriceSingle.textContent = formatPrice(pay);
         }
       }
