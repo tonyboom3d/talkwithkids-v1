@@ -84,9 +84,9 @@ function getPublicStatusConfig(status) {
         };
     case 'paid_pending_details':
         return {
-            text: 'הזמנה שולמה ממתין להשלמת פרטי לקוח',
+            text: 'ההזמנה שולמה – נותר רק להשלים את פרטי ההרשמה.',
             tone: 'info',
-            ctaLabel: 'השלימי את הפרטים שלך >>',
+            ctaLabel: 'לחצי להשלמת פרטים >>',
             canContinue: true,
         };
     case 'paid_completed':
@@ -151,12 +151,11 @@ function computePublicPriceDisplay(record, couponDetails) {
                 : subtotal;
         } else if (couponDetails.source === 'auto_paid') {
             const actualPaid = Math.max(0, Number(couponDetails.actualPaidAmount) || 0);
-            if (actualPaid > 0 && actualPaid < subtotal) {
-                payPrice = Math.max(0, subtotal - actualPaid);
-            } else {
-                payPrice = 0;
-            }
+            // actualPaidAmount = הסכום שהלקוחה שילמה בפועל (המחיר הסופי שסוכם עליו)
+            // מציגים אותו כ"מחיר ששולם" ולא כחלקי
+            payPrice = actualPaid > 0 ? actualPaid : subtotal;
             originalPrice = subtotal;
+            // תצוגה פשוטה ללא השוואה — showCompare יהיה false תמיד עבור auto_paid
         } else if (couponDetails.source === 'create') {
             if (couponDetails.type === 'percent') {
                 const pct = Math.min(100, Math.max(0, Number(couponDetails.value) || 0));
@@ -173,11 +172,13 @@ function computePublicPriceDisplay(record, couponDetails) {
         }
     }
 
-    const showCompare = !!couponDetails && Math.abs(originalPrice - payPrice) > 0.009;
+    const isAutoPaid = couponDetails?.source === 'auto_paid';
+    const showCompare = !isAutoPaid && !!couponDetails && Math.abs(originalPrice - payPrice) > 0.009;
     return {
         originalPrice,
         payPrice,
         showCompare,
+        isAutoPaid,
     };
 }
 
@@ -259,24 +260,15 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
         }
 
         const couponDetails = safeParseJson(record.couponDetails, null);
-        let statusConfig = getPublicStatusConfig(record.status);
+        const statusConfig = getPublicStatusConfig(record.status);
         const products = normalizePublicProducts(record.products);
         const priceDisplay = computePublicPriceDisplay(record, couponDetails);
         const showHeroPrice = !isPaidOrderStatus(record.status);
 
-        // כאשר עובדת מסמנת "שולם" עם סכום חלקי — מציגים ללקוחה פירוט יתרה לתשלום
-        const autoActualPaid = Math.max(0, Number(couponDetails?.actualPaidAmount) || 0);
-        const isPartialAutoPayment = couponDetails?.source === 'auto_paid'
-            && autoActualPaid > 0
-            && autoActualPaid < Number(record.totalPrice || 0);
-        if (isPartialAutoPayment) {
-            statusConfig = {
-                text: 'ההזמנה שולמה חלקית. נותר להשלים את יתרת התשלום.',
-                tone: 'info',
-                ctaLabel: 'המשיכי לתשלום יתרה >>',
-                canContinue: true,
-            };
-        }
+        // סכום ששולם — רלוונטי לתצוגת שלוש-שורות עבור paid_partial בלבד
+        const paidAmountForDisplay = couponDetails?.source === 'partial_paid'
+            ? Math.max(0, Number(couponDetails.paidAmount ?? couponDetails.value) || 0)
+            : 0;
         console.log(`${LOG_PREFIX} CMS record`, {
             id: record._id,
             checkoutId: record.checkoutId,
@@ -305,7 +297,10 @@ export async function getPublicOrderForIframe(dynamicLinkId) {
                 showHeroPrice,
                 couponDetailsText: formatPublicCouponDetails(couponDetails),
                 hasCoupon: !!couponDetails,
-                actualPaidAmount: isPartialAutoPayment ? autoActualPaid : 0,
+                // שולם בפועל — רק עבור partial_paid (לתצוגת שלוש-שורות)
+                actualPaidAmount: paidAmountForDisplay,
+                // סומן "שולם" ידנית — אין צורך בתשלום נוסף, רק השלמת פרטים
+                isAlreadyPaid: priceDisplay.isAutoPaid,
                 status: normalizeOrderStatus(record.status) || 'sent',
                 statusText: statusConfig.text,
                 statusTone: statusConfig.tone,

@@ -978,7 +978,7 @@
               </div>
             </div>
             <div id="heroPriceSingleWrap" class="hero-price-single-wrap" style="display: none;">
-              <span class="hero-price-label-inline">מחיר לתשלום</span>
+              <span id="heroPriceSingleLabel" class="hero-price-label-inline">מחיר לתשלום</span>
               <span id="heroPriceSingle" class="price-final"></span>
             </div>
             <div id="heroPriceThreeWrap" class="hero-price-three-wrap" style="display: none;">
@@ -1051,7 +1051,7 @@
     <div class="card redirect-card">
       <div class="redirect-ring" aria-hidden="true"></div>
       <h2 class="redirect-title">מיד תועברי להזמנה שלך</h2>
-      <p class="redirect-text">עוד רגע תועברי לעמוד התשלום המאובטח.</p>
+      <p id="redirectSubtext" class="redirect-text">עוד רגע תועברי לעמוד התשלום המאובטח.</p>
     </div>
   </div>
 
@@ -1085,6 +1085,9 @@
       var heroPriceThreeOriginal = document.getElementById("heroPriceThreeOriginal");
       var heroPriceThreePaid = document.getElementById("heroPriceThreePaid");
       var heroPriceThreeRemaining = document.getElementById("heroPriceThreeRemaining");
+      var heroPriceSingleLabel = document.getElementById("heroPriceSingleLabel");
+      var redirectSubtext = document.getElementById("redirectSubtext");
+      var currentOrder = null;
       var appShell = document.getElementById("appShell");
       var isRedirecting = false;
 
@@ -1137,8 +1140,9 @@
         var pay = order.payPrice != null ? order.payPrice : order.totalPrice;
         var orig = order.originalPrice != null ? order.originalPrice : order.totalPrice;
         var actualPaid = Number(order.actualPaidAmount) || 0;
+        // תצוגת שלוש-שורות: רק כשיש paid_partial (actualPaidAmount > 0 מ-backend) וקיימת יתרה
         var showThreeWay = actualPaid > 0 && Number(pay) > 0.009 && Math.abs(Number(orig) - actualPaid) > 0.009;
-        var showCompare = !showThreeWay && (
+        var showCompare = !showThreeWay && !order.isAlreadyPaid && (
           order.showCouponPriceCompare === true ||
           (order.hasCoupon && Math.abs(Number(orig) - Number(pay)) > 0.009)
         );
@@ -1160,6 +1164,8 @@
           heroPriceCouponWrap.style.display = "none";
           heroPriceSingleWrap.style.display = "flex";
           heroPriceThreeWrap.style.display = "none";
+          // עבור הזמנה ששולמה ידנית — מציגים "מחיר ששולם" במקום "מחיר לתשלום"
+          heroPriceSingleLabel.textContent = order.isAlreadyPaid ? "מחיר ששולם" : "מחיר לתשלום";
           heroPriceSingle.textContent = formatPrice(pay);
         }
       }
@@ -1228,6 +1234,8 @@
       }
 
       function showRedirectOverlay() {
+        // עבור הזמנות ששולמו כבר — מסתירים את המשפט "תועברי לעמוד התשלום"
+        redirectSubtext.style.display = (currentOrder && currentOrder.isAlreadyPaid) ? "none" : "";
         redirectOverlay.classList.add("is-visible");
         redirectOverlay.setAttribute("aria-hidden", "false");
       }
@@ -1248,6 +1256,7 @@
       }
 
       function renderOrder(order) {
+        currentOrder = order;
         console.log("[TWK-IFRAME] renderOrder payload:", order);
         setText("heroTitle", "היי " + (order.customerName || "אהובה") + ", ההזמנה שלך כמעט מוכנה!");
         setText("customerName", order.customerName || "לא זמין");
