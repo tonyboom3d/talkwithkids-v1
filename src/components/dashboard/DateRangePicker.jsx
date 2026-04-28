@@ -14,7 +14,7 @@ const PRESETS = [
   { label: "הכל", getValue: () => ({ from: null, to: null }) },
 ];
 
-function MiniCalendar({ viewDate, setViewDate, range, onDayClick, hovered, setHovered }) {
+export function MiniCalendar({ viewDate, setViewDate, range, onDayClick, hovered, setHovered }) {
   const start = moment(viewDate).startOf("month");
   const daysInMonth = start.daysInMonth();
   const firstDow = (start.day() + 1) % 7; // shift so Sunday=0 maps to col 0 (RTL: col 6)

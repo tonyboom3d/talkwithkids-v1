@@ -17,9 +17,9 @@ import {
   Scatter,
   CartesianGrid,
 } from "recharts";
-import { TrendingUp, ShoppingBag, CreditCard, Percent, Loader2, CircleDot, Users } from "lucide-react";
+import { TrendingUp, ShoppingBag, CreditCard, Percent, Loader2, CircleDot, Users, ChevronRight, ChevronLeft } from "lucide-react";
 import moment from "moment";
-import DateRangePicker from "../components/dashboard/DateRangePicker";
+import { MiniCalendar } from "../components/dashboard/DateRangePicker";
 import EmployeeFilterField from "../components/dashboard/EmployeeFilterField";
 import { useAuth } from "@/lib/IframeAuthContext";
 import { usePostMessage } from "@/hooks/usePostMessage";
@@ -68,6 +68,109 @@ function productLineSubtotal(p) {
   const q = Number(p.quantity || 1);
   const price = Number(p.price ?? 0);
   return Math.max(0, price * q);
+}
+
+/** בוחר תאריכים ייעודי לסטטיסטיקות — inline, ללא dropdown, שלוש אפשרויות בלבד */
+function StatisticsDateFilter({ value, onChange }) {
+  const [mode, setMode] = useState(null); // null | 'week' | 'month' | 'custom'
+  const [viewDate, setViewDate] = useState(new Date());
+  const [pickRange, setPickRange] = useState({ from: null, to: null });
+  const [hovered, setHovered] = useState(null);
+
+  const handleMode = (m) => {
+    if (m === mode && m !== 'custom') {
+      setMode(null);
+      onChange({ from: null, to: null });
+      return;
+    }
+    setMode(m);
+    if (m === 'week') {
+      const r = { from: moment().subtract(6, "days").startOf("day").toDate(), to: moment().endOf("day").toDate() };
+      setPickRange(r);
+      onChange(r);
+    } else if (m === 'month') {
+      const r = { from: moment().subtract(29, "days").startOf("day").toDate(), to: moment().endOf("day").toDate() };
+      setPickRange(r);
+      onChange(r);
+    } else if (m === 'custom') {
+      setPickRange({ from: null, to: null });
+      onChange({ from: null, to: null });
+    }
+  };
+
+  const handleDayClick = (date) => {
+    if (!pickRange.from || (pickRange.from && pickRange.to)) {
+      setPickRange({ from: date, to: null });
+    } else {
+      const newRange = date < pickRange.from
+        ? { from: date, to: pickRange.from }
+        : { from: pickRange.from, to: date };
+      setPickRange(newRange);
+      onChange(newRange);
+    }
+  };
+
+  const PRESETS = [
+    { id: "week", label: "שבוע אחרון" },
+    { id: "month", label: "חודש אחרון" },
+    { id: "custom", label: "טווח תאריכים" },
+  ];
+
+  return (
+    <div dir="rtl" className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-2">
+        {PRESETS.map(({ id, label }) => (
+          <button
+            key={id}
+            onClick={() => handleMode(id)}
+            className={`px-3 py-1.5 rounded-xl border text-sm font-medium transition-colors
+              ${mode === id
+                ? "bg-slate-900 text-white border-slate-900"
+                : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-900"
+              }`}
+          >
+            {label}
+          </button>
+        ))}
+        {mode && (
+          <button
+            onClick={() => { setMode(null); setPickRange({ from: null, to: null }); onChange({ from: null, to: null }); }}
+            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-400 text-sm hover:text-slate-600 transition-colors"
+          >
+            הכל
+          </button>
+        )}
+      </div>
+
+      {mode === 'custom' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 w-full max-w-[300px]" dir="rtl">
+          <MiniCalendar
+            viewDate={viewDate}
+            setViewDate={setViewDate}
+            range={pickRange}
+            onDayClick={handleDayClick}
+            hovered={hovered}
+            setHovered={setHovered}
+          />
+          <div className="mt-2 text-center text-xs text-slate-400">
+            {pickRange.from && !pickRange.to && "בחרי תאריך סיום"}
+            {pickRange.from && pickRange.to && (
+              <span className="text-slate-600 font-medium">
+                {moment(pickRange.from).format("DD/MM/YY")} – {moment(pickRange.to).format("DD/MM/YY")}
+              </span>
+            )}
+            {!pickRange.from && "בחרי תאריך התחלה"}
+          </div>
+        </div>
+      )}
+
+      {mode && mode !== 'custom' && value?.from && value?.to && (
+        <p className="text-xs text-slate-400">
+          {moment(value.from).format("DD/MM/YY")} – {moment(value.to).format("DD/MM/YY")}
+        </p>
+      )}
+    </div>
+  );
 }
 
 /** מועד עדיף: אירוע תשלום בטיימליין; אחרת תאריכי הזמנה / יצירה */
@@ -316,7 +419,7 @@ export default function Statistics() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-4 flex-wrap"
+          className="flex flex-col gap-3"
         >
           <div>
             <h1 className="text-xl font-bold text-slate-900">סטטיסטיקות</h1>
@@ -328,9 +431,7 @@ export default function Statistics() {
                   : "סקירת ביצועי המכירות שלך"}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <DateRangePicker value={dateRange} onChange={setDateRange} />
-          </div>
+          <StatisticsDateFilter value={dateRange} onChange={setDateRange} />
         </motion.div>
 
         {isLoading ? (
