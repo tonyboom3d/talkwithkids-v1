@@ -46,6 +46,9 @@ export default function TransactionPickerDialog({ open, onClose, onCreateInvoice
         recordsPerPage: 100,
       });
       setTransactions(result.transactions || []);
+      if (!(result.transactions || []).length) {
+        setLoadError("לא נמצאו עסקאות בטווח התאריכים שנבחר");
+      }
     } catch (err) {
       setLoadError(err.message || "שגיאה בטעינת רשימת העסקאות");
       setTransactions([]);
