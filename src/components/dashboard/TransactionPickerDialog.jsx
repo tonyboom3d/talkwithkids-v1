@@ -65,6 +65,7 @@ export default function TransactionPickerDialog({ open, onClose, onCreateInvoice
         isSendByEmail: sendByEmail,
         isSendSMS: sendBySMS,
         force,
+        dealAmount: selectedTx.amount,
       });
       if (result?.alreadyExists && !force) {
         setDuplicateWarning(result);

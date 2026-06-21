@@ -623,6 +623,7 @@ export default function Dashboard() {
         isSendByEmail: !!opts?.isSendByEmail,
         isSendSMS: !!opts?.isSendSMS,
         force: !!opts?.force,
+        dealAmount: Number(opts?.dealAmount) || 0,
       });
       if (result.alreadyExists) return result;
       const linkedMsg = result.linkedOrderNumber
