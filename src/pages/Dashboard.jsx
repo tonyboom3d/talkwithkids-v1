@@ -42,7 +42,7 @@ function saveSessionRefresh(key, value) {
   window.sessionStorage.setItem(key, value);
 }
 
-/** לוגיקה מזוהה ל־`wix-velo/backend/helpers/couponHelper.js` — computeDiscountForSubtotal */
+/** לוגיקה מזוהה ל־`src/backend/helpers/couponHelper.jsw` — computeDiscountForSubtotal */
 function computeDiscountForSubtotal(subtotal, coupon) {
   if (!coupon || subtotal <= 0) {
     return { discountAmount: 0, discountedTotal: subtotal };
