@@ -343,11 +343,15 @@ export default function MySales() {
         isSendSMS: !!opts?.isSendSMS,
         force: !!opts?.force,
         dealAmount: Number(opts?.dealAmount) || 0,
+        returnValue: opts?.returnValue || "",
+        customerPhone: opts?.customerPhone || "",
       });
       if (result.alreadyExists) return result;
-      const linkedMsg = result.linkedOrderNumber
-        ? ` (קושרה להזמנה ${result.linkedOrderNumber})`
-        : "";
+      const linkedMsg = result.savedToCms && result.linkedOrderNumber
+        ? ` (נשמרה בהזמנה ${result.linkedOrderNumber})`
+        : !result.savedToCms
+          ? " (לא נשמרה בדאשבורד — אין הזמנה תואמת)"
+          : "";
       toast.success(`חשבונית הופקה בהצלחה${linkedMsg}`);
       loadOrders();
       return result;

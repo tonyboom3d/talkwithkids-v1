@@ -263,6 +263,42 @@ export default function OrdersTable({
 
   const getOrderInvoiceDocs = (order) => safeParseJson(order.invoiceDocuments, []);
 
+  const renderInvoiceIndicator = (order, { compact = false } = {}) => {
+    const docs = getOrderInvoiceDocs(order);
+    if (!docs.length) return null;
+    const latestDoc = docs[docs.length - 1];
+    const docNumber = latestDoc?.docNumber || latestDoc?.docId || "";
+    const docUrl = latestDoc?.url || "";
+
+    return (
+      <TooltipProvider delayDuration={120}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                if (docUrl) {
+                  window.open(docUrl, "_blank", "noopener,noreferrer");
+                }
+              }}
+              disabled={!docUrl}
+              className={`inline-flex items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-50 disabled:cursor-default disabled:opacity-60 ${
+                compact ? "h-6 w-6" : "h-7 w-7"
+              }`}
+              aria-label={docNumber ? `חשבונית מס׳ ${docNumber}` : "חשבונית"}
+            >
+              <FileText className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" dir="rtl">
+            {docNumber ? `חשבונית מס׳ ${docNumber}` : "קיימת חשבונית"}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
   const proceedToInvoiceFlow = (order) => {
     const docs = getOrderInvoiceDocs(order);
     if (docs.length > 0) {
@@ -650,7 +686,10 @@ export default function OrdersTable({
                                           </Badge>
                                         </TableCell>
                         <TableCell className="text-[11px] font-mono text-slate-500 whitespace-nowrap px-1 py-2">
-                          {order.orderNumber}
+                          <div className="flex items-center justify-end gap-1">
+                            {canGenerateInvoices && renderInvoiceIndicator(order, { compact: true })}
+                            <span className="truncate">{order.orderNumber}</span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-[11px] font-mono text-slate-500 whitespace-nowrap px-1 py-2">
                           {order.deliveryNumber}

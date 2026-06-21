@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   FileText,
+  Link2,
   Loader2,
   Mail,
   Search,
@@ -30,6 +31,7 @@ export default function TransactionPickerDialog({ open, onClose, onCreateInvoice
   const [sendBySMS, setSendBySMS] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState(null);
+  const [linkConfirmStep, setLinkConfirmStep] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleLoadTransactions = useCallback(async () => {
@@ -38,6 +40,7 @@ export default function TransactionPickerDialog({ open, onClose, onCreateInvoice
     setLoadError("");
     setSelectedTx(null);
     setDuplicateWarning(null);
+    setLinkConfirmStep(null);
     try {
       const result = await request("LIST_TRANSACTIONS", {
         fromDate,
@@ -66,13 +69,17 @@ export default function TransactionPickerDialog({ open, onClose, onCreateInvoice
         isSendSMS: sendBySMS,
         force,
         dealAmount: selectedTx.amount,
+        returnValue: selectedTx.returnValue || "",
+        customerPhone: selectedTx.customerPhone || "",
       });
       if (result?.alreadyExists && !force) {
         setDuplicateWarning(result);
+        setLinkConfirmStep(null);
         setIsCreating(false);
         return;
       }
       setDuplicateWarning(null);
+      setLinkConfirmStep(null);
       setSelectedTx(null);
       onClose();
     } catch (err) {
@@ -82,9 +89,15 @@ export default function TransactionPickerDialog({ open, onClose, onCreateInvoice
     }
   }, [selectedTx, sendByEmail, sendBySMS, onCreateInvoice, onClose]);
 
+  const handleStartCreate = () => {
+    if (!selectedTx) return;
+    setLinkConfirmStep(selectedTx.hasCmsOrder ? "linked" : "unlinked");
+  };
+
   const handleClose = () => {
     if (isCreating) return;
     setDuplicateWarning(null);
+    setLinkConfirmStep(null);
     setSelectedTx(null);
     onClose();
   };
@@ -96,6 +109,7 @@ export default function TransactionPickerDialog({ open, onClose, onCreateInvoice
           String(tx.dealNumber).includes(q) ||
           String(tx.returnValue || "").toLowerCase().includes(q) ||
           String(tx.customerName || "").toLowerCase().includes(q) ||
+          String(tx.linkedOrderNumber || "").includes(q) ||
           String(tx.amount).includes(q)
         );
       })
@@ -129,6 +143,62 @@ export default function TransactionPickerDialog({ open, onClose, onCreateInvoice
                 type="button"
                 variant="ghost"
                 onClick={() => setDuplicateWarning(null)}
+                disabled={isCreating}
+              >
+                ביטול
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : linkConfirmStep === "linked" ? (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 text-right">
+              העסקה מקושרת להזמנה{" "}
+              <span className="font-semibold">
+                {selectedTx?.linkedOrderNumber || "—"}
+              </span>
+              {selectedTx?.linkedOrderCustomerName ? (
+                <> של {selectedTx.linkedOrderCustomerName}</>
+              ) : null}
+              . פרטי החשבונית יישמרו ברשומת ההזמנה בדאשבורד.
+            </div>
+            <DialogFooter className="sm:justify-start sm:space-x-0 gap-2">
+              <Button
+                type="button"
+                className="bg-slate-900 hover:bg-slate-800 text-white"
+                onClick={() => handleCreate(false)}
+                disabled={isCreating}
+              >
+                {isCreating ? "מפיק..." : "אישור והפקה"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setLinkConfirmStep(null)}
+                disabled={isCreating}
+              >
+                ביטול
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : linkConfirmStep === "unlinked" ? (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 text-right leading-relaxed">
+              העסקה לא משויכת להזמנה מהדאשבורד. ייתכן שהיא לא הוקמה דרך המערכת.
+              החשבונית תופק ב-Cardcom, אך לאחר ההפקה לא יופיע תיעוד לכך בדאשבורד.
+            </div>
+            <DialogFooter className="sm:justify-start sm:space-x-0 gap-2">
+              <Button
+                type="button"
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={() => handleCreate(false)}
+                disabled={isCreating}
+              >
+                {isCreating ? "מפיק..." : "המשך להפקה"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setLinkConfirmStep(null)}
                 disabled={isCreating}
               >
                 ביטול
@@ -171,7 +241,7 @@ export default function TransactionPickerDialog({ open, onClose, onCreateInvoice
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                 <Input
-                  placeholder="חיפוש לפי מספר עסקה, שם, סכום..."
+                  placeholder="חיפוש לפי מספר עסקה, הזמנה, שם, סכום..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pr-9 h-8 text-xs border-slate-200 text-right"
@@ -202,6 +272,16 @@ export default function TransactionPickerDialog({ open, onClose, onCreateInvoice
                               <span className="text-xs font-mono text-slate-600">#{tx.dealNumber}</span>
                               {tx.customerName && (
                                 <span className="text-xs text-slate-500 truncate">{tx.customerName}</span>
+                              )}
+                              {tx.hasCmsOrder ? (
+                                <Badge variant="outline" className="text-[10px] border-emerald-200 bg-emerald-50 text-emerald-700 px-1.5 py-0">
+                                  <Link2 className="w-3 h-3 ml-1" />
+                                  הזמנה {tx.linkedOrderNumber || "—"}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] border-slate-200 bg-slate-50 text-slate-500 px-1.5 py-0">
+                                  ללא הזמנה בדאשבורד
+                                </Badge>
                               )}
                             </div>
                             <div className="flex items-center gap-2 mt-0.5">
@@ -240,6 +320,15 @@ export default function TransactionPickerDialog({ open, onClose, onCreateInvoice
                 <p className="text-xs font-medium text-slate-600 text-right">
                   עסקה #{selectedTx.dealNumber} — ₪{Number(selectedTx.amount).toLocaleString("he-IL")}
                 </p>
+                {selectedTx.hasCmsOrder ? (
+                  <p className="text-xs text-emerald-700 text-right">
+                    תקושר להזמנה {selectedTx.linkedOrderNumber || "—"} בדאשבורד
+                  </p>
+                ) : (
+                  <p className="text-xs text-amber-700 text-right">
+                    לא נמצאה הזמנה תואמת בדאשבורד — החשבונית לא תתועד במערכת
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 hover:bg-slate-50 transition-colors text-xs" dir="rtl">
                     <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all shrink-0 ${
@@ -269,7 +358,7 @@ export default function TransactionPickerDialog({ open, onClose, onCreateInvoice
               <Button
                 type="button"
                 className="bg-slate-900 hover:bg-slate-800 text-white gap-1.5"
-                onClick={() => handleCreate(false)}
+                onClick={handleStartCreate}
                 disabled={!selectedTx || isCreating}
               >
                 {isCreating ? (
