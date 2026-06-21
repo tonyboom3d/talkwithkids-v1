@@ -210,6 +210,7 @@ export async function getEmployeePermissions(memberId) {
         _id: emp._id,
         displayName: emp.displayName,
         canViewOtherRecords: !!emp.canViewOtherRecords,
+        canGenerateInvoices: !!emp.canGenerateInvoices,
         commissionRate: emp.commissionRate || 0,
         color: colorFromEmployeeItem(emp),
     };
@@ -971,6 +972,177 @@ export async function getStoreProducts() {
             price,
         };
     });
+}
+
+// ─── Invoice / Document Generation (Cardcom) ───
+
+import {
+    createDocumentForDeal,
+    listTransactions as cardcomListTransactions,
+    findDocumentsForDeal,
+    resendDocument as cardcomResendDocument,
+} from 'backend/cardcomApi';
+
+export async function generateOrderInvoice(recordId, { isSendByEmail = false, isSendSMS = false, force = false } = {}, employeeName) {
+    const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
+    const existingDocs = safeParseJson(record.invoiceDocuments, []);
+
+    if (existingDocs.length > 0 && !force) {
+        return { alreadyExists: true, documents: existingDocs };
+    }
+
+    const completedData = safeParseJson(record.completedOrderData, null);
+    const dealId = completedData?.cardcomDealId || completedData?.InternalDealNumber || '';
+    if (!dealId) {
+        throw new Error('לא נמצא מזהה עסקה (Cardcom Deal ID) עבור ההזמנה. יש לוודא שההזמנה שולמה דרך קארדקום.');
+    }
+
+    const docResult = await createDocumentForDeal({
+        dealId,
+        documentType: 2,
+        isSendByEmail,
+        isSendSMS,
+        customerName: record.customerName || '',
+        customerEmail: record.customerEmail || '',
+        customerPhone: record.customerPhone || '',
+    });
+
+    const newDoc = {
+        ...docResult,
+        sentEmail: isSendByEmail,
+        sentSms: isSendSMS,
+        createdAt: new Date().toISOString(),
+        createdBy: employeeName || '',
+    };
+
+    const updatedDocs = [...existingDocs, newDoc];
+    const chain = safeParseJson(record.changeChain, []);
+    chain.push({
+        action: 'invoice_generated',
+        by: employeeName,
+        date: new Date().toISOString(),
+        detail: `הופקה חשבונית מס׳ ${docResult.docNumber}${isSendByEmail ? ' (נשלחה במייל)' : ''}${isSendSMS ? ' (נשלחה ב-SMS)' : ''}`,
+    });
+
+    await wixData.update('DashboardOrders', {
+        ...record,
+        invoiceDocuments: JSON.stringify(updatedDocs),
+        changeChain: JSON.stringify(chain),
+    }, { suppressAuth: true });
+
+    return { alreadyExists: false, document: newDoc, documents: updatedDocs };
+}
+
+export async function getOrderInvoices(recordId) {
+    const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
+    return safeParseJson(record.invoiceDocuments, []);
+}
+
+export async function resendOrderInvoice(recordId, docId, method, employeeName) {
+    const record = await wixData.get('DashboardOrders', recordId, { suppressAuth: true });
+    const docs = safeParseJson(record.invoiceDocuments, []);
+    const doc = docs.find((d) => String(d.docId) === String(docId));
+    if (!doc) throw new Error('המסמך לא נמצא ברשומת ההזמנה');
+
+    await cardcomResendDocument(docId, {
+        method,
+        email: record.customerEmail || '',
+        phone: record.customerPhone || '',
+    });
+
+    const chain = safeParseJson(record.changeChain, []);
+    chain.push({
+        action: 'invoice_resent',
+        by: employeeName,
+        date: new Date().toISOString(),
+        detail: `חשבונית מס׳ ${doc.docNumber} נשלחה מחדש (${method === 'email' ? 'מייל' : 'SMS'})`,
+    });
+
+    await wixData.update('DashboardOrders', {
+        ...record,
+        changeChain: JSON.stringify(chain),
+    }, { suppressAuth: true });
+}
+
+export async function listInvoiceTransactions(filters) {
+    return cardcomListTransactions(filters);
+}
+
+export async function createInvoiceFromTransaction(dealId, { isSendByEmail = false, isSendSMS = false, force = false } = {}, employeeName) {
+    const { documents: existingCardcomDocs, hasActiveDocument } = await findDocumentsForDeal(dealId);
+    if (hasActiveDocument && !force) {
+        return { alreadyExists: true, existingDocuments: existingCardcomDocs, linkedOrderId: null };
+    }
+
+    const { transactions } = await cardcomListTransactions({
+        fromDate: '2020-01-01',
+        toDate: new Date().toISOString().split('T')[0],
+        page: 1,
+        recordsPerPage: 1,
+    });
+
+    let txMatch = null;
+    try {
+        const txResult = await findDocumentsForDeal(dealId);
+        txMatch = { dealId };
+    } catch (e) {
+        txMatch = { dealId };
+    }
+
+    const returnValue = String(dealId).trim();
+    let linkedRecord = null;
+
+    const orderByNumber = await wixData.query('DashboardOrders')
+        .eq('orderNumber', returnValue)
+        .limit(1)
+        .find({ suppressAuth: true });
+
+    if (orderByNumber.items.length > 0) {
+        linkedRecord = orderByNumber.items[0];
+    }
+
+    const docResult = await createDocumentForDeal({
+        dealId,
+        documentType: 2,
+        isSendByEmail,
+        isSendSMS,
+        customerName: linkedRecord?.customerName || '',
+        customerEmail: linkedRecord?.customerEmail || '',
+        customerPhone: linkedRecord?.customerPhone || '',
+    });
+
+    const newDoc = {
+        ...docResult,
+        sentEmail: isSendByEmail,
+        sentSms: isSendSMS,
+        createdAt: new Date().toISOString(),
+        createdBy: employeeName || '',
+    };
+
+    if (linkedRecord) {
+        const existingDocs = safeParseJson(linkedRecord.invoiceDocuments, []);
+        const updatedDocs = [...existingDocs, newDoc];
+        const chain = safeParseJson(linkedRecord.changeChain, []);
+        chain.push({
+            action: 'invoice_generated',
+            by: employeeName,
+            date: new Date().toISOString(),
+            detail: `הופקה חשבונית מס׳ ${docResult.docNumber} מתוך רשימת עסקאות קארדקום`,
+        });
+
+        await wixData.update('DashboardOrders', {
+            ...linkedRecord,
+            invoiceDocuments: JSON.stringify(updatedDocs),
+            changeChain: JSON.stringify(chain),
+        }, { suppressAuth: true });
+    }
+
+    return {
+        alreadyExists: false,
+        document: newDoc,
+        linkedOrderId: linkedRecord?._id || null,
+        linkedOrderNumber: linkedRecord?.orderNumber || null,
+    };
 }
 
 // ─── Contact Search (exposed to page code) ───

@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Send, Loader2, MessageSquare, Tag, Ticket } from "lucide-react";
+import { Send, Loader2, MessageSquare, Tag, Ticket, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ import ProductSelector from "../components/dashboard/ProductSelector";
 import StoreCouponPicker from "../components/dashboard/StoreCouponPicker";
 import OrdersTable from "../components/dashboard/OrdersTable";
 import OrderDetailPanel from "../components/dashboard/OrderDetailPanel";
+import TransactionPickerDialog from "../components/dashboard/TransactionPickerDialog";
 import EmployeeFilterField from "../components/dashboard/EmployeeFilterField";
 import { useAuth } from "@/lib/IframeAuthContext";
 import { usePostMessage, usePostMessageListener } from "@/hooks/usePostMessage";
@@ -109,7 +110,7 @@ function splitFullName(fullName) {
 }
 
 export default function Dashboard() {
-  const { user, canViewOthers, commissionRate } = useAuth();
+  const { user, canViewOthers, canGenerateInvoices, commissionRate } = useAuth();
   const { request } = usePostMessage();
 
   const isDemo = !user;
@@ -139,6 +140,7 @@ export default function Dashboard() {
   const [isConfirmingSend, setIsConfirmingSend] = useState(false);
   const [includeAllCreators, setIncludeAllCreators] = useState(true);
   const [selectedCreatorKeys, setSelectedCreatorKeys] = useState(() => new Set());
+  const [showTransactionPicker, setShowTransactionPicker] = useState(false);
 
   const creatorOptions = useMemo(
     () => (canViewOthers ? buildCreatorOptions(orders) : []),
@@ -572,6 +574,69 @@ export default function Dashboard() {
     }
   };
 
+  const handleGenerateInvoice = async (orderId, { isSendByEmail, isSendSMS, force } = {}) => {
+    if (isDemo) {
+      toast.success("(מצב דמו) חשבונית הופקה");
+      return { alreadyExists: false };
+    }
+    try {
+      const result = await request("GENERATE_INVOICE", {
+        recordId: orderId,
+        isSendByEmail: !!isSendByEmail,
+        isSendSMS: !!isSendSMS,
+        force: !!force,
+      });
+      if (result.alreadyExists) {
+        return result;
+      }
+      toast.success("חשבונית הופקה בהצלחה");
+      loadOrders();
+      return result;
+    } catch (err) {
+      toast.error(err.message || "שגיאה בהפקת חשבונית");
+      throw err;
+    }
+  };
+
+  const handleResendInvoice = async (orderId, docId, method) => {
+    if (isDemo) {
+      toast.success("(מצב דמו) חשבונית נשלחה מחדש");
+      return;
+    }
+    try {
+      await request("RESEND_INVOICE", { recordId: orderId, docId, method });
+      toast.success("החשבונית נשלחה מחדש בהצלחה");
+      loadOrders();
+    } catch (err) {
+      toast.error(err.message || "שגיאה בשליחה חוזרת של חשבונית");
+    }
+  };
+
+  const handleCreateInvoiceFromTransaction = async (dealId, opts) => {
+    if (isDemo) {
+      toast.success("(מצב דמו) חשבונית הופקה מעסקה");
+      return { alreadyExists: false };
+    }
+    try {
+      const result = await request("CREATE_INVOICE_FROM_TRANSACTION", {
+        dealId,
+        isSendByEmail: !!opts?.isSendByEmail,
+        isSendSMS: !!opts?.isSendSMS,
+        force: !!opts?.force,
+      });
+      if (result.alreadyExists) return result;
+      const linkedMsg = result.linkedOrderNumber
+        ? ` (קושרה להזמנה ${result.linkedOrderNumber})`
+        : "";
+      toast.success(`חשבונית הופקה בהצלחה${linkedMsg}`);
+      loadOrders();
+      return result;
+    } catch (err) {
+      toast.error(err.message || "שגיאה בהפקת חשבונית מעסקה");
+      throw err;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#fafafa]" dir="rtl" aria-busy={isSubmitting}>
       <AnimatePresence>
@@ -672,11 +737,24 @@ export default function Dashboard() {
             <h1 className="text-xl font-bold text-slate-900">ניהול הזמנות</h1>
             <p className="text-sm text-slate-400 mt-0.5">יצירת קישורי תשלום ומעקב הזמנות</p>
           </div>
-          {isDemo && (
-            <div className="bg-amber-50 border border-amber-200 rounded-full px-4 py-2">
-              <span className="text-xs text-amber-700 font-medium">מצב דמו - לא מחובר לוויקס</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {canGenerateInvoices && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5 text-xs font-medium"
+                onClick={() => setShowTransactionPicker(true)}
+              >
+                <FileText className="w-4 h-4" />
+                הפקת חשבונית
+              </Button>
+            )}
+            {isDemo && (
+              <div className="bg-amber-50 border border-amber-200 rounded-full px-4 py-2">
+                <span className="text-xs text-amber-700 font-medium">מצב דמו - לא מחובר לוויקס</span>
+              </div>
+            )}
+          </div>
         </motion.div>
 
         {/* Order Form */}
@@ -1194,6 +1272,9 @@ export default function Dashboard() {
           onDeleteOrder={handleDeleteOrder}
           onAddNote={handleAddNote}
           commissionRate={commissionRate ?? 0}
+          canGenerateInvoices={canGenerateInvoices}
+          onGenerateInvoice={handleGenerateInvoice}
+          onResendInvoice={handleResendInvoice}
         />
       </div>
 
@@ -1208,6 +1289,12 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
+      <TransactionPickerDialog
+        open={showTransactionPicker}
+        onClose={() => setShowTransactionPicker(false)}
+        onCreateInvoice={handleCreateInvoiceFromTransaction}
+        request={request}
+      />
     </div>
   );
 }

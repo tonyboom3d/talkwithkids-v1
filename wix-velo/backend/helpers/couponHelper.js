@@ -33,6 +33,7 @@ export async function createOrderCoupon(type, value) {
     startTime: new Date(),
     usageLimit: 1,
     scope: { namespace: 'stores' },
+    limitedToOneItem: false,
   };
 
   if (type === 'percent') {

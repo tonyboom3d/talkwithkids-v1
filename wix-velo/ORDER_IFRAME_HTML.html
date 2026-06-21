@@ -953,7 +953,7 @@
       <div class="card order-layout">
         <div class="hero-panel">
           <div>
-            <div class="eyebrow">Talk With Kids</div>
+          
             <h1 id="heroTitle" class="hero-title"></h1>
             <p class="hero-subtitle">
               כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התשלום -
@@ -1262,7 +1262,7 @@
       function renderOrder(order) {
         currentOrder = order;
         console.log("[TWK-IFRAME] renderOrder payload:", order);
-        setText("heroTitle", "היי " + (order.customerName || "אהובה") + ", ההזמנה שלך כמעט מוכנה!");
+        setText("heroTitle", (order.customerName || "אהובה") + ", ההזמנה שלך כמעט מוכנה!");
         setText("customerName", order.customerName || "לא זמין");
         setText("createdDate", formatDate(order.createdDate));
         setText("customerPhone", order.customerPhone || "לא זמין");

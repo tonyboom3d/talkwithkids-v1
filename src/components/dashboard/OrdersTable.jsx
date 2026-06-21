@@ -33,6 +33,9 @@ import {
   CircleAlert,
   Copy,
   CreditCard,
+  Download,
+  FileText,
+  Mail,
   MessageCircleMore,
   MessageSquarePlus,
   MoreHorizontal,
@@ -40,6 +43,8 @@ import {
   Phone,
   RefreshCw,
   Search,
+  Send,
+  Smartphone,
   UserRound,
   Workflow,
   XCircle,
@@ -90,6 +95,12 @@ function getActorBadgeText(event) {
   return "משתמש/ת מורשה";
 }
 
+function safeParseJson(value, fallback) {
+  if (!value) return fallback;
+  if (typeof value !== 'string') return Array.isArray(value) ? value : fallback;
+  try { return JSON.parse(value); } catch { return fallback; }
+}
+
 export default function OrdersTable({
   orders,
   isLoading,
@@ -102,6 +113,9 @@ export default function OrdersTable({
   lastRefreshedAt,
   showProfitColumn = false,
   commissionRate = 0,
+  canGenerateInvoices = false,
+  onGenerateInvoice,
+  onResendInvoice,
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -115,13 +129,19 @@ export default function OrdersTable({
   const [busyAction, setBusyAction] = useState({ type: "", rowId: "" });
   const [noteDrafts, setNoteDrafts] = useState({});
   const [resendConfirmOrder, setResendConfirmOrder] = useState(null);
+  const [invoiceOrder, setInvoiceOrder] = useState(null);
+  const [invoiceSendByEmail, setInvoiceSendByEmail] = useState(false);
+  const [invoiceSendBySMS, setInvoiceSendBySMS] = useState(false);
+  const [invoiceDuplicateOrder, setInvoiceDuplicateOrder] = useState(null);
+  const [resendInvoiceOrder, setResendInvoiceOrder] = useState(null);
+  const [resendInvoiceMethod, setResendInvoiceMethod] = useState("email");
 
   const normalizedOrders = useMemo(
     () => (orders || []).map((order) => normalizeOrder(order, { commissionRate })),
     [orders, commissionRate]
   );
 
-  useScrollToTopOnOpen(Boolean(statusOrder) || Boolean(resendConfirmOrder) || Boolean(deleteOrderState));
+  useScrollToTopOnOpen(Boolean(statusOrder) || Boolean(resendConfirmOrder) || Boolean(deleteOrderState) || Boolean(invoiceOrder) || Boolean(invoiceDuplicateOrder) || Boolean(resendInvoiceOrder));
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -237,6 +257,49 @@ export default function OrdersTable({
     await runRowAction("note", order, async () => {
       await onAddNote(order.rowId, noteText);
       setNoteDrafts((prev) => ({ ...prev, [order.rowId]: "" }));
+    });
+  };
+
+  const getOrderInvoiceDocs = (order) => safeParseJson(order.invoiceDocuments, []);
+
+  const openInvoiceDialog = (order) => {
+    const docs = getOrderInvoiceDocs(order);
+    if (docs.length > 0) {
+      setInvoiceDuplicateOrder(order);
+    } else {
+      setInvoiceOrder(order);
+      setInvoiceSendByEmail(false);
+      setInvoiceSendBySMS(false);
+    }
+  };
+
+  const handleConfirmGenerateInvoice = async (forceOverride = false) => {
+    const order = forceOverride ? invoiceDuplicateOrder : invoiceOrder;
+    if (!order || !onGenerateInvoice) return;
+    await runRowAction("invoice", order, async () => {
+      const result = await onGenerateInvoice(order.rowId, {
+        isSendByEmail: invoiceSendByEmail,
+        isSendSMS: invoiceSendBySMS,
+        force: forceOverride,
+      });
+      if (result?.alreadyExists && !forceOverride) {
+        setInvoiceOrder(null);
+        setInvoiceDuplicateOrder(order);
+        return;
+      }
+      setInvoiceOrder(null);
+      setInvoiceDuplicateOrder(null);
+    });
+  };
+
+  const handleConfirmResendInvoice = async () => {
+    if (!resendInvoiceOrder || !onResendInvoice) return;
+    const docs = getOrderInvoiceDocs(resendInvoiceOrder);
+    const latestDoc = docs[docs.length - 1];
+    if (!latestDoc) return;
+    await runRowAction("resendInvoice", resendInvoiceOrder, async () => {
+      await onResendInvoice(resendInvoiceOrder.rowId, latestDoc.docId, resendInvoiceMethod);
+      setResendInvoiceOrder(null);
     });
   };
 
@@ -445,6 +508,53 @@ export default function OrdersTable({
                                 <Workflow className="w-4 h-4" />
                                 שינוי סטטוס
                               </DropdownMenuItem>
+                              {canGenerateInvoices && (() => {
+                                const docs = getOrderInvoiceDocs(order);
+                                const hasDocs = docs.length > 0;
+                                return (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    {!hasDocs ? (
+                                      <DropdownMenuItem
+                                        disabled={isBusy || isError}
+                                        onClick={() => openInvoiceDialog(order)}
+                                      >
+                                        <FileText className="w-4 h-4" />
+                                        הפקת חשבונית
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <>
+                                        <DropdownMenuItem
+                                          onClick={() => {
+                                            const latestDoc = docs[docs.length - 1];
+                                            if (latestDoc?.url) window.open(latestDoc.url, "_blank");
+                                          }}
+                                        >
+                                          <Download className="w-4 h-4" />
+                                          צפייה / הורדת חשבונית
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          disabled={isBusy || isError}
+                                          onClick={() => {
+                                            setResendInvoiceOrder(order);
+                                            setResendInvoiceMethod("email");
+                                          }}
+                                        >
+                                          <Send className="w-4 h-4" />
+                                          שליחה חוזרת של חשבונית
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          disabled={isBusy || isError}
+                                          onClick={() => openInvoiceDialog(order)}
+                                        >
+                                          <FileText className="w-4 h-4" />
+                                          הפקת חשבונית נוספת
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
+                                  </>
+                                );
+                              })()}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-red-600 focus:text-red-700"
@@ -619,6 +729,53 @@ export default function OrdersTable({
                                             <Workflow className="w-4 h-4" />
                                             שינוי סטטוס
                                           </DropdownMenuItem>
+                                          {canGenerateInvoices && (() => {
+                                            const docs = getOrderInvoiceDocs(order);
+                                            const hasDocs = docs.length > 0;
+                                            return (
+                                              <>
+                                                <DropdownMenuSeparator />
+                                                {!hasDocs ? (
+                                                  <DropdownMenuItem
+                                                    disabled={isBusy || isError}
+                                                    onClick={() => openInvoiceDialog(order)}
+                                                  >
+                                                    <FileText className="w-4 h-4" />
+                                                    הפקת חשבונית
+                                                  </DropdownMenuItem>
+                                                ) : (
+                                                  <>
+                                                    <DropdownMenuItem
+                                                      onClick={() => {
+                                                        const latestDoc = docs[docs.length - 1];
+                                                        if (latestDoc?.url) window.open(latestDoc.url, "_blank");
+                                                      }}
+                                                    >
+                                                      <Download className="w-4 h-4" />
+                                                      צפייה / הורדת חשבונית
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                      disabled={isBusy || isError}
+                                                      onClick={() => {
+                                                        setResendInvoiceOrder(order);
+                                                        setResendInvoiceMethod("email");
+                                                      }}
+                                                    >
+                                                      <Send className="w-4 h-4" />
+                                                      שליחה חוזרת של חשבונית
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                      disabled={isBusy || isError}
+                                                      onClick={() => openInvoiceDialog(order)}
+                                                    >
+                                                      <FileText className="w-4 h-4" />
+                                                      הפקת חשבונית נוספת
+                                                    </DropdownMenuItem>
+                                                  </>
+                                                )}
+                                              </>
+                                            );
+                                          })()}
                                           <DropdownMenuSeparator />
                                           <DropdownMenuItem
                                             className="text-red-600 focus:text-red-700"
@@ -1151,6 +1308,184 @@ export default function OrdersTable({
               כן, לבטל את ההזמנה
             </Button>
             <Button type="button" variant="ghost" onClick={() => setDeleteOrderState(null)}>
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generate Invoice Dialog */}
+      <Dialog
+        open={Boolean(invoiceOrder)}
+        onOpenChange={(open) => !open && busyAction.type !== "invoice" && setInvoiceOrder(null)}
+      >
+        <DialogContent dir="rtl" className={TOP_DIALOG_CONTENT_CLASSNAME}>
+          <DialogHeader className="text-right">
+            <DialogTitle className="text-right">הפקת חשבונית</DialogTitle>
+            <DialogDescription className="text-right leading-relaxed">
+              הפקת חשבונית עבור ההזמנה של {invoiceOrder?.customerName || "הלקוח/ה"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-slate-200 px-4 py-3 hover:bg-slate-50 transition-colors" dir="rtl">
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all shrink-0 ${
+                invoiceSendByEmail ? "bg-slate-900 border-slate-900" : "border-slate-300"
+              }`}>
+                {invoiceSendByEmail && <div className="w-2.5 h-2.5 bg-white rounded-sm" />}
+              </div>
+              <Mail className="w-4 h-4 text-slate-500" />
+              <span className="text-sm text-slate-700">שליחה במייל</span>
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={invoiceSendByEmail}
+                onChange={(e) => setInvoiceSendByEmail(e.target.checked)}
+              />
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-slate-200 px-4 py-3 hover:bg-slate-50 transition-colors" dir="rtl">
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all shrink-0 ${
+                invoiceSendBySMS ? "bg-slate-900 border-slate-900" : "border-slate-300"
+              }`}>
+                {invoiceSendBySMS && <div className="w-2.5 h-2.5 bg-white rounded-sm" />}
+              </div>
+              <Smartphone className="w-4 h-4 text-slate-500" />
+              <span className="text-sm text-slate-700">שליחה ב-SMS</span>
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={invoiceSendBySMS}
+                onChange={(e) => setInvoiceSendBySMS(e.target.checked)}
+              />
+            </label>
+          </div>
+          <DialogFooter className="sm:justify-start sm:space-x-0 gap-2">
+            <Button
+              type="button"
+              className="bg-slate-900 hover:bg-slate-800 text-white"
+              onClick={() => handleConfirmGenerateInvoice(false)}
+              disabled={busyAction.type === "invoice"}
+            >
+              {busyAction.type === "invoice" ? "מפיק..." : "הפקת חשבונית"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setInvoiceOrder(null)} disabled={busyAction.type === "invoice"}>
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate Invoice Warning Dialog */}
+      <Dialog
+        open={Boolean(invoiceDuplicateOrder)}
+        onOpenChange={(open) => !open && busyAction.type !== "invoice" && setInvoiceDuplicateOrder(null)}
+      >
+        <DialogContent dir="rtl" className={TOP_DIALOG_CONTENT_CLASSNAME}>
+          <DialogHeader className="text-right">
+            <DialogTitle className="text-right">חשבונית קיימת</DialogTitle>
+            <DialogDescription className="text-right leading-relaxed">
+              כבר קיימת חשבונית עבור ההזמנה של {invoiceDuplicateOrder?.customerName || "הלקוח/ה"}.
+              האם להפיק חשבונית נוספת?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 text-right">
+            שימי לב: הפקת חשבונית נוספת תיצור מסמך חדש מבלי לבטל את הקיים. ודאי שזו הפעולה הנכונה.
+          </div>
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-slate-200 px-4 py-3 hover:bg-slate-50 transition-colors" dir="rtl">
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all shrink-0 ${
+                invoiceSendByEmail ? "bg-slate-900 border-slate-900" : "border-slate-300"
+              }`}>
+                {invoiceSendByEmail && <div className="w-2.5 h-2.5 bg-white rounded-sm" />}
+              </div>
+              <Mail className="w-4 h-4 text-slate-500" />
+              <span className="text-sm text-slate-700">שליחה במייל</span>
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={invoiceSendByEmail}
+                onChange={(e) => setInvoiceSendByEmail(e.target.checked)}
+              />
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-slate-200 px-4 py-3 hover:bg-slate-50 transition-colors" dir="rtl">
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all shrink-0 ${
+                invoiceSendBySMS ? "bg-slate-900 border-slate-900" : "border-slate-300"
+              }`}>
+                {invoiceSendBySMS && <div className="w-2.5 h-2.5 bg-white rounded-sm" />}
+              </div>
+              <Smartphone className="w-4 h-4 text-slate-500" />
+              <span className="text-sm text-slate-700">שליחה ב-SMS</span>
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={invoiceSendBySMS}
+                onChange={(e) => setInvoiceSendBySMS(e.target.checked)}
+              />
+            </label>
+          </div>
+          <DialogFooter className="sm:justify-start sm:space-x-0 gap-2">
+            <Button
+              type="button"
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={() => handleConfirmGenerateInvoice(true)}
+              disabled={busyAction.type === "invoice"}
+            >
+              {busyAction.type === "invoice" ? "מפיק..." : "כן, להפיק חשבונית נוספת"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setInvoiceDuplicateOrder(null)} disabled={busyAction.type === "invoice"}>
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Resend Invoice Dialog */}
+      <Dialog
+        open={Boolean(resendInvoiceOrder)}
+        onOpenChange={(open) => !open && busyAction.type !== "resendInvoice" && setResendInvoiceOrder(null)}
+      >
+        <DialogContent dir="rtl" className={TOP_DIALOG_CONTENT_CLASSNAME}>
+          <DialogHeader className="text-right">
+            <DialogTitle className="text-right">שליחה חוזרת של חשבונית</DialogTitle>
+            <DialogDescription className="text-right leading-relaxed">
+              בחרי את אמצעי המשלוח לשליחה חוזרת של החשבונית עבור {resendInvoiceOrder?.customerName || "הלקוח/ה"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setResendInvoiceMethod("email")}
+              className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition-all ${
+                resendInvoiceMethod === "email"
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
+              }`}
+            >
+              <Mail className="w-4 h-4" />
+              מייל
+            </button>
+            <button
+              type="button"
+              onClick={() => setResendInvoiceMethod("sms")}
+              className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition-all ${
+                resendInvoiceMethod === "sms"
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
+              }`}
+            >
+              <Smartphone className="w-4 h-4" />
+              SMS
+            </button>
+          </div>
+          <DialogFooter className="sm:justify-start sm:space-x-0 gap-2">
+            <Button
+              type="button"
+              className="bg-slate-900 hover:bg-slate-800 text-white"
+              onClick={handleConfirmResendInvoice}
+              disabled={busyAction.type === "resendInvoice"}
+            >
+              {busyAction.type === "resendInvoice" ? "שולח..." : "שליחה חוזרת"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setResendInvoiceOrder(null)} disabled={busyAction.type === "resendInvoice"}>
               ביטול
             </Button>
           </DialogFooter>

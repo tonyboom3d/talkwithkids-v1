@@ -3,10 +3,11 @@ import { motion } from "framer-motion";
 import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, TrendingUp, ShoppingBag, CreditCard, Users } from "lucide-react";
+import { Download, TrendingUp, ShoppingBag, CreditCard, Users, FileText } from "lucide-react";
 import moment from "moment";
 import DateRangePicker from "../components/dashboard/DateRangePicker";
 import OrdersTable from "../components/dashboard/OrdersTable";
+import TransactionPickerDialog from "../components/dashboard/TransactionPickerDialog";
 import EmployeeFilterField from "../components/dashboard/EmployeeFilterField";
 import { useAuth } from "@/lib/IframeAuthContext";
 import { usePostMessage } from "@/hooks/usePostMessage";
@@ -59,7 +60,7 @@ function exportToCSV(orders, canViewOthers) {
 }
 
 export default function MySales() {
-  const { user, canViewOthers, commissionRate, isLoading: isAuthLoading } = useAuth();
+  const { user, canViewOthers, canGenerateInvoices, commissionRate, isLoading: isAuthLoading } = useAuth();
   const { request } = usePostMessage();
 
   const [dateRange, setDateRange] = useState({ from: null, to: null });
@@ -69,6 +70,7 @@ export default function MySales() {
   const [lastRefreshedAt, setLastRefreshedAt] = useState(() => readSessionRefresh(MY_SALES_REFRESH_KEY));
   const [includeAllCreators, setIncludeAllCreators] = useState(true);
   const [selectedCreatorKeys, setSelectedCreatorKeys] = useState(() => new Set());
+  const [showTransactionPicker, setShowTransactionPicker] = useState(false);
 
   const isDemo = !user;
 
@@ -291,6 +293,69 @@ export default function MySales() {
     }
   };
 
+  const handleGenerateInvoice = async (orderId, { isSendByEmail, isSendSMS, force } = {}) => {
+    if (isDemo) {
+      toast.success("(מצב דמו) חשבונית הופקה");
+      return { alreadyExists: false };
+    }
+    try {
+      const result = await request("GENERATE_INVOICE", {
+        recordId: orderId,
+        isSendByEmail: !!isSendByEmail,
+        isSendSMS: !!isSendSMS,
+        force: !!force,
+      });
+      if (result.alreadyExists) {
+        return result;
+      }
+      toast.success("חשבונית הופקה בהצלחה");
+      loadOrders();
+      return result;
+    } catch (err) {
+      toast.error(err.message || "שגיאה בהפקת חשבונית");
+      throw err;
+    }
+  };
+
+  const handleResendInvoice = async (orderId, docId, method) => {
+    if (isDemo) {
+      toast.success("(מצב דמו) חשבונית נשלחה מחדש");
+      return;
+    }
+    try {
+      await request("RESEND_INVOICE", { recordId: orderId, docId, method });
+      toast.success("החשבונית נשלחה מחדש בהצלחה");
+      loadOrders();
+    } catch (err) {
+      toast.error(err.message || "שגיאה בשליחה חוזרת של חשבונית");
+    }
+  };
+
+  const handleCreateInvoiceFromTransaction = async (dealId, opts) => {
+    if (isDemo) {
+      toast.success("(מצב דמו) חשבונית הופקה מעסקה");
+      return { alreadyExists: false };
+    }
+    try {
+      const result = await request("CREATE_INVOICE_FROM_TRANSACTION", {
+        dealId,
+        isSendByEmail: !!opts?.isSendByEmail,
+        isSendSMS: !!opts?.isSendSMS,
+        force: !!opts?.force,
+      });
+      if (result.alreadyExists) return result;
+      const linkedMsg = result.linkedOrderNumber
+        ? ` (קושרה להזמנה ${result.linkedOrderNumber})`
+        : "";
+      toast.success(`חשבונית הופקה בהצלחה${linkedMsg}`);
+      loadOrders();
+      return result;
+    } catch (err) {
+      toast.error(err.message || "שגיאה בהפקת חשבונית מעסקה");
+      throw err;
+    }
+  };
+
   const activeFilterCount = (dateRange.from || dateRange.to ? 1 : 0) + selectedStatuses.length;
 
   return (
@@ -311,6 +376,17 @@ export default function MySales() {
             <Badge variant="outline" className="border-slate-200 text-slate-500">
               {canViewOthers ? "צפייה: כל ההזמנות" : "צפייה: ההזמנות שלי"}
             </Badge>
+            {canGenerateInvoices && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5 text-xs font-medium"
+                onClick={() => setShowTransactionPicker(true)}
+              >
+                <FileText className="w-4 h-4" />
+                הפקת חשבונית
+              </Button>
+            )}
             <Button
               onClick={() => exportToCSV(filteredOrders, canViewOthers)}
               className="bg-slate-900 hover:bg-slate-800 text-white gap-2 h-9"
@@ -427,6 +503,16 @@ export default function MySales() {
           onAddNote={handleAddNote}
           showProfitColumn
           commissionRate={commissionRate ?? 0}
+          canGenerateInvoices={canGenerateInvoices}
+          onGenerateInvoice={handleGenerateInvoice}
+          onResendInvoice={handleResendInvoice}
+        />
+
+        <TransactionPickerDialog
+          open={showTransactionPicker}
+          onClose={() => setShowTransactionPicker(false)}
+          onCreateInvoice={handleCreateInvoiceFromTransaction}
+          request={request}
         />
       </div>
     </div>

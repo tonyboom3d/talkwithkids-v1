@@ -19,6 +19,11 @@ import {
   getStoreProducts,
   searchContactsByQuery,
   searchStoreCoupons,
+  generateOrderInvoice,
+  getOrderInvoices,
+  resendOrderInvoice,
+  listInvoiceTransactions,
+  createInvoiceFromTransaction,
 } from 'backend/dashboardApi.jsw';
 
 const MSG_TYPE = 'TWK_MSG';
@@ -36,6 +41,7 @@ function buildUserReadyPayload() {
       displayName: currentEmployee.displayName,
     },
     canViewOthers: currentEmployee.canViewOtherRecords,
+    canGenerateInvoices: currentEmployee.canGenerateInvoices,
     commissionRate: currentEmployee.commissionRate,
   };
 }
@@ -193,6 +199,62 @@ async function handleIframeMessage(data) {
 
       case 'SCROLL_TO_TOP': {
         await $w('#up').scrollTo();
+        break;
+      }
+
+      case 'GENERATE_INVOICE': {
+        const invoiceResult = await generateOrderInvoice(
+          payload.recordId,
+          {
+            isSendByEmail: !!payload.isSendByEmail,
+            isSendSMS: !!payload.isSendSMS,
+            force: !!payload.force,
+          },
+          currentEmployee.displayName
+        );
+        sendToIframe('INVOICE_GENERATED', invoiceResult, requestId);
+        break;
+      }
+
+      case 'GET_INVOICES': {
+        const invoices = await getOrderInvoices(payload.recordId);
+        sendToIframe('INVOICES_RESULT', { invoices }, requestId);
+        break;
+      }
+
+      case 'RESEND_INVOICE': {
+        await resendOrderInvoice(
+          payload.recordId,
+          payload.docId,
+          payload.method,
+          currentEmployee.displayName
+        );
+        sendToIframe('INVOICE_RESENT', { success: true }, requestId);
+        break;
+      }
+
+      case 'LIST_TRANSACTIONS': {
+        const txResult = await listInvoiceTransactions({
+          fromDate: payload.fromDate,
+          toDate: payload.toDate,
+          page: payload.page,
+          recordsPerPage: payload.recordsPerPage,
+        });
+        sendToIframe('TRANSACTIONS_RESULT', txResult, requestId);
+        break;
+      }
+
+      case 'CREATE_INVOICE_FROM_TRANSACTION': {
+        const txInvoiceResult = await createInvoiceFromTransaction(
+          payload.dealId,
+          {
+            isSendByEmail: !!payload.isSendByEmail,
+            isSendSMS: !!payload.isSendSMS,
+            force: !!payload.force,
+          },
+          currentEmployee.displayName
+        );
+        sendToIframe('INVOICE_FROM_TRANSACTION_RESULT', txInvoiceResult, requestId);
         break;
       }
 

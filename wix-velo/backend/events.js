@@ -175,8 +175,7 @@ async function mergeContactsIfNeeded(email, memberId) {
         const elevatedMergeContacts = elevate(contacts.mergeContacts);
         await elevatedMergeContacts(
             newContact._id,
-            newContact.revision,
-            { sourceContactIds: [oldContact._id] }
+            newContact.revision, { sourceContactIds: [oldContact._id] }
         );
 
         console.log(`🟣 [MERGE] ✅ Contacts merged successfully | target: ${newContact._id} | source: ${oldContact._id}`);
@@ -276,10 +275,17 @@ export async function wixEcom_onOrderApproved(event) {
                 let manualReason = "";
                 let tapuzRule = null;
 
-                // בדיקת הערות ב-customFields — אם יש ערך, מנתב ל"משלוח מהבית"
-                const customNote = order.customFields?.find(f =>
+                // בדיקת הערות ב-customFields — אם יש ערך אמיתי (לא רק סיכום מוצרים אוטומטי), מנתב ל"משלוח מהבית"
+                const rawCustomNote = order.customFields?.find(f =>
                     f.title === "הערות" || f.translatedTitle === "הערות"
                 )?.value;
+                const customNote = rawCustomNote
+                    ? rawCustomNote
+                        .split('\n')
+                        .filter(line => !line.startsWith('פריטים בהזמנה:') && !line.trimStart().startsWith('•'))
+                        .join('\n')
+                        .trim()
+                    : '';
                 if (customNote) {
                     console.log(`[TAPUZ] Custom note detected: "${customNote}" — routing to manual (משלוח מהבית).`);
                     sendToManual = true;
@@ -374,9 +380,9 @@ export async function wixEcom_onOrderApproved(event) {
 const MEMBER_WEBHOOK_URL = "https://services.leadconnectorhq.com/hooks/Qt9lEQiyh8wgVPJM4d6Q/webhook-trigger/8cec9f31-508f-4411-bcf9-9ed60bf03e83";
 
 async function sendMemberWebhook(email, password, firstName, lastName, isNew) {
-    const payload = isNew
-        ? { email, password, phone: password, firstName, lastName }
-        : { email, phone: password, firstName, lastName };
+    const payload = isNew ?
+        { email, password, phone: password, firstName, lastName } :
+        { email, phone: password, firstName, lastName };
 
     console.log(`🟠 [SUBSCRIPTION] Sending member webhook | isNew=${isNew} | email=${email} | phone=${password} | firstName=${firstName} | lastName=${lastName}`);
 
@@ -402,12 +408,12 @@ async function processOrderSubscriptions(order) {
     const orderNumber = String(order.number);
     const email = order.buyerInfo?.email || "";
     const existingMemberId = order.buyerInfo?.memberId || null;
-    const rawPhone = order.shippingInfo?.logistics?.shippingDestination?.contactDetails?.phone
-        || order.billingInfo?.contactDetails?.phone || "";
-    const firstName = order.shippingInfo?.logistics?.shippingDestination?.contactDetails?.firstName
-        || order.billingInfo?.contactDetails?.firstName || "";
-    const lastName = order.shippingInfo?.logistics?.shippingDestination?.contactDetails?.lastName
-        || order.billingInfo?.contactDetails?.lastName || "";
+    const rawPhone = order.shippingInfo?.logistics?.shippingDestination?.contactDetails?.phone ||
+        order.billingInfo?.contactDetails?.phone || "";
+    const firstName = order.shippingInfo?.logistics?.shippingDestination?.contactDetails?.firstName ||
+        order.billingInfo?.contactDetails?.firstName || "";
+    const lastName = order.shippingInfo?.logistics?.shippingDestination?.contactDetails?.lastName ||
+        order.billingInfo?.contactDetails?.lastName || "";
 
     // phone מנורמל 05XXXXXXXX — משמש כסיסמה לרישום משתמש חדש וכ-phone ל-webhook בכל מקרה
     const password = await normalizeIsraeliPhone(rawPhone);
@@ -430,19 +436,19 @@ async function processOrderSubscriptions(order) {
     const seenProductIds = new Set();
     const planIds = [];
 
-        for (const item of order.lineItems) {
-            const productId = item.catalogReference?.catalogItemId || item.rootCatalogItemId;
-            if (!productId) continue;
-            if (seenProductIds.has(productId)) {
-                console.log(`🟠 [SUBSCRIPTION] Skipping duplicate product: ${productId}`);
-                continue;
-            }
-            seenProductIds.add(productId);
-            console.log(`🟠 [SUBSCRIPTION] Checking product: ${productId} for relatedPlan...`);
+    for (const item of order.lineItems) {
+        const productId = item.catalogReference?.catalogItemId || item.rootCatalogItemId;
+        if (!productId) continue;
+        if (seenProductIds.has(productId)) {
+            console.log(`🟠 [SUBSCRIPTION] Skipping duplicate product: ${productId}`);
+            continue;
+        }
+        seenProductIds.add(productId);
+        console.log(`🟠 [SUBSCRIPTION] Checking product: ${productId} for relatedPlan...`);
 
-            const ruleQuery = await wixData.query("DeliveryRules")
-                .eq("product", productId)
-                .find({ suppressAuth: true });
+        const ruleQuery = await wixData.query("DeliveryRules")
+            .eq("product", productId)
+            .find({ suppressAuth: true });
 
         if (ruleQuery.items.length === 0) {
             console.log(`🟠 [SUBSCRIPTION] No DeliveryRule found for product: ${productId} — skipping.`);

@@ -22,7 +22,7 @@ const SENDER_INFO_MANUAL = {
     companyName: "לדבר עם ילדים",
     zipCode: "7532005"
 };
-    
+
 // שמירה על שם ישן לתאימות פנימית
 const SENDER_INFO = SENDER_INFO_TAPUZ;
 
@@ -218,28 +218,28 @@ function extractAddressField(text, keywords) {
 async function buildTapuzString(order, quantity, customerCode, sender, itemsSummary = "") {
     // נתיבי הכתובת האמיתיים לפי מבנה Wix ecom API
     const shipping = order.shippingInfo?.logistics?.shippingDestination || {};
-    const billing  = order.billingInfo || {};
+    const billing = order.billingInfo || {};
 
-    const sAddr    = shipping.address    || billing.address    || {};
-    const contact  = shipping.contactDetails || billing.contactDetails || {};
+    const sAddr = shipping.address || billing.address || {};
+    const contact = shipping.contactDetails || billing.contactDetails || {};
 
-    const streetName   = sAddr.streetAddress?.name || "";
-    const streetNum    = sAddr.streetAddress?.number || "";
-    const apt          = sAddr.streetAddress?.apt || "";
+    const streetName = sAddr.streetAddress?.name || "";
+    const streetNum = sAddr.streetAddress?.number || "";
+    const apt = sAddr.streetAddress?.apt || "";
     const addressLine2 = sAddr.addressLine2 || "";
-    const city       = sAddr.city || "";
-    const zipCode    = sAddr.postalCode || sAddr.zipCode || "";
+    const city = sAddr.city || "";
+    const zipCode = sAddr.postalCode || sAddr.zipCode || "";
 
     const firstName = contact.firstName || "";
-    const lastName  = contact.lastName  || "";
-    const fullName  = `${firstName} ${lastName}`.trim();
+    const lastName = contact.lastName || "";
+    const fullName = `${firstName} ${lastName}`.trim();
 
     const phone = await normalizeIsraeliPhone(contact.phone || "");
     const email = order.buyerInfo?.email || contact.email || "";
 
     // שליפת קומה / דירה / כניסה מ-addressLine2 לשדות הייעודיים בתפוז (35-37)
-    const destFloor    = extractAddressField(addressLine2, ["קומה"]);
-    const destApt      = extractAddressField(addressLine2, ["דירה", "דירה מס", "דירה מס'"]);
+    const destFloor = extractAddressField(addressLine2, ["קומה"]);
+    const destApt = extractAddressField(addressLine2, ["דירה", "דירה מס", "דירה מס'"]);
     const destEntrance = extractAddressField(addressLine2, ["כניסה"]);
 
     // שם הילד/ה מ-extendedFields._user_fields.child_name (עם fallback ל-customFields להזמנות ישנות)
@@ -250,27 +250,50 @@ async function buildTapuzString(order, quantity, customerCode, sender, itemsSumm
         )?.value
         || "";
 
-    // הערות למשלוח: שם ילד + רשימת מוצרים + buyerNote + customFields["הערות"] + addressLine2 המלא, מופרדים ב-|||
+    // הערות למשלוח: buyerNote + customFields["הערות"] + addressLine2 + שם ילד + רשימת מוצרים (תמיד אחרונה), מופרדים ב-|||
     const noteParts = [];
-    if (childName) {
-        noteParts.push(`שם הילד/ה: ${childName}`);
-    }
-    if (itemsSummary) {
-        noteParts.push(itemsSummary);
-    }
+
+    // מסנן מה-buyerNote את החלק האוטומטי של "פריטים בהזמנה:..." שנוצר ב-checkoutHelper
+    // כדי למנוע כפילות מוצרים עם מחיר בהערות
     if (order.buyerNote) {
-        noteParts.push(order.buyerNote);
+        const buyerNoteClean = order.buyerNote
+            .split('\n')
+            .filter(line => !line.startsWith('פריטים בהזמנה:') && !line.trimStart().startsWith('•'))
+            .join('\n')
+            .trim();
+        if (buyerNoteClean) {
+            noteParts.push(buyerNoteClean);
+        }
     }
+
     const customNote = order.customFields?.find(f =>
         f.title === "הערות" || f.translatedTitle === "הערות"
     )?.value;
     if (customNote) {
-        noteParts.push(customNote);
+        // מסנן גם מה-customNote את החלק האוטומטי למקרה שנשמר שם
+        const customNoteClean = customNote
+            .split('\n')
+            .filter(line => !line.startsWith('פריטים בהזמנה:') && !line.trimStart().startsWith('•'))
+            .join('\n')
+            .trim();
+        if (customNoteClean) {
+            noteParts.push(customNoteClean);
+        }
     }
 
     // כל מה שהמשתמש כתב ב-addressLine2 נכנס כמו שהוא לטובת השליח
     if (addressLine2) {
         noteParts.push(`פרטי כתובת נוספים: ${addressLine2}`);
+    }
+
+    // שם הילד/ה - לפני המוצרים
+    if (childName) {
+        noteParts.push(`שם הילד/ה: ${childName}`);
+    }
+
+    // רשימת המוצרים תמיד אחרונה, בפורמט "שם (כ: X)" ללא מחיר
+    if (itemsSummary) {
+        noteParts.push(itemsSummary);
     }
 
     const deliveryNote = noteParts.length ? noteParts.join(" ||| ") : "אין הערות";

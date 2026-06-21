@@ -9,6 +9,7 @@ const AUTH_TIMEOUT_MS = 20000;
 export const IframeAuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [canViewOthers, setCanViewOthers] = useState(false);
+  const [canGenerateInvoices, setCanGenerateInvoices] = useState(false);
   const [commissionRate, setCommissionRate] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -21,6 +22,7 @@ export const IframeAuthProvider = ({ children }) => {
       console.info('[TWK-AUTH] USER_READY', { user: payload.user?.displayName });
       setUser(payload.user);
       setCanViewOthers(!!payload.canViewOthers);
+      setCanGenerateInvoices(!!payload.canGenerateInvoices);
       setCommissionRate(payload.commissionRate || 0);
       setIsLoading(false);
       setError(null);
@@ -66,6 +68,7 @@ export const IframeAuthProvider = ({ children }) => {
     <IframeAuthContext.Provider value={{
       user,
       canViewOthers,
+      canGenerateInvoices,
       commissionRate,
       isLoading,
       error,

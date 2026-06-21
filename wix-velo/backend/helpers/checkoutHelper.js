@@ -80,28 +80,11 @@ export async function createDashboardCheckout(orderData) {
 
   const checkoutInfo = {};
 
-  const itemsLines = (orderData.products || []).map((p) => {
-    const qty = Math.max(1, Number(p.quantity) || 1);
-    const price = Number(p.price);
-    const name = p.name || p.id || 'פריט';
-    const priceStr = Number.isFinite(price)
-      ? ` - ₪${(price * qty).toLocaleString('he-IL')}`
-      : '';
-    return `• ${name} (x${qty})${priceStr}`;
-  });
-  const itemsSummary = itemsLines.length > 0
-    ? `פריטים בהזמנה:\n${itemsLines.join('\n')}`
-    : '';
-
   const notesBase = (orderData.orderChangeNotes || '').trim();
-  const fullNotes = notesBase && itemsSummary
-    ? `${notesBase}\n\n${itemsSummary}`
-    : notesBase || itemsSummary;
-
-  if (fullNotes) {
+  if (notesBase) {
     checkoutInfo.customFields = [{
       title: 'הערות לשינוי הזמנה',
-      value: fullNotes,
+      value: notesBase,
     }];
   }
 
