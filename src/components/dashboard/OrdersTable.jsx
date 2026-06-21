@@ -133,6 +133,7 @@ export default function OrdersTable({
   const [invoiceSendByEmail, setInvoiceSendByEmail] = useState(false);
   const [invoiceSendBySMS, setInvoiceSendBySMS] = useState(false);
   const [invoiceDuplicateOrder, setInvoiceDuplicateOrder] = useState(null);
+  const [invoiceUnpaidWarningOrder, setInvoiceUnpaidWarningOrder] = useState(null);
   const [resendInvoiceOrder, setResendInvoiceOrder] = useState(null);
   const [resendInvoiceMethod, setResendInvoiceMethod] = useState("email");
 
@@ -141,7 +142,7 @@ export default function OrdersTable({
     [orders, commissionRate]
   );
 
-  useScrollToTopOnOpen(Boolean(statusOrder) || Boolean(resendConfirmOrder) || Boolean(deleteOrderState) || Boolean(invoiceOrder) || Boolean(invoiceDuplicateOrder) || Boolean(resendInvoiceOrder));
+  useScrollToTopOnOpen(Boolean(statusOrder) || Boolean(resendConfirmOrder) || Boolean(deleteOrderState) || Boolean(invoiceOrder) || Boolean(invoiceDuplicateOrder) || Boolean(invoiceUnpaidWarningOrder) || Boolean(resendInvoiceOrder));
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -262,7 +263,7 @@ export default function OrdersTable({
 
   const getOrderInvoiceDocs = (order) => safeParseJson(order.invoiceDocuments, []);
 
-  const openInvoiceDialog = (order) => {
+  const proceedToInvoiceFlow = (order) => {
     const docs = getOrderInvoiceDocs(order);
     if (docs.length > 0) {
       setInvoiceDuplicateOrder(order);
@@ -271,6 +272,21 @@ export default function OrdersTable({
       setInvoiceSendByEmail(false);
       setInvoiceSendBySMS(false);
     }
+  };
+
+  const openInvoiceDialog = (order) => {
+    if (!isPaidDisplayStatus(order.displayStatus)) {
+      setInvoiceUnpaidWarningOrder(order);
+      return;
+    }
+    proceedToInvoiceFlow(order);
+  };
+
+  const handleConfirmUnpaidInvoice = () => {
+    const order = invoiceUnpaidWarningOrder;
+    if (!order) return;
+    setInvoiceUnpaidWarningOrder(null);
+    proceedToInvoiceFlow(order);
   };
 
   const handleConfirmGenerateInvoice = async (forceOverride = false) => {
@@ -1308,6 +1324,40 @@ export default function OrdersTable({
               כן, לבטל את ההזמנה
             </Button>
             <Button type="button" variant="ghost" onClick={() => setDeleteOrderState(null)}>
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unpaid order warning before invoice generation */}
+      <Dialog
+        open={Boolean(invoiceUnpaidWarningOrder)}
+        onOpenChange={(open) => !open && setInvoiceUnpaidWarningOrder(null)}
+      >
+        <DialogContent dir="rtl" className={TOP_DIALOG_CONTENT_CLASSNAME}>
+          <DialogHeader className="text-right">
+            <DialogTitle className="text-right">הזמנה שטרם שולמה</DialogTitle>
+            <DialogDescription className="text-right leading-relaxed">
+              ההזמנה של {invoiceUnpaidWarningOrder?.customerName || "הלקוח/ה"} נמצאת בסטטוס{" "}
+              <span className="font-semibold text-slate-900">
+                {STATUS_CONFIG[invoiceUnpaidWarningOrder?.displayStatus]?.label || invoiceUnpaidWarningOrder?.displayStatus || "לא ידוע"}
+              </span>
+              {" "}ולא בסטטוס שולם.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 text-right">
+            הפקת חשבונית להזמנה שלא שולמה עלולה ליצור אי-התאמה בין החיוב לבין סטטוס ההזמנה. האם להמשיך?
+          </div>
+          <DialogFooter className="sm:justify-start sm:space-x-0 gap-2">
+            <Button
+              type="button"
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={handleConfirmUnpaidInvoice}
+            >
+              המשך להפקת חשבונית
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setInvoiceUnpaidWarningOrder(null)}>
               ביטול
             </Button>
           </DialogFooter>
