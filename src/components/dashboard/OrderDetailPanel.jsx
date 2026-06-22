@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   X, User, Phone, Mail, Package, CreditCard, Link2,
   MessageSquarePlus, Clock, CheckCircle2, XCircle,
-  Send, Truck, AlertTriangle, FileEdit, Eye, StickyNote, ExternalLink, Copy
+  Send, Truck, AlertTriangle, FileEdit, Eye, StickyNote, ExternalLink, Copy, UserRound
 } from "lucide-react";
 import moment from "moment";
 import { toast } from "sonner";
@@ -36,6 +36,7 @@ const timelineIcons = {
   shipped: { icon: Truck, color: "bg-sky-100 text-sky-600" },
   note: { icon: StickyNote, color: "bg-amber-100 text-amber-600" },
   contact_updated: { icon: FileEdit, color: "bg-slate-200 text-slate-600" },
+  assignment_changed: { icon: UserRound, color: "bg-indigo-100 text-indigo-600" },
 };
 
 function TimelineItem({ event, isLast }) {

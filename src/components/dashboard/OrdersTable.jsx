@@ -57,7 +57,9 @@ import {
   STATUS_UPDATE_OPTIONS,
   isPaidDisplayStatus,
 } from "@/utils/dashboardOrders";
+import { getOrderCreatorKey } from "@/utils/orderCreatorFilter";
 import { creatorTagStyleFromColor } from "@/utils/employeeTagStyle";
+import EmployeeAssignField from "./EmployeeAssignField";
 
 const PAGE_SIZE = 8;
 const TOP_DIALOG_CONTENT_CLASSNAME =
@@ -84,6 +86,8 @@ function timelineDotClass(action) {
       return "bg-amber-500";
     case "note":
       return "bg-violet-500";
+    case "assignment_changed":
+      return "bg-indigo-500";
     default:
       return "bg-slate-400";
   }
@@ -116,6 +120,9 @@ export default function OrdersTable({
   canGenerateInvoices = false,
   onGenerateInvoice,
   onResendInvoice,
+  canViewOthers = false,
+  employees = [],
+  onUpdateAssignment,
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -136,13 +143,15 @@ export default function OrdersTable({
   const [invoiceUnpaidWarningOrder, setInvoiceUnpaidWarningOrder] = useState(null);
   const [resendInvoiceOrder, setResendInvoiceOrder] = useState(null);
   const [resendInvoiceMethod, setResendInvoiceMethod] = useState("email");
+  const [assignOrderState, setAssignOrderState] = useState(null);
+  const [pendingAssignEmployeeId, setPendingAssignEmployeeId] = useState("");
 
   const normalizedOrders = useMemo(
     () => (orders || []).map((order) => normalizeOrder(order, { commissionRate })),
     [orders, commissionRate]
   );
 
-  useScrollToTopOnOpen(Boolean(statusOrder) || Boolean(resendConfirmOrder) || Boolean(deleteOrderState) || Boolean(invoiceOrder) || Boolean(invoiceDuplicateOrder) || Boolean(invoiceUnpaidWarningOrder) || Boolean(resendInvoiceOrder));
+  useScrollToTopOnOpen(Boolean(statusOrder) || Boolean(resendConfirmOrder) || Boolean(deleteOrderState) || Boolean(invoiceOrder) || Boolean(invoiceDuplicateOrder) || Boolean(invoiceUnpaidWarningOrder) || Boolean(resendInvoiceOrder) || Boolean(assignOrderState));
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -241,6 +250,24 @@ export default function OrdersTable({
         setExpandedRowId(null);
       }
       setDeleteOrderState(null);
+    });
+  };
+
+  const openAssignDialog = (order) => {
+    setAssignOrderState(order);
+    setPendingAssignEmployeeId(getOrderCreatorKey(order));
+  };
+
+  const handleConfirmAssign = async () => {
+    if (!assignOrderState || !onUpdateAssignment || !pendingAssignEmployeeId) return;
+    if (pendingAssignEmployeeId === getOrderCreatorKey(assignOrderState)) {
+      toast.error("ההזמנה כבר משויכת לעובד/ת זה/ו");
+      return;
+    }
+    await runRowAction("assign", assignOrderState, async () => {
+      await onUpdateAssignment(assignOrderState.rowId, pendingAssignEmployeeId);
+      setAssignOrderState(null);
+      setPendingAssignEmployeeId("");
     });
   };
 
@@ -560,6 +587,15 @@ export default function OrdersTable({
                                 <Workflow className="w-4 h-4" />
                                 שינוי סטטוס
                               </DropdownMenuItem>
+                              {canViewOthers && employees.length > 0 && (
+                                <DropdownMenuItem
+                                  disabled={!onUpdateAssignment || isBusy || isError}
+                                  onClick={() => openAssignDialog(order)}
+                                >
+                                  <UserRound className="w-4 h-4" />
+                                  שינוי שיוך
+                                </DropdownMenuItem>
+                              )}
                               {canGenerateInvoices && (() => {
                                 const docs = getOrderInvoiceDocs(order);
                                 const hasDocs = docs.length > 0;
@@ -784,6 +820,15 @@ export default function OrdersTable({
                                             <Workflow className="w-4 h-4" />
                                             שינוי סטטוס
                                           </DropdownMenuItem>
+                                          {canViewOthers && employees.length > 0 && (
+                                            <DropdownMenuItem
+                                              disabled={!onUpdateAssignment || isBusy || isError}
+                                              onClick={() => openAssignDialog(order)}
+                                            >
+                                              <UserRound className="w-4 h-4" />
+                                              שינוי שיוך
+                                            </DropdownMenuItem>
+                                          )}
                                           {canGenerateInvoices && (() => {
                                             const docs = getOrderInvoiceDocs(order);
                                             const hasDocs = docs.length > 0;
@@ -1363,6 +1408,54 @@ export default function OrdersTable({
               כן, לבטל את ההזמנה
             </Button>
             <Button type="button" variant="ghost" onClick={() => setDeleteOrderState(null)}>
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(assignOrderState)}
+        onOpenChange={(open) => {
+          if (!open && busyAction.type !== "assign") {
+            setAssignOrderState(null);
+            setPendingAssignEmployeeId("");
+          }
+        }}
+      >
+        <DialogContent dir="rtl" className={TOP_DIALOG_CONTENT_CLASSNAME}>
+          <DialogHeader className="text-right">
+            <DialogTitle className="text-right">שינוי שיוך הזמנה</DialogTitle>
+            <DialogDescription className="text-right">
+              בחר/י את העובד/ת שאליו/ה תשויך ההזמנה של {assignOrderState?.customerName || "הלקוח/ה"}.
+              השינוי יתועד בפעולות אחרונות.
+            </DialogDescription>
+          </DialogHeader>
+          <EmployeeAssignField
+            employees={employees}
+            value={pendingAssignEmployeeId}
+            onChange={setPendingAssignEmployeeId}
+            disabled={busyAction.type === "assign"}
+            label="שיוך לעובד/ת"
+          />
+          <DialogFooter className="sm:justify-start sm:space-x-0 gap-2">
+            <Button
+              type="button"
+              className="bg-slate-900 hover:bg-slate-800 text-white"
+              onClick={handleConfirmAssign}
+              disabled={busyAction.type === "assign" || !pendingAssignEmployeeId}
+            >
+              שמירת שיוך
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setAssignOrderState(null);
+                setPendingAssignEmployeeId("");
+              }}
+              disabled={busyAction.type === "assign"}
+            >
               ביטול
             </Button>
           </DialogFooter>

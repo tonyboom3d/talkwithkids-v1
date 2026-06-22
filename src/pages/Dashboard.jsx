@@ -23,6 +23,7 @@ import OrdersTable from "../components/dashboard/OrdersTable";
 import OrderDetailPanel from "../components/dashboard/OrderDetailPanel";
 import TransactionPickerDialog from "../components/dashboard/TransactionPickerDialog";
 import EmployeeFilterField from "../components/dashboard/EmployeeFilterField";
+import EmployeeAssignField from "../components/dashboard/EmployeeAssignField";
 import { useAuth } from "@/lib/IframeAuthContext";
 import { usePostMessage, usePostMessageListener } from "@/hooks/usePostMessage";
 import { useScrollToTopOnOpen } from "@/hooks/useScrollToTopOnOpen";
@@ -141,6 +142,8 @@ export default function Dashboard() {
   const [includeAllCreators, setIncludeAllCreators] = useState(true);
   const [selectedCreatorKeys, setSelectedCreatorKeys] = useState(() => new Set());
   const [showTransactionPicker, setShowTransactionPicker] = useState(false);
+  const [employees, setEmployees] = useState([]);
+  const [assignedEmployeeId, setAssignedEmployeeId] = useState("");
 
   const creatorOptions = useMemo(
     () => (canViewOthers ? buildCreatorOptions(orders) : []),
@@ -187,6 +190,27 @@ export default function Dashboard() {
   }, [isDemo, request]);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
+
+  useEffect(() => {
+    if (user?.id) {
+      setAssignedEmployeeId((prev) => prev || user.id);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!canViewOthers || isDemo) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await request("GET_EMPLOYEES");
+        if (cancelled) return;
+        setEmployees(result.employees || []);
+      } catch (err) {
+        console.error("[UI] Failed to load employees:", err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [canViewOthers, isDemo, request]);
 
   useEffect(() => {
     if (paymentStatus !== "paid" && paymentStatus !== "paid_partial") {
@@ -382,6 +406,7 @@ export default function Dashboard() {
           ? Number(actualPaidAmount)
           : null,
         totalPrice: total,
+        assignedEmployeeId: canViewOthers && assignedEmployeeId ? assignedEmployeeId : undefined,
       });
 
       console.log('[UI] Order created:', result.recordId, result.checkoutLink);
@@ -416,6 +441,9 @@ export default function Dashboard() {
     setCouponMode("create");
     setSelectedStoreCoupon(null);
     setCouponValue("");
+    if (user?.id) {
+      setAssignedEmployeeId(user.id);
+    }
   };
 
   const handleConfirmOrderSend = async () => {
@@ -553,6 +581,24 @@ export default function Dashboard() {
       loadOrders();
     } catch (err) {
       toast.error(err.message || "שגיאה בביטול ההזמנה");
+    }
+  };
+
+  const handleUpdateAssignment = async (recordId, newEmployeeId) => {
+    if (isDemo) {
+      toast.success("(מצב דמו) השיוך עודכן");
+      return;
+    }
+    try {
+      await request("UPDATE_ORDER_ASSIGNMENT", {
+        recordId,
+        assignedEmployeeId: newEmployeeId,
+      });
+      toast.success("שיוך ההזמנה עודכן");
+      loadOrders();
+    } catch (err) {
+      toast.error(err.message || "שגיאה בעדכון שיוך ההזמנה");
+      throw err;
     }
   };
 
@@ -777,6 +823,15 @@ export default function Dashboard() {
             allowNonIsraeliPhone={allowNonIsraeliPhone}
             setAllowNonIsraeliPhone={setAllowNonIsraeliPhone}
           />
+
+          {canViewOthers && employees.length > 0 && (
+            <EmployeeAssignField
+              employees={employees}
+              value={assignedEmployeeId}
+              onChange={setAssignedEmployeeId}
+              disabled={isSubmitting}
+            />
+          )}
 
           <div className="border-t border-slate-100" />
 
@@ -1280,6 +1335,9 @@ export default function Dashboard() {
           canGenerateInvoices={canGenerateInvoices}
           onGenerateInvoice={handleGenerateInvoice}
           onResendInvoice={handleResendInvoice}
+          canViewOthers={canViewOthers}
+          employees={employees}
+          onUpdateAssignment={handleUpdateAssignment}
         />
       </div>
 
