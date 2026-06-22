@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Banknote,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
@@ -56,6 +57,7 @@ import {
   STATUS_CONFIG,
   STATUS_UPDATE_OPTIONS,
   isPaidDisplayStatus,
+  resolveRemainingBalance,
 } from "@/utils/dashboardOrders";
 import { getOrderCreatorKey } from "@/utils/orderCreatorFilter";
 import { creatorTagStyleFromColor } from "@/utils/employeeTagStyle";
@@ -88,6 +90,8 @@ function timelineDotClass(action) {
       return "bg-violet-500";
     case "assignment_changed":
       return "bg-indigo-500";
+    case "manual_partial_payment":
+      return "bg-teal-500";
     default:
       return "bg-slate-400";
   }
@@ -123,6 +127,7 @@ export default function OrdersTable({
   canViewOthers = false,
   employees = [],
   onUpdateAssignment,
+  onCompletePartialPayment,
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -145,13 +150,19 @@ export default function OrdersTable({
   const [resendInvoiceMethod, setResendInvoiceMethod] = useState("email");
   const [assignOrderState, setAssignOrderState] = useState(null);
   const [pendingAssignEmployeeId, setPendingAssignEmployeeId] = useState("");
+  const [partialPayOrder, setPartialPayOrder] = useState(null);
+  const [partialPayAmount, setPartialPayAmount] = useState("");
+  const [partialPayMethod, setPartialPayMethod] = useState("");
+  const [partialPayNotes, setPartialPayNotes] = useState("");
+  const [partialPayInvoice, setPartialPayInvoice] = useState(false);
+  const [partialPayError, setPartialPayError] = useState("");
 
   const normalizedOrders = useMemo(
     () => (orders || []).map((order) => normalizeOrder(order, { commissionRate })),
     [orders, commissionRate]
   );
 
-  useScrollToTopOnOpen(Boolean(statusOrder) || Boolean(resendConfirmOrder) || Boolean(deleteOrderState) || Boolean(invoiceOrder) || Boolean(invoiceDuplicateOrder) || Boolean(invoiceUnpaidWarningOrder) || Boolean(resendInvoiceOrder) || Boolean(assignOrderState));
+  useScrollToTopOnOpen(Boolean(statusOrder) || Boolean(resendConfirmOrder) || Boolean(deleteOrderState) || Boolean(invoiceOrder) || Boolean(invoiceDuplicateOrder) || Boolean(invoiceUnpaidWarningOrder) || Boolean(resendInvoiceOrder) || Boolean(assignOrderState) || Boolean(partialPayOrder));
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -268,6 +279,46 @@ export default function OrdersTable({
       await onUpdateAssignment(assignOrderState.rowId, pendingAssignEmployeeId);
       setAssignOrderState(null);
       setPendingAssignEmployeeId("");
+    });
+  };
+
+  const openPartialPayDialog = (order) => {
+    const remaining = resolveRemainingBalance(order);
+    setPartialPayOrder(order);
+    setPartialPayAmount(String(remaining));
+    setPartialPayMethod("");
+    setPartialPayNotes("");
+    setPartialPayInvoice(false);
+    setPartialPayError("");
+  };
+
+  const handleConfirmPartialPay = async () => {
+    if (!partialPayOrder || !onCompletePartialPayment) return;
+    const remaining = resolveRemainingBalance(partialPayOrder);
+    const amount = Number(partialPayAmount);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setPartialPayError("הסכום חייב להיות גדול מ-0");
+      return;
+    }
+    if (amount > remaining + 0.01) {
+      setPartialPayError(`הסכום גדול מהיתרה (₪${remaining.toLocaleString("he-IL")})`);
+      return;
+    }
+    if (!partialPayMethod) {
+      setPartialPayError("יש לבחור אופן תשלום");
+      return;
+    }
+    setPartialPayError("");
+
+    await runRowAction("partialPay", partialPayOrder, async () => {
+      await onCompletePartialPayment(partialPayOrder.rowId, {
+        amountPaid: amount,
+        paymentMethod: partialPayMethod,
+        notes: partialPayNotes,
+        generateInvoice: partialPayInvoice,
+      });
+      setPartialPayOrder(null);
     });
   };
 
@@ -596,6 +647,15 @@ export default function OrdersTable({
                                   שינוי שיוך
                                 </DropdownMenuItem>
                               )}
+                              {order.displayStatus === "paid_partial" && (
+                                <DropdownMenuItem
+                                  disabled={!onCompletePartialPayment || isBusy || isError}
+                                  onClick={() => openPartialPayDialog(order)}
+                                >
+                                  <Banknote className="w-4 h-4" />
+                                  השלמת תשלום
+                                </DropdownMenuItem>
+                              )}
                               {canGenerateInvoices && (() => {
                                 const docs = getOrderInvoiceDocs(order);
                                 const hasDocs = docs.length > 0;
@@ -827,6 +887,15 @@ export default function OrdersTable({
                                             >
                                               <UserRound className="w-4 h-4" />
                                               שינוי שיוך
+                                            </DropdownMenuItem>
+                                          )}
+                                          {order.displayStatus === "paid_partial" && (
+                                            <DropdownMenuItem
+                                              disabled={!onCompletePartialPayment || isBusy || isError}
+                                              onClick={() => openPartialPayDialog(order)}
+                                            >
+                                              <Banknote className="w-4 h-4" />
+                                              השלמת תשלום
                                             </DropdownMenuItem>
                                           )}
                                           {canGenerateInvoices && (() => {
@@ -1455,6 +1524,116 @@ export default function OrdersTable({
                 setPendingAssignEmployeeId("");
               }}
               disabled={busyAction.type === "assign"}
+            >
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(partialPayOrder)}
+        onOpenChange={(open) => {
+          if (!open && busyAction.type !== "partialPay") {
+            setPartialPayOrder(null);
+            setPartialPayError("");
+          }
+        }}
+      >
+        <DialogContent dir="rtl" className={TOP_DIALOG_CONTENT_CLASSNAME}>
+          <DialogHeader className="text-right">
+            <DialogTitle className="text-right">השלמת תשלום</DialogTitle>
+            <DialogDescription className="text-right">
+              השלמת תשלום עבור הזמנה #{partialPayOrder?.orderNumber || ""} — {partialPayOrder?.customerName || ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+              <span className="text-sm text-amber-800 font-medium">יתרה לתשלום</span>
+              <span className="text-lg font-bold text-amber-900">
+                ₪{partialPayOrder ? resolveRemainingBalance(partialPayOrder).toLocaleString("he-IL") : 0}
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1 text-right">סכום ששולם</label>
+              <Input
+                type="number"
+                min="0"
+                max={partialPayOrder ? resolveRemainingBalance(partialPayOrder) : 0}
+                step="0.01"
+                value={partialPayAmount}
+                onChange={(e) => { setPartialPayAmount(e.target.value); setPartialPayError(""); }}
+                disabled={busyAction.type === "partialPay"}
+                className="text-right"
+                placeholder="₪"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1 text-right">אופן תשלום</label>
+              <div className="flex flex-wrap gap-2">
+                {PAYMENT_METHOD_OPTIONS.map((method) => (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => { setPartialPayMethod(method); setPartialPayError(""); }}
+                    disabled={busyAction.type === "partialPay"}
+                    className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                      partialPayMethod === method
+                        ? "bg-slate-900 text-white border-slate-900"
+                        : "bg-white text-slate-700 border-slate-300 hover:border-slate-400"
+                    }`}
+                  >
+                    {method}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1 text-right">הערות</label>
+              <Textarea
+                value={partialPayNotes}
+                onChange={(e) => setPartialPayNotes(e.target.value)}
+                disabled={busyAction.type === "partialPay"}
+                rows={2}
+                className="text-right"
+                placeholder="הערות נוספות (אופציונלי)"
+              />
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={partialPayInvoice}
+                onChange={(e) => setPartialPayInvoice(e.target.checked)}
+                disabled={busyAction.type === "partialPay"}
+                className="rounded border-slate-300"
+              />
+              הפקת חשבונית עבור תשלום זה
+            </label>
+
+            {partialPayError && (
+              <p className="text-sm text-red-600 text-right">{partialPayError}</p>
+            )}
+          </div>
+
+          <DialogFooter className="sm:justify-start sm:space-x-0 gap-2">
+            <Button
+              type="button"
+              className="bg-slate-900 hover:bg-slate-800 text-white"
+              onClick={handleConfirmPartialPay}
+              disabled={busyAction.type === "partialPay"}
+            >
+              {busyAction.type === "partialPay" ? "שומר..." : "שמירת תשלום"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => { setPartialPayOrder(null); setPartialPayError(""); }}
+              disabled={busyAction.type === "partialPay"}
             >
               ביטול
             </Button>

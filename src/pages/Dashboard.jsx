@@ -602,6 +602,21 @@ export default function Dashboard() {
     }
   };
 
+  const handleCompletePartialPayment = async (recordId, payload) => {
+    if (isDemo) {
+      toast.success("(מצב דמו) התשלום עודכן");
+      return;
+    }
+    try {
+      await request("COMPLETE_PARTIAL_PAYMENT", { recordId, ...payload });
+      toast.success("התשלום עודכן בהצלחה");
+      loadOrders();
+    } catch (err) {
+      toast.error(err.message || "שגיאה בעדכון התשלום");
+      throw err;
+    }
+  };
+
   const handleCopyToClipboard = async (text) => {
     if (!text) {
       toast.error("אין תוכן להעתקה");
@@ -1338,6 +1353,7 @@ export default function Dashboard() {
           canViewOthers={canViewOthers}
           employees={employees}
           onUpdateAssignment={handleUpdateAssignment}
+          onCompletePartialPayment={handleCompletePartialPayment}
         />
       </div>
 

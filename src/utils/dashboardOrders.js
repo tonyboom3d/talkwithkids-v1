@@ -111,6 +111,13 @@ export function isPaidDisplayStatus(status) {
   return status === "paid" || status === "paid_partial" || status === "paid_pending_details" || status === "paid_completed";
 }
 
+export function resolveRemainingBalance(order) {
+  if (!order || order.displayStatus !== "paid_partial") return 0;
+  const subtotal = Math.max(0, Number(order.subtotalAmount ?? order.totalPrice ?? 0));
+  const paid = Math.max(0, Number(order.partialPaidAmount ?? 0));
+  return Math.max(0, subtotal - paid);
+}
+
 function resolvePartialPaidAmount(order, couponDetails, subtotal) {
   const directValue = Number(order?.partialPaidAmount);
   if (Number.isFinite(directValue) && directValue > 0) {
