@@ -560,13 +560,16 @@ export default function OrdersTable({
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto overflow-y-visible">
-            <Table dir="rtl" className="w-full table-fixed min-w-[800px]">
+          <Table
+            dir="rtl"
+            containerClassName="orders-table-scroll"
+            className="w-full table-fixed min-w-[800px]"
+          >
               <TableHeader>
                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
                   <TableHead className="text-right text-xs font-medium text-slate-500 w-8 px-1" />
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">תאריך</TableHead>
-                  <TableHead className="sticky right-0 z-[12] bg-slate-50 text-right text-xs font-medium text-slate-500 px-1 shadow-[inset_1px_0_0_0_rgb(226_232_240)]">שם לקוח</TableHead>
+                  <TableHead className="orders-table-sticky-col sticky right-0 z-[12] bg-slate-50 text-right text-xs font-medium text-slate-500 px-1 shadow-[inset_1px_0_0_0_rgb(226_232_240)]">שם לקוח</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">טלפון</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">W/A</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">סה"כ</TableHead>
@@ -600,7 +603,7 @@ export default function OrdersTable({
                   return (
                     <React.Fragment key={order.rowId}>
                       <TableRow
-                        className="group cursor-pointer hover:bg-slate-50/70"
+                        className="orders-table-data-row group cursor-pointer hover:bg-transparent transition-none md:transition-colors md:hover:bg-slate-50/70"
                         onClick={() => setExpandedRowId(isExpanded ? null : order.rowId)}
                       >
                         <TableCell className="text-center px-1 py-2">
@@ -718,7 +721,7 @@ export default function OrdersTable({
                         <TableCell className="text-xs text-slate-500 whitespace-nowrap px-1 py-2">
                           {order.sentDate ? moment(order.sentDate).format("DD/MM HH:mm") : "—"}
                         </TableCell>
-                        <TableCell className="sticky right-0 z-[11] max-w-[min(140px,32vw)] bg-white px-1 py-2 text-xs font-medium text-slate-700 shadow-[inset_1px_0_0_0_rgb(226_232_240)] [transform:translateZ(0)] group-hover:bg-slate-50">
+                        <TableCell className="orders-table-sticky-col sticky right-0 z-[11] max-w-[min(140px,32vw)] bg-white px-1 py-2 text-xs font-medium text-slate-700 shadow-[inset_1px_0_0_0_rgb(226_232_240)] md:group-hover:bg-slate-50">
                           <span className="block truncate">{order.customerName || "—"}</span>
                         </TableCell>
                         <TableCell className="text-xs text-slate-600 text-right tabular-nums px-1 py-2" dir="ltr">
@@ -833,7 +836,7 @@ export default function OrdersTable({
                                 transition={{ duration: 0.22, ease: "easeOut" }}
                                 className="overflow-hidden"
                               >
-                                <div className="p-2 md:p-4 sticky md:static right-0 md:right-auto max-w-[100vw] md:max-w-none" style={{boxSizing:'border-box'}}>
+                                <div className="p-2 md:p-4 max-w-[100vw] md:max-w-none" style={{boxSizing:'border-box'}}>
                                 <div className="rounded-2xl border border-slate-200/80 bg-white p-2.5 md:p-4 space-y-3 w-full box-border" dir="rtl">
                                   <div className="flex flex-wrap items-start justify-between gap-2">
                                     <div className="text-right">
@@ -1279,7 +1282,6 @@ export default function OrdersTable({
                 })}
               </TableBody>
             </Table>
-          </div>
 
           {totalPages > 1 && (
             <div className="px-3 py-3 md:px-6 border-t border-slate-100 flex items-center justify-between" dir="rtl">

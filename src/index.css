@@ -86,3 +86,34 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .orders-table-scroll {
+    -webkit-overflow-scrolling: touch;
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+
+  .orders-table-sticky-col {
+    background-color: #fff;
+  }
+
+  thead .orders-table-sticky-col {
+    background-color: rgb(248 250 252);
+  }
+
+  @media (hover: none) and (pointer: coarse) {
+    .orders-table-sticky-col {
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+    }
+
+    .orders-table-data-row:hover {
+      background-color: transparent !important;
+    }
+
+    .orders-table-data-row:hover > .orders-table-sticky-col {
+      background-color: #fff !important;
+    }
+  }
+}
