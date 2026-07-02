@@ -13,6 +13,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -148,6 +149,7 @@ export default function OrdersTable({
   const [invoiceUnpaidWarningOrder, setInvoiceUnpaidWarningOrder] = useState(null);
   const [resendInvoiceOrder, setResendInvoiceOrder] = useState(null);
   const [resendInvoiceMethod, setResendInvoiceMethod] = useState("email");
+  const [resendInvoiceDocId, setResendInvoiceDocId] = useState(null);
   const [assignOrderState, setAssignOrderState] = useState(null);
   const [pendingAssignEmployeeId, setPendingAssignEmployeeId] = useState("");
   const [partialPayOrder, setPartialPayOrder] = useState(null);
@@ -347,6 +349,47 @@ export default function OrdersTable({
     const latestDoc = docs[docs.length - 1];
     const docNumber = latestDoc?.docNumber || latestDoc?.docId || "";
     const docUrl = latestDoc?.url || "";
+    const sizeClass = compact ? "h-6 w-6" : "h-7 w-7";
+    const iconClass = compact ? "h-3.5 w-3.5" : "h-4 w-4";
+
+    if (docs.length > 1) {
+      return (
+        <DropdownMenu>
+          <TooltipProvider delayDuration={120}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={(event) => event.stopPropagation()}
+                    className={`relative inline-flex items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-50 ${sizeClass}`}
+                    aria-label={`${docs.length} חשבוניות`}
+                  >
+                    <FileText className={iconClass} />
+                    <span className="absolute -top-1 -left-1 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-emerald-600 px-0.5 text-[9px] font-bold leading-none text-white">
+                      {docs.length}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="top" dir="rtl">{`${docs.length} חשבוניות קיימות`}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <DropdownMenuContent align="start" dir="rtl" onClick={(event) => event.stopPropagation()}>
+            {[...docs].reverse().map((doc) => (
+              <DropdownMenuItem
+                key={doc.docId || doc.docNumber}
+                disabled={!doc.url}
+                onClick={() => doc.url && window.open(doc.url, "_blank", "noopener,noreferrer")}
+              >
+                <FileText className="w-4 h-4" />
+                {formatInvoiceDocLabel(doc)}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
 
     return (
       <TooltipProvider delayDuration={120}>
@@ -361,12 +404,10 @@ export default function OrdersTable({
                 }
               }}
               disabled={!docUrl}
-              className={`inline-flex items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-50 disabled:cursor-default disabled:opacity-60 ${
-                compact ? "h-6 w-6" : "h-7 w-7"
-              }`}
+              className={`inline-flex items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-50 disabled:cursor-default disabled:opacity-60 ${sizeClass}`}
               aria-label={docNumber ? `חשבונית מס׳ ${docNumber}` : "חשבונית"}
             >
-              <FileText className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+              <FileText className={iconClass} />
             </button>
           </TooltipTrigger>
           <TooltipContent side="top" dir="rtl">
@@ -425,12 +466,21 @@ export default function OrdersTable({
   const handleConfirmResendInvoice = async () => {
     if (!resendInvoiceOrder || !onResendInvoice) return;
     const docs = getOrderInvoiceDocs(resendInvoiceOrder);
-    const latestDoc = docs[docs.length - 1];
-    if (!latestDoc) return;
+    const targetDoc = (resendInvoiceDocId != null
+      ? docs.find((d) => String(d.docId) === String(resendInvoiceDocId))
+      : null) || docs[docs.length - 1];
+    if (!targetDoc) return;
     await runRowAction("resendInvoice", resendInvoiceOrder, async () => {
-      await onResendInvoice(resendInvoiceOrder.rowId, latestDoc.docId, resendInvoiceMethod);
+      await onResendInvoice(resendInvoiceOrder.rowId, targetDoc.docId, resendInvoiceMethod);
       setResendInvoiceOrder(null);
+      setResendInvoiceDocId(null);
     });
+  };
+
+  const formatInvoiceDocLabel = (doc) => {
+    const number = doc?.docNumber || doc?.docId || "";
+    const date = doc?.createdAt ? moment(doc.createdAt).format("DD/MM/YY") : "";
+    return date ? `חשבונית מס׳ ${number} — ${date}` : `חשבונית מס׳ ${number}`;
   };
 
   const renderPaidAmountCell = (order) => {
@@ -673,7 +723,7 @@ export default function OrdersTable({
                                         <FileText className="w-4 h-4" />
                                         הפקת חשבונית
                                       </DropdownMenuItem>
-                                    ) : (
+                                    ) : docs.length === 1 ? (
                                       <>
                                         <DropdownMenuItem
                                           onClick={() => {
@@ -688,12 +738,49 @@ export default function OrdersTable({
                                           disabled={isBusy || isError}
                                           onClick={() => {
                                             setResendInvoiceOrder(order);
+                                            setResendInvoiceDocId(docs[0]?.docId ?? null);
                                             setResendInvoiceMethod("email");
                                           }}
                                         >
                                           <Send className="w-4 h-4" />
                                           שליחה חוזרת של חשבונית
                                         </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          disabled={isBusy || isError}
+                                          onClick={() => openInvoiceDialog(order)}
+                                        >
+                                          <FileText className="w-4 h-4" />
+                                          הפקת חשבונית נוספת
+                                        </DropdownMenuItem>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <DropdownMenuLabel className="text-xs text-slate-400">צפייה / הורדה</DropdownMenuLabel>
+                                        {[...docs].reverse().map((doc) => (
+                                          <DropdownMenuItem
+                                            key={`view-${doc.docId || doc.docNumber}`}
+                                            disabled={!doc.url}
+                                            onClick={() => doc.url && window.open(doc.url, "_blank")}
+                                          >
+                                            <Download className="w-4 h-4" />
+                                            {formatInvoiceDocLabel(doc)}
+                                          </DropdownMenuItem>
+                                        ))}
+                                        <DropdownMenuLabel className="text-xs text-slate-400">שליחה חוזרת</DropdownMenuLabel>
+                                        {[...docs].reverse().map((doc) => (
+                                          <DropdownMenuItem
+                                            key={`resend-${doc.docId || doc.docNumber}`}
+                                            disabled={isBusy || isError}
+                                            onClick={() => {
+                                              setResendInvoiceOrder(order);
+                                              setResendInvoiceDocId(doc.docId ?? null);
+                                              setResendInvoiceMethod("email");
+                                            }}
+                                          >
+                                            <Send className="w-4 h-4" />
+                                            {formatInvoiceDocLabel(doc)}
+                                          </DropdownMenuItem>
+                                        ))}
                                         <DropdownMenuItem
                                           disabled={isBusy || isError}
                                           onClick={() => openInvoiceDialog(order)}
@@ -915,7 +1002,7 @@ export default function OrdersTable({
                                                     <FileText className="w-4 h-4" />
                                                     הפקת חשבונית
                                                   </DropdownMenuItem>
-                                                ) : (
+                                                ) : docs.length === 1 ? (
                                                   <>
                                                     <DropdownMenuItem
                                                       onClick={() => {
@@ -930,12 +1017,49 @@ export default function OrdersTable({
                                                       disabled={isBusy || isError}
                                                       onClick={() => {
                                                         setResendInvoiceOrder(order);
+                                                        setResendInvoiceDocId(docs[0]?.docId ?? null);
                                                         setResendInvoiceMethod("email");
                                                       }}
                                                     >
                                                       <Send className="w-4 h-4" />
                                                       שליחה חוזרת של חשבונית
                                                     </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                      disabled={isBusy || isError}
+                                                      onClick={() => openInvoiceDialog(order)}
+                                                    >
+                                                      <FileText className="w-4 h-4" />
+                                                      הפקת חשבונית נוספת
+                                                    </DropdownMenuItem>
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <DropdownMenuLabel className="text-xs text-slate-400">צפייה / הורדה</DropdownMenuLabel>
+                                                    {[...docs].reverse().map((doc) => (
+                                                      <DropdownMenuItem
+                                                        key={`view-${doc.docId || doc.docNumber}`}
+                                                        disabled={!doc.url}
+                                                        onClick={() => doc.url && window.open(doc.url, "_blank")}
+                                                      >
+                                                        <Download className="w-4 h-4" />
+                                                        {formatInvoiceDocLabel(doc)}
+                                                      </DropdownMenuItem>
+                                                    ))}
+                                                    <DropdownMenuLabel className="text-xs text-slate-400">שליחה חוזרת</DropdownMenuLabel>
+                                                    {[...docs].reverse().map((doc) => (
+                                                      <DropdownMenuItem
+                                                        key={`resend-${doc.docId || doc.docNumber}`}
+                                                        disabled={isBusy || isError}
+                                                        onClick={() => {
+                                                          setResendInvoiceOrder(order);
+                                                          setResendInvoiceDocId(doc.docId ?? null);
+                                                          setResendInvoiceMethod("email");
+                                                        }}
+                                                      >
+                                                        <Send className="w-4 h-4" />
+                                                        {formatInvoiceDocLabel(doc)}
+                                                      </DropdownMenuItem>
+                                                    ))}
                                                     <DropdownMenuItem
                                                       disabled={isBusy || isError}
                                                       onClick={() => openInvoiceDialog(order)}
@@ -1804,13 +1928,25 @@ export default function OrdersTable({
       {/* Resend Invoice Dialog */}
       <Dialog
         open={Boolean(resendInvoiceOrder)}
-        onOpenChange={(open) => !open && busyAction.type !== "resendInvoice" && setResendInvoiceOrder(null)}
+        onOpenChange={(open) => {
+          if (!open && busyAction.type !== "resendInvoice") {
+            setResendInvoiceOrder(null);
+            setResendInvoiceDocId(null);
+          }
+        }}
       >
         <DialogContent dir="rtl" className={TOP_DIALOG_CONTENT_CLASSNAME}>
           <DialogHeader className="text-right">
             <DialogTitle className="text-right">שליחה חוזרת של חשבונית</DialogTitle>
             <DialogDescription className="text-right leading-relaxed">
-              בחרי את אמצעי המשלוח לשליחה חוזרת של החשבונית עבור {resendInvoiceOrder?.customerName || "הלקוח/ה"}.
+              {(() => {
+                const docs = resendInvoiceOrder ? getOrderInvoiceDocs(resendInvoiceOrder) : [];
+                const targetDoc = (resendInvoiceDocId != null
+                  ? docs.find((d) => String(d.docId) === String(resendInvoiceDocId))
+                  : null) || docs[docs.length - 1];
+                const docLabel = targetDoc ? `(${formatInvoiceDocLabel(targetDoc)}) ` : "";
+                return `בחרי את אמצעי המשלוח לשליחה חוזרת של החשבונית ${docLabel}עבור ${resendInvoiceOrder?.customerName || "הלקוח/ה"}.`;
+              })()}
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-2">
