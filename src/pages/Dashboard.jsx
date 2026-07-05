@@ -33,6 +33,7 @@ import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
 
 const DASHBOARD_ORDERS_REFRESH_KEY = "twk_dashboard_orders_last_refresh";
 const CARDCOM_PHONE_PAYMENT_METHOD = "קארדקום טלפונית";
+const EXCLUSIVE_PRODUCT_ID = "6d11d520-c010-552f-a976-b898ce21feda";
 
 function readSessionRefresh(key) {
   if (typeof window === "undefined") return "";
@@ -164,6 +165,21 @@ export default function Dashboard() {
     [selectedProducts]
   );
 
+  const hasExclusiveProduct = useMemo(
+    () => selectedProducts.some(p => p.id === EXCLUSIVE_PRODUCT_ID),
+    [selectedProducts]
+  );
+
+  const handleSetSelectedProducts = useCallback((updaterOrValue) => {
+    setSelectedProducts(prev => {
+      const next = typeof updaterOrValue === "function" ? updaterOrValue(prev) : updaterOrValue;
+      if (next.some(p => p.id === EXCLUSIVE_PRODUCT_ID) && next.length > 1) {
+        return next.filter(p => p.id === EXCLUSIVE_PRODUCT_ID);
+      }
+      return next;
+    });
+  }, []);
+
   useScrollToTopOnOpen(Boolean(createdOrderState));
 
   const loadOrders = useCallback(async () => {
@@ -252,6 +268,12 @@ export default function Dashboard() {
       return new Set(creatorOptions.map((creator) => creator.id));
     });
   }, [canViewOthers, creatorOptions]);
+
+  useEffect(() => {
+    if (hasExclusiveProduct && paymentTag === "ביט") {
+      setPaymentTag("");
+    }
+  }, [hasExclusiveProduct, paymentTag]);
 
   usePostMessageListener('ORDER_STATUS_UPDATED', (payload) => {
     setOrders(prev => prev.map(o =>
@@ -949,7 +971,7 @@ export default function Dashboard() {
           <ProductSelector
             isDemo={isDemo}
             selectedProducts={selectedProducts}
-            setSelectedProducts={setSelectedProducts}
+            setSelectedProducts={handleSetSelectedProducts}
           />
 
           {paymentStatus === "paid_partial" && (
@@ -1279,7 +1301,9 @@ export default function Dashboard() {
                     <Label className="text-sm font-medium text-slate-700">אמצעי תשלום</Label>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {["ביט", "פייבוקס", "הוראת קבע", "העברה בנקאית", "קארדקום טלפונית", "שולם דרך וויקס"].map(tag => (
+                    {["ביט", "פייבוקס", "הוראת קבע", "העברה בנקאית", "קארדקום טלפונית", "שולם דרך וויקס"]
+                      .filter(tag => !(hasExclusiveProduct && tag === "ביט"))
+                      .map(tag => (
                       <button
                         key={tag}
                         type="button"
