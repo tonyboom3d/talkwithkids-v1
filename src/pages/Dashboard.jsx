@@ -28,11 +28,13 @@ import { useAuth } from "@/lib/IframeAuthContext";
 import { usePostMessage, usePostMessageListener } from "@/hooks/usePostMessage";
 import { useScrollToTopOnOpen } from "@/hooks/useScrollToTopOnOpen";
 import { buildPublicOrderUrl } from "@/utils/dashboardOrders";
+import { isValidIsraeliPhone, normalizeIsraeliPhone } from "@/utils/phoneUtils";
 import { buildCreatorOptions, filterOrdersByCreators } from "@/utils/orderCreatorFilter";
 import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
 
 const DASHBOARD_ORDERS_REFRESH_KEY = "twk_dashboard_orders_last_refresh";
 const CARDCOM_PHONE_PAYMENT_METHOD = "קארדקום טלפונית";
+const BANK_TRANSFER_PAYMENT_METHOD = "העברה בנקאית";
 const EXCLUSIVE_PRODUCT_ID = "6d11d520-c010-552f-a976-b898ce21feda";
 
 function readSessionRefresh(key) {
@@ -93,10 +95,6 @@ function parseCustomPayAmount(value, subtotal) {
   };
 }
 
-function isValidIsraeliPhone(phone) {
-  return /^05\d{8}$/.test(String(phone || "").trim());
-}
-
 function isValidInternationalPhone(phone) {
   const digits = String(phone || "").replace(/\D/g, "");
   return digits.length >= 8 && digits.length <= 15;
@@ -141,8 +139,6 @@ export default function Dashboard() {
   const [validationError, setValidationError] = useState("");
   const [createdOrderState, setCreatedOrderState] = useState(null);
   const [isConfirmingSend, setIsConfirmingSend] = useState(false);
-  const [partialInvoicePrompt, setPartialInvoicePrompt] = useState(null);
-  const [isGeneratingPartialInvoice, setIsGeneratingPartialInvoice] = useState(false);
   const [includeAllCreators, setIncludeAllCreators] = useState(true);
   const [selectedCreatorKeys, setSelectedCreatorKeys] = useState(() => new Set());
   const [showTransactionPicker, setShowTransactionPicker] = useState(false);
@@ -292,19 +288,24 @@ export default function Dashboard() {
       showError("יש למלא שם מלא הכולל לפחות שם פרטי ושם משפחה");
       return;
     }
-    const phoneTrim = String(customerData.phone || "").trim();
+    const phoneTrim = allowNonIsraeliPhone
+      ? String(customerData.phone || "").trim()
+      : normalizeIsraeliPhone(customerData.phone);
     if (!phoneTrim) {
       showError("יש למלא מספר טלפון");
       return;
     }
     if (!allowNonIsraeliPhone) {
-      if (!isValidIsraeliPhone(customerData.phone)) {
+      if (!isValidIsraeliPhone(phoneTrim)) {
         showError("יש למלא מספר פלאפון ישראלי תקין שמתחיל ב-05 ומכיל 10 ספרות");
         return;
       }
     } else if (!isValidInternationalPhone(customerData.phone)) {
       showError("יש למלא מספר טלפון בינלאומי תקין (8–15 ספרות)");
       return;
+    }
+    if (!allowNonIsraeliPhone && customerData.phone !== phoneTrim) {
+      setCustomerData((prev) => ({ ...prev, phone: phoneTrim }));
     }
     if (selectedProducts.length === 0) {
       showError("יש לבחור לפחות מוצר אחד");
@@ -441,21 +442,28 @@ export default function Dashboard() {
         orderUrl: result.orderUrl || buildPublicOrderUrl(result.dynamicLinkId || ""),
         isDemo: false,
       };
-      const shouldPromptPartialInvoice = (
+      const partialInvoiceAmount = Number(partialPaidAmount);
+      const partialInvoiceMethod = paymentTag;
+      const shouldAutoGeneratePartialInvoice = (
         paymentStatus === "paid_partial" &&
-        paymentTag &&
-        paymentTag !== CARDCOM_PHONE_PAYMENT_METHOD
+        partialInvoiceMethod &&
+        partialInvoiceMethod !== CARDCOM_PHONE_PAYMENT_METHOD &&
+        partialInvoiceMethod !== BANK_TRANSFER_PAYMENT_METHOD
       );
       resetForm();
-      if (shouldPromptPartialInvoice) {
-        setPartialInvoicePrompt({
-          recordId: result.recordId,
-          amount: Number(partialPaidAmount),
-          method: paymentTag,
-          nextOrderState: nextCreatedOrderState,
-        });
-      } else {
-        setCreatedOrderState(nextCreatedOrderState);
+      setCreatedOrderState(nextCreatedOrderState);
+      if (shouldAutoGeneratePartialInvoice) {
+        try {
+          await request("GENERATE_PARTIAL_INVOICE", {
+            recordId: result.recordId,
+            amountPaid: partialInvoiceAmount,
+            paymentMethod: partialInvoiceMethod,
+          });
+          toast.success("חשבונית הופקה ונשלחה ב-SMS ללקוח");
+        } catch (invoiceErr) {
+          console.error("[UI] Auto partial invoice failed:", invoiceErr);
+          toast.error(invoiceErr.message || "שגיאה בהפקת חשבונית");
+        }
       }
       loadOrders();
     } catch (err) {
@@ -699,35 +707,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleConfirmPartialInvoicePrompt = async (shouldGenerate) => {
-    const prompt = partialInvoicePrompt;
-    if (!prompt) return;
-
-    if (shouldGenerate) {
-      setIsGeneratingPartialInvoice(true);
-      try {
-        if (isDemo) {
-          toast.success("(מצב דמו) חשבונית הופקה ונשלחה ב-SMS");
-        } else {
-          await request("GENERATE_PARTIAL_INVOICE", {
-            recordId: prompt.recordId,
-            amountPaid: prompt.amount,
-            paymentMethod: prompt.method,
-          });
-          toast.success("חשבונית הופקה ונשלחה ב-SMS ללקוח");
-          loadOrders();
-        }
-      } catch (err) {
-        toast.error(err.message || "שגיאה בהפקת חשבונית");
-      } finally {
-        setIsGeneratingPartialInvoice(false);
-      }
-    }
-
-    setPartialInvoicePrompt(null);
-    setCreatedOrderState(prompt.nextOrderState);
-  };
-
   const handleResendInvoice = async (orderId, docId, method) => {
     if (isDemo) {
       toast.success("(מצב דמו) חשבונית נשלחה מחדש");
@@ -856,54 +835,6 @@ export default function Dashboard() {
               disabled={isConfirmingSend}
             >
               סגירה ללא שליחה
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={Boolean(partialInvoicePrompt)}
-        onOpenChange={(open) => {
-          if (!open && !isGeneratingPartialInvoice) handleConfirmPartialInvoicePrompt(false);
-        }}
-      >
-        <DialogContent
-          dir="rtl"
-          className="max-w-md top-4 left-[50%] z-[130] translate-x-[-50%] translate-y-0 sm:top-6 [&>button]:hidden"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-        >
-          <DialogHeader className="text-right">
-            <DialogTitle className="text-right">הפקת חשבונית עבור התשלום שהתקבל</DialogTitle>
-            <DialogDescription className="text-right leading-relaxed">
-              {`להפיק חשבונית מס קבלה עבור התשלום שהתקבל (₪${(partialInvoicePrompt?.amount || 0).toLocaleString("he-IL")}) באמצעות ${partialInvoicePrompt?.method || ""}?`}
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="gap-2 sm:justify-start sm:space-x-0">
-            <Button
-              type="button"
-              className="bg-slate-900 hover:bg-slate-800 text-white"
-              onClick={() => handleConfirmPartialInvoicePrompt(true)}
-              disabled={isGeneratingPartialInvoice}
-              autoFocus
-            >
-              {isGeneratingPartialInvoice ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  מפיק חשבונית...
-                </span>
-              ) : (
-                "כן, הפק ושלח ב-SMS"
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => handleConfirmPartialInvoicePrompt(false)}
-              disabled={isGeneratingPartialInvoice}
-            >
-              לא כעת
             </Button>
           </DialogFooter>
         </DialogContent>

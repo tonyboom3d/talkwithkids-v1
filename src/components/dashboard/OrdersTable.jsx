@@ -68,6 +68,7 @@ const PAGE_SIZE = 8;
 const TOP_DIALOG_CONTENT_CLASSNAME =
   "max-w-md top-4 left-[50%] max-h-[min(90vh,calc(100dvh-1rem))] translate-x-[-50%] translate-y-0 overflow-y-auto sm:top-6";
 const PAYMENT_METHOD_OPTIONS = ["ביט", "פייבוקס", "הוראת קבע", "העברה בנקאית", "קארדקום טלפונית", "שולם דרך וויקס"];
+const BANK_TRANSFER_PAYMENT_METHOD = "העברה בנקאית";
 
 function timelineDotClass(action) {
   switch (action) {
@@ -318,7 +319,7 @@ export default function OrdersTable({
         amountPaid: amount,
         paymentMethod: partialPayMethod,
         notes: partialPayNotes,
-        generateInvoice: partialPayInvoice,
+        generateInvoice: partialPayInvoice && partialPayMethod !== BANK_TRANSFER_PAYMENT_METHOD,
       });
       setPartialPayOrder(null);
     });
@@ -1704,7 +1705,13 @@ export default function OrdersTable({
                   <button
                     key={method}
                     type="button"
-                    onClick={() => { setPartialPayMethod(method); setPartialPayError(""); }}
+                    onClick={() => {
+                      setPartialPayMethod(method);
+                      setPartialPayError("");
+                      if (method === BANK_TRANSFER_PAYMENT_METHOD) {
+                        setPartialPayInvoice(false);
+                      }
+                    }}
                     disabled={busyAction.type === "partialPay"}
                     className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
                       partialPayMethod === method
@@ -1730,16 +1737,18 @@ export default function OrdersTable({
               />
             </div>
 
-            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={partialPayInvoice}
-                onChange={(e) => setPartialPayInvoice(e.target.checked)}
-                disabled={busyAction.type === "partialPay"}
-                className="rounded border-slate-300"
-              />
-              הפקת חשבונית עבור תשלום זה
-            </label>
+            {partialPayMethod !== BANK_TRANSFER_PAYMENT_METHOD && (
+              <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={partialPayInvoice}
+                  onChange={(e) => setPartialPayInvoice(e.target.checked)}
+                  disabled={busyAction.type === "partialPay"}
+                  className="rounded border-slate-300"
+                />
+                הפקת חשבונית עבור תשלום זה
+              </label>
+            )}
 
             {partialPayError && (
               <p className="text-sm text-red-600 text-right">{partialPayError}</p>

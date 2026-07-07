@@ -71,25 +71,6 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
     setIsOpen(false);
   };
 
-  const updateUnitPrice = (productId, rawValue) => {
-    setSelectedProducts(prev => prev.map(p => {
-      if (p.id !== productId) return p;
-      const parsed = rawValue === '' ? '' : Number(rawValue);
-      return { ...p, price: parsed };
-    }));
-  };
-
-  const commitUnitPrice = (productId) => {
-    setSelectedProducts(prev => prev.map(p => {
-      if (p.id !== productId) return p;
-      const catalogPrice = Number(p.catalogPrice) || 0;
-      let price = Number(p.price);
-      if (!Number.isFinite(price) || price < 0) price = 0;
-      if (price > catalogPrice) price = catalogPrice;
-      return { ...p, price };
-    }));
-  };
-
   const updateQuantity = (productId, delta) => {
     setSelectedProducts(prev => {
       return prev.map(p => {
@@ -227,10 +208,8 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
             className="space-y-2 overflow-hidden"
           >
             {selectedProducts.map((product) => {
-              const catalogPrice = Number(product.catalogPrice) || 0;
-              const effectivePrice = Number.isFinite(Number(product.price)) ? Number(product.price) : catalogPrice;
-              const isPriceOverridden = effectivePrice !== catalogPrice;
-              const lineTotal = (Number.isFinite(Number(product.price)) ? Number(product.price) : 0) * product.quantity;
+              const unitPrice = Number.isFinite(Number(product.price)) ? Number(product.price) : 0;
+              const lineTotal = unitPrice * product.quantity;
 
               return (
                 <motion.div
@@ -241,11 +220,7 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                   className="space-y-1"
                 >
                   <div
-                    className={`flex flex-col gap-3 rounded-lg px-3 py-2.5 border sm:flex-row sm:items-center sm:gap-3 ${
-                      isPriceOverridden
-                        ? "bg-amber-50 border-amber-200"
-                        : "bg-slate-50 border-slate-100"
-                    }`}
+                    className="flex flex-col gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3"
                     dir="rtl"
                   >
                     <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -268,59 +243,24 @@ export default function ProductSelector({ isDemo, selectedProducts, setSelectedP
                       </button>
                     </div>
 
-                    <div
-                      className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-t border-slate-200/60 pt-2 sm:flex-nowrap sm:border-0 sm:pt-0"
-                      dir="ltr"
-                    >
-                      <div className="flex min-w-0 flex-col items-end gap-1">
-                        <span className="w-full text-right text-xs text-slate-500" dir="rtl">
-                          מחיר ליחידה
-                          {isPriceOverridden && (
-                            <span className="mr-1 font-medium text-amber-600">(מחיר מותאם)</span>
-                          )}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            min="0"
-                            max={catalogPrice}
-                            step="0.01"
-                            value={product.price === "" ? "" : product.price}
-                            onChange={(e) => updateUnitPrice(product.id, e.target.value)}
-                            onBlur={() => commitUnitPrice(product.id)}
-                            className={`h-8 w-[5.5rem] max-w-[40vw] text-sm tabular-nums sm:w-24 ${
-                              isPriceOverridden ? "border-amber-300 bg-white" : "border-slate-200"
-                            } text-right`}
-                            dir="ltr"
-                          />
-                          <span className="shrink-0 text-sm text-slate-500">₪</span>
-                        </div>
-                        {catalogPrice > 0 && (
-                          <span className="text-[10px] text-slate-400 tabular-nums" dir="rtl">
-                            מחיר קטלוג: ₪{catalogPrice.toLocaleString("he-IL")}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(product.id, 1)}
-                          className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white transition-colors hover:bg-slate-100"
-                        >
-                          <Plus className="h-4 w-4 text-slate-600" />
-                        </button>
-                        <span className="w-7 text-center text-base font-medium tabular-nums text-slate-700">
-                          {product.quantity}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(product.id, -1)}
-                          className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white transition-colors hover:bg-slate-100"
-                        >
-                          <Minus className="h-4 w-4 text-slate-600" />
-                        </button>
-                      </div>
+                    <div className="flex shrink-0 items-center justify-end gap-1.5 border-t border-slate-200/60 pt-2 sm:border-0 sm:pt-0">
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(product.id, 1)}
+                        className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white transition-colors hover:bg-slate-100"
+                      >
+                        <Plus className="h-4 w-4 text-slate-600" />
+                      </button>
+                      <span className="w-7 text-center text-base font-medium tabular-nums text-slate-700">
+                        {product.quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(product.id, -1)}
+                        className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white transition-colors hover:bg-slate-100"
+                      >
+                        <Minus className="h-4 w-4 text-slate-600" />
+                      </button>
                     </div>
                   </div>
                 </motion.div>

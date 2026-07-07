@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { User } from "lucide-react";
+import { formatIsraeliPhoneInput, normalizeIsraeliPhone } from "@/utils/phoneUtils";
 
 function PaymentStatusField({ paymentStatus, setPaymentStatus }) {
   return (
@@ -45,10 +46,6 @@ const fadeIn = {
   transition: { duration: 0.25, ease: "easeOut" }
 };
 
-function sanitizeIsraeliPhoneInput(value) {
-  return String(value || "").replace(/\D/g, "").slice(0, 10);
-}
-
 /** מספר בינלאומי: אופציונלי + בתחילה ואז ספרות בלבד */
 function sanitizeInternationalPhoneInput(value) {
   const s = String(value || "").trim();
@@ -67,8 +64,16 @@ export default function CustomerSection({
   setAllowNonIsraeliPhone,
 }) {
   const onPhoneChange = (raw) => {
-    const v = allowNonIsraeliPhone ? sanitizeInternationalPhoneInput(raw) : sanitizeIsraeliPhoneInput(raw);
+    const v = allowNonIsraeliPhone ? sanitizeInternationalPhoneInput(raw) : formatIsraeliPhoneInput(raw);
     setCustomerData(prev => ({ ...prev, phone: v }));
+  };
+
+  const onPhoneBlur = () => {
+    if (allowNonIsraeliPhone) return;
+    setCustomerData((prev) => ({
+      ...prev,
+      phone: normalizeIsraeliPhone(prev.phone),
+    }));
   };
 
   const onInternationalToggle = (checked) => {
@@ -77,7 +82,7 @@ export default function CustomerSection({
       ...prev,
       phone: checked
         ? sanitizeInternationalPhoneInput(prev.phone)
-        : sanitizeIsraeliPhoneInput(prev.phone),
+        : normalizeIsraeliPhone(prev.phone),
     }));
   };
 
@@ -98,6 +103,7 @@ export default function CustomerSection({
               id="customer-phone-new"
               value={customerData.phone}
               onChange={e => onPhoneChange(e.target.value)}
+              onBlur={onPhoneBlur}
               placeholder={allowNonIsraeliPhone ? "+972..." : "05XXXXXXXX"}
               inputMode={allowNonIsraeliPhone ? "tel" : "numeric"}
               maxLength={allowNonIsraeliPhone ? 20 : 10}
