@@ -68,7 +68,7 @@ const PAGE_SIZE = 8;
 const TOP_DIALOG_CONTENT_CLASSNAME =
   "max-w-md top-4 left-[50%] max-h-[min(90vh,calc(100dvh-1rem))] translate-x-[-50%] translate-y-0 overflow-y-auto sm:top-6";
 const PAYMENT_METHOD_OPTIONS = ["ביט", "פייבוקס", "הוראת קבע", "העברה בנקאית", "קארדקום טלפונית", "שולם דרך וויקס"];
-const BANK_TRANSFER_PAYMENT_METHOD = "העברה בנקאית";
+const STANDING_ORDER_PAYMENT_METHOD = "הוראת קבע";
 
 function timelineDotClass(action) {
   switch (action) {
@@ -319,7 +319,7 @@ export default function OrdersTable({
         amountPaid: amount,
         paymentMethod: partialPayMethod,
         notes: partialPayNotes,
-        generateInvoice: partialPayInvoice && partialPayMethod !== BANK_TRANSFER_PAYMENT_METHOD,
+        generateInvoice: partialPayInvoice && partialPayMethod !== STANDING_ORDER_PAYMENT_METHOD,
       });
       setPartialPayOrder(null);
     });
@@ -1708,7 +1708,7 @@ export default function OrdersTable({
                     onClick={() => {
                       setPartialPayMethod(method);
                       setPartialPayError("");
-                      if (method === BANK_TRANSFER_PAYMENT_METHOD) {
+                      if (method === STANDING_ORDER_PAYMENT_METHOD) {
                         setPartialPayInvoice(false);
                       }
                     }}
@@ -1737,7 +1737,7 @@ export default function OrdersTable({
               />
             </div>
 
-            {partialPayMethod !== BANK_TRANSFER_PAYMENT_METHOD && (
+            {partialPayMethod !== STANDING_ORDER_PAYMENT_METHOD && (
               <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
                 <input
                   type="checkbox"

@@ -106,7 +106,7 @@ export default function CustomerSection({
               onBlur={onPhoneBlur}
               placeholder={allowNonIsraeliPhone ? "+972..." : "05XXXXXXXX"}
               inputMode={allowNonIsraeliPhone ? "tel" : "numeric"}
-              maxLength={allowNonIsraeliPhone ? 20 : 10}
+              maxLength={20}
               className="h-10 text-sm border-slate-200 focus:border-slate-400 text-right"
               dir="ltr"
             />
