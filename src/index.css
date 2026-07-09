@@ -103,9 +103,13 @@
   }
 
   @media (hover: none) and (pointer: coarse) {
+    /* Sticky + horizontal scroll causes customer-name text flicker on mobile WebKit */
     .orders-table-sticky-col {
-      -webkit-backface-visibility: hidden;
-      backface-visibility: hidden;
+      position: static !important;
+      right: auto !important;
+      z-index: auto !important;
+      box-shadow: none !important;
+      max-width: none !important;
     }
 
     .orders-table-data-row:hover {

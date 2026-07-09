@@ -858,7 +858,8 @@ export default function Dashboard() {
             <p className="text-sm text-slate-400 mt-0.5">יצירת קישורי תשלום ומעקב הזמנות</p>
           </div>
           <div className="flex items-center gap-2">
-            {canGenerateInvoices && (
+            {/* כפתור "הפקת חשבונית" מוסתר כרגע — לא נדרש, ייתכן שנשתמש בו בעתיד */}
+            {false && canGenerateInvoices && (
               <Button
                 variant="outline"
                 size="sm"

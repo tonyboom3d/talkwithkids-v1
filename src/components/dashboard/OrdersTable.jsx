@@ -555,8 +555,8 @@ export default function OrdersTable({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.35, delay: 0.2 }}
       className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-visible"
     >
