@@ -35,6 +35,12 @@ import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
 const DASHBOARD_ORDERS_REFRESH_KEY = "twk_dashboard_orders_last_refresh";
 const CARDCOM_PHONE_PAYMENT_METHOD = "קארדקום טלפונית";
 const STANDING_ORDER_PAYMENT_METHOD = "הוראת קבע";
+const CASH_PAYMENT_METHOD = "מזומן";
+const SKIP_AUTO_INVOICE_PAYMENT_METHODS = new Set([
+  CARDCOM_PHONE_PAYMENT_METHOD,
+  STANDING_ORDER_PAYMENT_METHOD,
+  CASH_PAYMENT_METHOD,
+]);
 const EXCLUSIVE_PRODUCT_ID = "6d11d520-c010-552f-a976-b898ce21feda";
 
 function readSessionRefresh(key) {
@@ -447,8 +453,7 @@ export default function Dashboard() {
       const shouldAutoGeneratePartialInvoice = (
         paymentStatus === "paid_partial" &&
         partialInvoiceMethod &&
-        partialInvoiceMethod !== CARDCOM_PHONE_PAYMENT_METHOD &&
-        partialInvoiceMethod !== STANDING_ORDER_PAYMENT_METHOD
+        !SKIP_AUTO_INVOICE_PAYMENT_METHODS.has(partialInvoiceMethod)
       );
       resetForm();
       setCreatedOrderState(nextCreatedOrderState);
@@ -1232,7 +1237,7 @@ export default function Dashboard() {
                     <Label className="text-sm font-medium text-slate-700">אמצעי תשלום</Label>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {["ביט", "פייבוקס", "הוראת קבע", "העברה בנקאית", "קארדקום טלפונית", "שולם דרך וויקס"]
+                    {["ביט", "פייבוקס", "הוראת קבע", "העברה בנקאית", "קארדקום טלפונית", "מזומן", "שולם דרך וויקס"]
                       .filter(tag => !(hasExclusiveProduct && tag === "ביט"))
                       .map(tag => (
                       <button
