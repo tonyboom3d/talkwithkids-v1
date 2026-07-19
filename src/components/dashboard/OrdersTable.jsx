@@ -67,8 +67,18 @@ import EmployeeAssignField from "./EmployeeAssignField";
 const PAGE_SIZE = 8;
 const TOP_DIALOG_CONTENT_CLASSNAME =
   "max-w-md top-4 left-[50%] max-h-[min(90vh,calc(100dvh-1rem))] translate-x-[-50%] translate-y-0 overflow-y-auto sm:top-6";
-const PAYMENT_METHOD_OPTIONS = ["ביט", "פייבוקס", "הוראת קבע", "העברה בנקאית", "קארדקום טלפונית", "שולם דרך וויקס"];
+const PAYMENT_METHOD_OPTIONS = ["ביט", "פייבוקס", "הוראת קבע", "העברה בנקאית", "קארדקום טלפונית", "מזומן", "שולם דרך וויקס"];
 const STANDING_ORDER_PAYMENT_METHOD = "הוראת קבע";
+const CARDCOM_PHONE_PAYMENT_METHOD = "קארדקום טלפונית";
+const CASH_PAYMENT_METHOD = "מזומן";
+const WIX_PAYMENT_METHOD = "שולם דרך וויקס";
+/** תואם ל-`shouldSkipInvoiceForPaymentMethod` ב-`src/backend/dashboardApi.jsw` */
+const SKIP_AUTO_INVOICE_PAYMENT_METHODS = new Set([
+  CARDCOM_PHONE_PAYMENT_METHOD,
+  STANDING_ORDER_PAYMENT_METHOD,
+  CASH_PAYMENT_METHOD,
+  WIX_PAYMENT_METHOD,
+]);
 
 function timelineDotClass(action) {
   switch (action) {
@@ -319,7 +329,7 @@ export default function OrdersTable({
         amountPaid: amount,
         paymentMethod: partialPayMethod,
         notes: partialPayNotes,
-        generateInvoice: partialPayInvoice && partialPayMethod !== STANDING_ORDER_PAYMENT_METHOD,
+        generateInvoice: partialPayInvoice && !SKIP_AUTO_INVOICE_PAYMENT_METHODS.has(partialPayMethod),
       });
       setPartialPayOrder(null);
     });
@@ -1708,7 +1718,7 @@ export default function OrdersTable({
                     onClick={() => {
                       setPartialPayMethod(method);
                       setPartialPayError("");
-                      if (method === STANDING_ORDER_PAYMENT_METHOD) {
+                      if (SKIP_AUTO_INVOICE_PAYMENT_METHODS.has(method)) {
                         setPartialPayInvoice(false);
                       }
                     }}
@@ -1737,7 +1747,7 @@ export default function OrdersTable({
               />
             </div>
 
-            {partialPayMethod !== STANDING_ORDER_PAYMENT_METHOD && (
+            {!SKIP_AUTO_INVOICE_PAYMENT_METHODS.has(partialPayMethod) && (
               <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
                 <input
                   type="checkbox"
