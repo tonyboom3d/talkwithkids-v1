@@ -342,7 +342,7 @@ export default function Dashboard() {
       showError("סכום ההזמנה לא יכול להיות שלילי");
       return;
     }
-    if (paymentStatus === "paid_partial") {
+    if (paymentStatus === "paid_partial" && total > 0) {
       const partialAmount = Number(partialPaidAmount);
       if (!String(partialPaidAmount).trim()) {
         showError("יש למלא כמה מתוך סכום ההזמנה כבר שולם");
@@ -439,7 +439,7 @@ export default function Dashboard() {
         orderChanges,
         paymentStatus,
         paymentTag: paymentStatus === 'paid' || paymentStatus === "paid_partial" ? paymentTag : '',
-        partialPayment: paymentStatus === "paid_partial"
+        partialPayment: paymentStatus === "paid_partial" && total > 0
           ? { amountPaid: Number(partialPaidAmount) }
           : null,
         actualPaidAmount: paymentStatus === "paid" && hasCustomPaidAmount
@@ -460,6 +460,7 @@ export default function Dashboard() {
       const partialInvoiceMethod = paymentTag;
       const shouldAutoGeneratePartialInvoice = (
         paymentStatus === "paid_partial" &&
+        total > 0 &&
         partialInvoiceMethod &&
         !SKIP_AUTO_INVOICE_PAYMENT_METHODS.has(partialInvoiceMethod)
       );
@@ -920,7 +921,7 @@ export default function Dashboard() {
             allowPriceEdit={paymentStatus === "paid_partial"}
           />
 
-          {paymentStatus === "paid_partial" && (
+          {paymentStatus === "paid_partial" && selectedProductsTotal > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -942,17 +943,10 @@ export default function Dashboard() {
                     placeholder="סכום ששולם"
                     className="h-10 text-right"
                     dir="ltr"
-                    disabled={selectedProductsTotal <= 0}
                   />
                   <span className="text-sm font-semibold text-slate-600">₪</span>
                 </div>
-                {selectedProductsTotal <= 0 && (
-                  <p className="text-xs text-orange-700">
-                    יש לבחור קודם לפחות מוצר אחד כדי להזין סכום ששולם.
-                  </p>
-                )}
                 {(() => {
-                  if (selectedProductsTotal <= 0) return null;
                   const partialAmount = Number(partialPaidAmount);
                   if (!Number.isFinite(partialAmount) || partialAmount <= 0 || partialAmount >= selectedProductsTotal) {
                     return (
