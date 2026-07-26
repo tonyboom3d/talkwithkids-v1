@@ -432,6 +432,7 @@ export default function Dashboard() {
           catalogPrice: Number.isFinite(Number(p.catalogPrice)) ? Number(p.catalogPrice) : Number(p.price) || 0,
           quantity: p.quantity,
           image: p.image,
+          productType: p.productType === 'digital' ? 'digital' : 'physical',
         })),
         coupon,
         existingCoupon,
