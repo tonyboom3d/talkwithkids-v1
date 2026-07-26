@@ -108,14 +108,17 @@ function isValidInternationalPhone(phone) {
   return digits.length >= 8 && digits.length <= 15;
 }
 
-/** מפרק שם מלא לשם פרטי ושם משפחה (לפחות שתי מילים) */
+/** מפרק שם לשם פרטי ושם משפחה (שם בודד מספיק) */
 function splitFullName(fullName) {
   const parts = String(fullName || "")
     .trim()
     .split(/\s+/)
     .filter(Boolean);
-  if (parts.length < 2) return null;
-  return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+  if (parts.length < 1) return null;
+  return {
+    firstName: parts[0],
+    lastName: parts.length > 1 ? parts.slice(1).join(" ") : "",
+  };
 }
 
 export default function Dashboard() {
@@ -300,7 +303,7 @@ export default function Dashboard() {
   const handleSubmit = async () => {
     const nameParts = splitFullName(customerData.firstName);
     if (!nameParts) {
-      showError("יש למלא שם מלא הכולל לפחות שם פרטי ושם משפחה");
+      showError("יש למלא שם");
       return;
     }
     const phoneTrim = allowNonIsraeliPhone
@@ -337,10 +340,6 @@ export default function Dashboard() {
     const total = selectedProductsTotal;
     if (total < 0) {
       showError("סכום ההזמנה לא יכול להיות שלילי");
-      return;
-    }
-    if (total === 0 && paymentStatus !== "paid") {
-      showError("מחיר ההזמנה חייב להיות גדול מ-0");
       return;
     }
     if (paymentStatus === "paid_partial") {

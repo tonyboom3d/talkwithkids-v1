@@ -124,12 +124,12 @@ export default function CustomerSection({
           <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
           <div className="w-full min-w-0 space-y-1.5">
             <Label className="text-xs text-slate-500 block text-right">
-              שם מלא<span className="text-red-400 mr-0.5">*</span>
+              שם<span className="text-red-400 mr-0.5">*</span>
             </Label>
             <Input
               value={customerData.firstName}
               onChange={e => setCustomerData(prev => ({ ...prev, firstName: e.target.value }))}
-              placeholder="שם פרטי ושם משפחה"
+              placeholder="שם הלקוח"
               className="h-10 w-full text-sm border-slate-200 focus:border-slate-400 text-right"
               dir="rtl"
             />
