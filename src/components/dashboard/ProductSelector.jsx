@@ -70,6 +70,7 @@ export default function ProductSelector({
         ...product,
         quantity: 1,
         price: unitPrice,
+        unitPrice,
         catalogPrice: unitPrice,
       }]);
     }
@@ -103,7 +104,7 @@ export default function ProductSelector({
       let price = Number(p.price);
       if (!Number.isFinite(price) || price < 0) price = 0;
       if (price > catalogPrice) price = catalogPrice;
-      return { ...p, price };
+      return { ...p, price, unitPrice: price };
     }));
   };
 

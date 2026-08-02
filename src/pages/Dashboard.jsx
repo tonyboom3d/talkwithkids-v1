@@ -425,15 +425,20 @@ export default function Dashboard() {
           phone: phoneTrim,
           contactId: null,
         },
-        products: selectedProducts.map(p => ({
-          id: p.id,
-          name: p.name,
-          price: Number.isFinite(Number(p.price)) ? Number(p.price) : 0,
-          catalogPrice: Number.isFinite(Number(p.catalogPrice)) ? Number(p.catalogPrice) : Number(p.price) || 0,
-          quantity: p.quantity,
-          image: p.image,
-          productType: p.productType === 'digital' ? 'digital' : 'physical',
-        })),
+        products: selectedProducts.map(p => {
+          const unitPrice = Number.isFinite(Number(p.price)) ? Number(p.price) : 0;
+          const catalogPrice = Number.isFinite(Number(p.catalogPrice)) ? Number(p.catalogPrice) : unitPrice;
+          return {
+            id: p.id,
+            name: p.name,
+            price: unitPrice,
+            unitPrice,
+            catalogPrice,
+            quantity: p.quantity,
+            image: p.image,
+            productType: p.productType === 'DIGITAL' ? 'DIGITAL' : 'PHYSICAL',
+          };
+        }),
         coupon,
         existingCoupon,
         notes,
