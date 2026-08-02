@@ -252,12 +252,16 @@ export default function Dashboard() {
       setSelectedStoreCoupon(null);
       setCouponValue("");
     }
-    // יציאה מ"שולמה חלקית" — מחזירים מחיר קטלוג (שדה "מחיר ליחידה" זמין רק שם)
-    if (paymentStatus !== "paid_partial") {
-      setSelectedProducts((prev) => prev.map((p) => ({
-        ...p,
-        price: Number.isFinite(Number(p.catalogPrice)) ? Number(p.catalogPrice) : Number(p.price) || 0,
-      })));
+    // יציאה מסטטוסי תשלום עם עריכת מחיר — מחזירים מחיר קטלוג
+    if (paymentStatus !== "paid_partial" && paymentStatus !== "paid") {
+      setSelectedProducts((prev) => prev.map((p) => {
+        const catalogPrice = Number.isFinite(Number(p.catalogPrice)) ? Number(p.catalogPrice) : Number(p.price) || 0;
+        return {
+          ...p,
+          price: catalogPrice,
+          unitPrice: catalogPrice,
+        };
+      }));
     }
   }, [paymentStatus]);
 
@@ -924,7 +928,7 @@ export default function Dashboard() {
             isDemo={isDemo}
             selectedProducts={selectedProducts}
             setSelectedProducts={handleSetSelectedProducts}
-            allowPriceEdit={paymentStatus === "paid_partial"}
+            allowPriceEdit={paymentStatus === "paid_partial" || paymentStatus === "paid"}
           />
 
           {paymentStatus === "paid_partial" && selectedProductsTotal > 0 && (
