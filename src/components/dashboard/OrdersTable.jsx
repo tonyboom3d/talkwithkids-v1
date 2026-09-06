@@ -167,7 +167,6 @@ export default function OrdersTable({
   const [partialPayAmount, setPartialPayAmount] = useState("");
   const [partialPayMethod, setPartialPayMethod] = useState("");
   const [partialPayNotes, setPartialPayNotes] = useState("");
-  const [partialPayInvoice, setPartialPayInvoice] = useState(false);
   const [partialPayError, setPartialPayError] = useState("");
 
   const normalizedOrders = useMemo(
@@ -301,7 +300,6 @@ export default function OrdersTable({
     setPartialPayAmount(String(remaining));
     setPartialPayMethod("");
     setPartialPayNotes("");
-    setPartialPayInvoice(false);
     setPartialPayError("");
   };
 
@@ -329,7 +327,7 @@ export default function OrdersTable({
         amountPaid: amount,
         paymentMethod: partialPayMethod,
         notes: partialPayNotes,
-        generateInvoice: partialPayInvoice && !SKIP_AUTO_INVOICE_PAYMENT_METHODS.has(partialPayMethod),
+        generateInvoice: !SKIP_AUTO_INVOICE_PAYMENT_METHODS.has(partialPayMethod),
       });
       setPartialPayOrder(null);
     });
@@ -1718,9 +1716,6 @@ export default function OrdersTable({
                     onClick={() => {
                       setPartialPayMethod(method);
                       setPartialPayError("");
-                      if (SKIP_AUTO_INVOICE_PAYMENT_METHODS.has(method)) {
-                        setPartialPayInvoice(false);
-                      }
                     }}
                     disabled={busyAction.type === "partialPay"}
                     className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
@@ -1746,19 +1741,6 @@ export default function OrdersTable({
                 placeholder="הערות נוספות (אופציונלי)"
               />
             </div>
-
-            {!SKIP_AUTO_INVOICE_PAYMENT_METHODS.has(partialPayMethod) && (
-              <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={partialPayInvoice}
-                  onChange={(e) => setPartialPayInvoice(e.target.checked)}
-                  disabled={busyAction.type === "partialPay"}
-                  className="rounded border-slate-300"
-                />
-                הפקת חשבונית עבור תשלום זה
-              </label>
-            )}
 
             {partialPayError && (
               <p className="text-sm text-red-600 text-right">{partialPayError}</p>
