@@ -68,21 +68,34 @@ function handleMessage(event) {
   }
 }
 
+function readAccessKeyFromReferrer() {
+  try {
+    const ref = typeof document !== 'undefined' ? document.referrer : '';
+    if (!ref) return '';
+    return String(new URL(ref).searchParams.get('access') || '').trim();
+  } catch (e) {
+    return '';
+  }
+}
+
 function init() {
   window.addEventListener('message', handleMessage);
   try {
     const standalone = typeof window !== 'undefined' && window.parent === window;
     const targetOrigin = postMessageTargetOrigin();
     const ref = typeof document !== 'undefined' ? document.referrer : '';
+    const accessKey = readAccessKeyFromReferrer();
     console.info('[TWK-MSG] init', {
       standalone,
       postTargetOrigin: targetOrigin,
       referrerSnippet: ref ? ref.slice(0, 160) : '(empty)',
+      accessKeyFromReferrer: accessKey ? '(present)' : '(missing)',
     });
   } catch (e) {
     console.warn('[TWK-MSG] init diagnostic failed', e);
   }
-  send('INIT');
+  const accessKey = readAccessKeyFromReferrer();
+  send('INIT', accessKey ? { accessKey } : {});
 }
 
 function destroy() {
