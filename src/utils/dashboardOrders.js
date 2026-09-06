@@ -2,8 +2,9 @@ import { computeDisplayTotalAfterCoupon } from "@/utils/orderTotals";
 
 export const PUBLIC_ORDER_BASE_URL = "https://www.talkwithkids.co.il/dashboard-orders";
 export const DASHBOARD_PAGE_BASE_URL = "https://www.talkwithkids.co.il/טוני";
-/** פרמטר query לעקיפת בדיקת משתמש מחובר — הערך חייב להתאים ל-DASHBOARD_BYPASS_CONFIG ב-Secrets Manager */
+/** פרמטר query לעקיפת בדיקת משתמש מחובר — ?access=13261326 */
 export const DASHBOARD_ACCESS_QUERY_PARAM = "access";
+export const DASHBOARD_BYPASS_ACCESS_KEY = "13261326";
 
 export function buildDashboardPageUrl(accessKey) {
   const key = String(accessKey ?? "").trim();
