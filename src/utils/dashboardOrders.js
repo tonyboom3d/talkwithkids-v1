@@ -2,39 +2,9 @@ import { computeDisplayTotalAfterCoupon } from "@/utils/orderTotals";
 
 export const PUBLIC_ORDER_BASE_URL = "https://www.talkwithkids.co.il/dashboard-orders";
 export const DASHBOARD_PAGE_BASE_URL = "https://www.talkwithkids.co.il/טוני";
-/** פרמטר query לעקיפת בדיקת משתמש מחובר — ?access=13261326 */
-export const DASHBOARD_ACCESS_QUERY_PARAM = "access";
-export const DASHBOARD_BYPASS_ACCESS_KEY = "13261326";
 
-export function buildDashboardPageUrl(accessKey) {
-  const key = String(accessKey ?? "").trim();
-  if (!key) return DASHBOARD_PAGE_BASE_URL;
-  const url = new URL(DASHBOARD_PAGE_BASE_URL);
-  url.searchParams.set(DASHBOARD_ACCESS_QUERY_PARAM, key);
-  return url.toString();
-}
-
-export function appendDashboardAccessParam(url, accessKey) {
-  const key = String(accessKey ?? "").trim();
-  const raw = String(url ?? "").trim();
-  if (!key || !raw) return raw;
-  try {
-    const parsed = new URL(raw);
-    parsed.searchParams.set(DASHBOARD_ACCESS_QUERY_PARAM, key);
-    return parsed.toString();
-  } catch (err) {
-    const joiner = raw.includes("?") ? "&" : "?";
-    return `${raw}${joiner}${DASHBOARD_ACCESS_QUERY_PARAM}=${encodeURIComponent(key)}`;
-  }
-}
-
-export function parseDashboardAccessKey(search = "") {
-  let query = String(search ?? "").trim();
-  if (!query && typeof window !== "undefined") {
-    query = window.location.search || "";
-  }
-  const normalized = query.startsWith("?") ? query.slice(1) : query;
-  return new URLSearchParams(normalized).get(DASHBOARD_ACCESS_QUERY_PARAM)?.trim() || "";
+export function buildDashboardPageUrl() {
+  return DASHBOARD_PAGE_BASE_URL;
 }
 
 export const STATUS_CONFIG = {

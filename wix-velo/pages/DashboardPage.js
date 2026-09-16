@@ -8,6 +8,6 @@
  *   src/pages/Dashboard.jsx
  *
  * Auth flow:
- * 1. React iframe sends INIT with accessKey parsed from document.referrer (?access=13261326)
- * 2. This page resolves bypass or logged-in member, then posts USER_READY to the iframe
+ * 1. Velo page resolves logged-in member via AuthorizedEmployees CMS on page load
+ * 2. React iframe sends INIT; Velo re-sends USER_READY if already authenticated
  */
