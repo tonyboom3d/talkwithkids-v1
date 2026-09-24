@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 import CustomerSection from "../components/dashboard/CustomerSection";
+import DepositSection from "../components/dashboard/DepositSection";
 import ProductSelector from "../components/dashboard/ProductSelector";
 import StoreCouponPicker from "../components/dashboard/StoreCouponPicker";
 import OrdersTable from "../components/dashboard/OrdersTable";
@@ -31,6 +32,7 @@ import { buildPublicOrderUrl } from "@/utils/dashboardOrders";
 import { isValidIsraeliPhone, normalizeIsraeliPhone } from "@/utils/phoneUtils";
 import { buildCreatorOptions, filterOrdersByCreators } from "@/utils/orderCreatorFilter";
 import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
+import { isDepositModuleEnabled } from "@/utils/featureFlags";
 
 const DASHBOARD_ORDERS_REFRESH_KEY = "twk_dashboard_orders_last_refresh";
 const CARDCOM_PHONE_PAYMENT_METHOD = "קארדקום טלפונית";
@@ -155,6 +157,13 @@ export default function Dashboard() {
   const [showTransactionPicker, setShowTransactionPicker] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [assignedEmployeeId, setAssignedEmployeeId] = useState("");
+  // מודול 1: ניהול מקדמות — זמין רק לעובד/ת "טוני בדיקה" בשלב הפיתוח
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositLinkText, setDepositLinkText] = useState("");
+  const [balanceDueDate, setBalanceDueDate] = useState("");
+  const [unlockProgram, setUnlockProgram] = useState(true);
+
+  const isDepositModuleVisible = isDepositModuleEnabled(user);
 
   const creatorOptions = useMemo(
     () => (canViewOthers ? buildCreatorOptions(orders) : []),
@@ -251,6 +260,12 @@ export default function Dashboard() {
       setCouponMode("create");
       setSelectedStoreCoupon(null);
       setCouponValue("");
+    }
+    if (paymentStatus !== "awaiting_deposit") {
+      setDepositAmount("");
+      setDepositLinkText("");
+      setBalanceDueDate("");
+      setUnlockProgram(true);
     }
     // יציאה מסטטוסי תשלום עם עריכת מחיר — מחזירים מחיר קטלוג
     if (paymentStatus !== "paid_partial" && paymentStatus !== "paid") {
@@ -357,6 +372,17 @@ export default function Dashboard() {
         return;
       }
     }
+    if (paymentStatus === "awaiting_deposit" && isDepositModuleVisible) {
+      const depositAmountNum = Number(depositAmount);
+      if (!String(depositAmount).trim()) {
+        showError("יש למלא את סכום המקדמה");
+        return;
+      }
+      if (!Number.isFinite(depositAmountNum) || depositAmountNum <= 0 || depositAmountNum >= total) {
+        showError("סכום המקדמה חייב להיות גדול מ-0 וקטן מסכום ההזמנה");
+        return;
+      }
+    }
     if ((paymentStatus === "paid" || paymentStatus === "paid_partial") && !paymentTag) {
       showError("יש לבחור אופן תשלום עבור הזמנה ששולמה");
       return;
@@ -457,6 +483,14 @@ export default function Dashboard() {
           : null,
         totalPrice: total,
         assignedEmployeeId: canViewOthers && assignedEmployeeId ? assignedEmployeeId : undefined,
+        deposit: paymentStatus === "awaiting_deposit" && isDepositModuleVisible
+          ? {
+              amount: Number(depositAmount),
+              linkText: depositLinkText,
+              balanceDueDate: balanceDueDate || null,
+              unlockProgram,
+            }
+          : undefined,
       });
 
       console.log('[UI] Order created:', result.recordId, result.checkoutLink);
@@ -513,6 +547,10 @@ export default function Dashboard() {
     setCouponMode("create");
     setSelectedStoreCoupon(null);
     setCouponValue("");
+    setDepositAmount("");
+    setDepositLinkText("");
+    setBalanceDueDate("");
+    setUnlockProgram(true);
     if (user?.id) {
       setAssignedEmployeeId(user.id);
     }
@@ -670,6 +708,25 @@ export default function Dashboard() {
       loadOrders();
     } catch (err) {
       toast.error(err.message || "שגיאה בעדכון שיוך ההזמנה");
+      throw err;
+    }
+  };
+
+  const handleUpdateDeposit = async (recordId, payload) => {
+    if (isDemo) {
+      setOrders(prev => prev.map(o => (o.id === recordId || o._id === recordId)
+        ? { ...o, balanceDueDate: payload.balanceDueDate || null }
+        : o
+      ));
+      toast.success("(מצב דמו) תאריך היעד עודכן");
+      return;
+    }
+    try {
+      await request("UPDATE_ORDER_DEPOSIT", { recordId, ...payload });
+      toast.success("תאריך היעד עודכן בהצלחה");
+      loadOrders();
+    } catch (err) {
+      toast.error(err.message || "שגיאה בעדכון תאריך היעד");
       throw err;
     }
   };
@@ -911,6 +968,7 @@ export default function Dashboard() {
             setPaymentStatus={setPaymentStatus}
             allowNonIsraeliPhone={allowNonIsraeliPhone}
             setAllowNonIsraeliPhone={setAllowNonIsraeliPhone}
+            showDepositOption={isDepositModuleVisible}
           />
 
           {canViewOthers && employees.length > 0 && (
@@ -974,6 +1032,20 @@ export default function Dashboard() {
                 })()}
               </div>
             </motion.div>
+          )}
+
+          {paymentStatus === "awaiting_deposit" && isDepositModuleVisible && (
+            <DepositSection
+              totalPrice={selectedProductsTotal}
+              depositAmount={depositAmount}
+              setDepositAmount={setDepositAmount}
+              depositLinkText={depositLinkText}
+              setDepositLinkText={setDepositLinkText}
+              balanceDueDate={balanceDueDate}
+              setBalanceDueDate={setBalanceDueDate}
+              unlockProgram={unlockProgram}
+              setUnlockProgram={setUnlockProgram}
+            />
           )}
 
           {paymentStatus === "paid" && (
@@ -1424,6 +1496,7 @@ export default function Dashboard() {
           employees={employees}
           onUpdateAssignment={handleUpdateAssignment}
           onCompletePartialPayment={handleCompletePartialPayment}
+          onUpdateDeposit={handleUpdateDeposit}
         />
       </div>
 

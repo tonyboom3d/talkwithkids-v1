@@ -59,6 +59,7 @@ import {
   STATUS_UPDATE_OPTIONS,
   isPaidDisplayStatus,
   resolveRemainingBalance,
+  ROW_TONE_CLASSNAMES,
 } from "@/utils/dashboardOrders";
 import { getOrderCreatorKey } from "@/utils/orderCreatorFilter";
 import { creatorTagStyleFromColor } from "@/utils/employeeTagStyle";
@@ -140,10 +141,14 @@ export default function OrdersTable({
   employees = [],
   onUpdateAssignment,
   onCompletePartialPayment,
+  onUpdateDeposit,
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [expandedRowId, setExpandedRowId] = useState(null);
+  // מודול 1: עריכת תאריך יעד לתשלום יתרה inline בתוך השורה המורחבת
+  const [editingDueDateRowId, setEditingDueDateRowId] = useState(null);
+  const [dueDateDraft, setDueDateDraft] = useState("");
   const [statusOrder, setStatusOrder] = useState(null);
   const [deleteOrderState, setDeleteOrderState] = useState(null);
   const [pendingStatus, setPendingStatus] = useState("sent");
@@ -291,6 +296,24 @@ export default function OrdersTable({
       await onUpdateAssignment(assignOrderState.rowId, pendingAssignEmployeeId);
       setAssignOrderState(null);
       setPendingAssignEmployeeId("");
+    });
+  };
+
+  const openDueDateEditor = (order) => {
+    setEditingDueDateRowId(order.rowId);
+    setDueDateDraft(order.balanceDueDate ? moment(order.balanceDueDate).format("YYYY-MM-DD") : "");
+  };
+
+  const closeDueDateEditor = () => {
+    setEditingDueDateRowId(null);
+    setDueDateDraft("");
+  };
+
+  const handleSaveDueDate = async (order) => {
+    if (!onUpdateDeposit) return;
+    await runRowAction("dueDate", order, async () => {
+      await onUpdateDeposit(order.rowId, { balanceDueDate: dueDateDraft || null });
+      closeDueDateEditor();
     });
   };
 
@@ -659,10 +682,14 @@ export default function OrdersTable({
                   const latestTimelineDate = latestTimelineEvent?.date
                     ? moment(latestTimelineEvent.date).format("DD/MM/YY HH:mm")
                     : "";
+                  // מודול 1: צביעת שורה לפי מצב תשלום/תאריך יעד (ר' resolveRowTone ב-dashboardOrders.js)
+                  const rowToneClass = ROW_TONE_CLASSNAMES[order.rowTone] || "";
                   return (
                     <React.Fragment key={order.rowId}>
                       <TableRow
-                        className="orders-table-data-row group cursor-pointer hover:bg-transparent transition-none md:transition-colors md:hover:bg-slate-50/70"
+                        className={`orders-table-data-row group cursor-pointer transition-none md:transition-colors ${
+                          rowToneClass || "hover:bg-transparent md:hover:bg-slate-50/70"
+                        }`}
                         onClick={() => setExpandedRowId(isExpanded ? null : order.rowId)}
                       >
                         <TableCell className="text-center px-1 py-2">
@@ -817,7 +844,9 @@ export default function OrdersTable({
                         <TableCell className="text-xs text-slate-500 whitespace-nowrap px-1 py-2">
                           {order.sentDate ? moment(order.sentDate).format("DD/MM HH:mm") : "—"}
                         </TableCell>
-                        <TableCell className="orders-table-sticky-col sticky right-0 z-[11] max-w-[min(140px,32vw)] bg-white px-1 py-2 text-xs font-medium text-slate-700 shadow-[inset_1px_0_0_0_rgb(226_232_240)] md:group-hover:bg-slate-50">
+                        <TableCell className={`orders-table-sticky-col sticky right-0 z-[11] max-w-[min(140px,32vw)] px-1 py-2 text-xs font-medium text-slate-700 shadow-[inset_1px_0_0_0_rgb(226_232_240)] ${
+                          rowToneClass ? rowToneClass.split(" ")[0] : "bg-white md:group-hover:bg-slate-50"
+                        }`}>
                           <span className="block truncate">{order.customerName || "—"}</span>
                         </TableCell>
                         <TableCell className="text-xs text-slate-600 text-right tabular-nums px-1 py-2" dir="ltr">
@@ -1162,6 +1191,55 @@ export default function OrdersTable({
                                               <p className="text-[10px] text-slate-400 mb-0.5">מס׳ משלוח תפוז</p>
                                               <p className="text-xs md:text-sm font-mono text-slate-600 truncate">{order.deliveryNumber}</p>
                                             </div>
+                                            {["awaiting_deposit", "deposit_paid", "paid_partial"].includes(order.displayStatus) && (
+                                              <div
+                                                className={`rounded-lg border px-2 py-1.5 md:px-3 md:py-2.5 text-right ${
+                                                  order.rowTone === "red" ? "border-red-200 bg-red-50" : "border-slate-200 bg-white"
+                                                }`}
+                                                onClick={(e) => e.stopPropagation()}
+                                              >
+                                                <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
+                                                  <CalendarDays className="w-3 h-3" />
+                                                  <span>תאריך יעד לתשלום יתרה</span>
+                                                </div>
+                                                {editingDueDateRowId === order.rowId ? (
+                                                  <div className="flex items-center gap-1.5">
+                                                    <Input
+                                                      type="date"
+                                                      value={dueDateDraft}
+                                                      onChange={(e) => setDueDateDraft(e.target.value)}
+                                                      className="h-7 text-xs"
+                                                      dir="ltr"
+                                                    />
+                                                    <Button
+                                                      size="sm"
+                                                      className="h-7 px-2 text-[10px]"
+                                                      disabled={busyAction.type === "dueDate" && busyAction.rowId === order.rowId}
+                                                      onClick={() => handleSaveDueDate(order)}
+                                                    >
+                                                      שמירה
+                                                    </Button>
+                                                    <Button
+                                                      size="sm"
+                                                      variant="ghost"
+                                                      className="h-7 px-2 text-[10px]"
+                                                      onClick={closeDueDateEditor}
+                                                    >
+                                                      ביטול
+                                                    </Button>
+                                                  </div>
+                                                ) : (
+                                                  <button
+                                                    type="button"
+                                                    disabled={!onUpdateDeposit}
+                                                    onClick={() => openDueDateEditor(order)}
+                                                    className={`text-xs md:text-sm font-medium ${order.rowTone === "red" ? "text-red-700" : "text-slate-700"} ${onUpdateDeposit ? "hover:underline" : ""}`}
+                                                  >
+                                                    {order.balanceDueDate ? moment(order.balanceDueDate).format("DD/MM/YY") : "לא נקבע"}
+                                                  </button>
+                                                )}
+                                              </div>
+                                            )}
                                             {order.displayStatus === "paid_partial" && order.partialPaidAmount > 0 && (
                                               <div className="rounded-lg border border-orange-200 bg-orange-50 px-2 py-1.5 md:px-3 md:py-2.5 text-right">
                                                 <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-orange-700">

@@ -13,17 +13,21 @@ export const STATUS_CONFIG = {
   unpaid: { label: "לא שולם", className: "bg-red-100 text-red-700" },
   cancelled: { label: "בוטל", className: "bg-red-100 text-red-700" },
   error: { label: "שגיאה", className: "bg-red-100 text-red-700" },
+  awaiting_deposit: { label: "בהמתנה למקדמה – לא שולם", className: "bg-yellow-100 text-yellow-800" },
+  deposit_paid: { label: "שולמה מקדמה", className: "bg-sky-100 text-sky-700" },
   paid_partial: { label: "שולמה חלקית", className: "bg-orange-100 text-orange-700" },
   paid_pending_details: { label: "שולמה - לא הושלמה", className: "bg-violet-100 text-violet-700" },
   paid_completed: { label: "שולמה - הושלמה", className: "bg-emerald-100 text-emerald-700" },
   paid: { label: "שולם", className: "bg-emerald-100 text-emerald-700" },
 };
 
-export const STATUS_UPDATE_OPTIONS = ["sent", "opened", "paid_partial", "paid_pending_details", "paid_completed", "paid", "cancelled"];
+export const STATUS_UPDATE_OPTIONS = ["sent", "opened", "awaiting_deposit", "deposit_paid", "paid_partial", "paid_pending_details", "paid_completed", "paid", "cancelled"];
 
 export const SALES_STATUS_FILTERS = [
   "sent",
   "opened",
+  "awaiting_deposit",
+  "deposit_paid",
   "paid_partial",
   "paid_pending_details",
   "paid_completed",
@@ -32,6 +36,35 @@ export const SALES_STATUS_FILTERS = [
   "error",
   "unpaid",
 ];
+
+/**
+ * צבע רקע שורה בטבלת ההזמנות לפי מצב תשלום (מודול 1, סעיף 4).
+ * "באיחור" (תאריך יעד עבר ויתרה > 0) גובר על הצבע הרגיל של הסטטוס.
+ */
+export function resolveRowTone(order) {
+  const status = order?.displayStatus;
+  if (status === "paid" || status === "paid_completed") return "default";
+
+  const dueDate = order?.balanceDueDate;
+  const remaining = Number(order?.remainingPaymentAmount ?? 0);
+  if (dueDate && remaining > 0) {
+    const due = new Date(dueDate);
+    if (!isNaN(due.getTime()) && due.getTime() <= Date.now()) {
+      return "red";
+    }
+  }
+
+  if (status === "awaiting_deposit") return "yellow";
+  if (status === "paid_partial") return "orange";
+  return "default";
+}
+
+export const ROW_TONE_CLASSNAMES = {
+  yellow: "bg-yellow-50 hover:bg-yellow-100/70",
+  orange: "bg-orange-50 hover:bg-orange-100/70",
+  red: "bg-red-50 hover:bg-red-100/70",
+  default: "",
+};
 
 export function safeParseJson(value, fallback) {
   if (value == null || value === "") return fallback;
@@ -225,6 +258,12 @@ export function normalizeOrder(order, options = {}) {
   normalized.statusCfg = STATUS_CONFIG[normalized.displayStatus] || STATUS_CONFIG.sent;
   normalized.couponSummary = getCouponSummary(couponDetails);
   normalized.whatsappDeliveryStatus = resolveWhatsappDeliveryStatus(normalized);
+  normalized.balanceDueDate = order.balanceDueDate || null;
+  normalized.depositAmount = Number.isFinite(Number(order.depositAmount)) ? Number(order.depositAmount) : 0;
+  normalized.depositPaidAmount = Number.isFinite(Number(order.depositPaidAmount)) ? Number(order.depositPaidAmount) : 0;
+  normalized.unlockProgramOnPurchase = order.unlockProgramOnPurchase !== false;
+  normalized.depositLinkText = order.depositLinkText || "";
+  normalized.rowTone = resolveRowTone(normalized);
 
   const paidForCommission = isPaidDisplayStatus(normalized.displayStatus);
   normalized.profitPercent = paidForCommission ? commissionRate : null;

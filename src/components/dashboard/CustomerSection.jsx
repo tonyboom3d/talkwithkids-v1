@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { User } from "lucide-react";
 import { formatIsraeliPhoneInput, normalizeIsraeliPhone } from "@/utils/phoneUtils";
 
-function PaymentStatusField({ paymentStatus, setPaymentStatus }) {
+function PaymentStatusField({ paymentStatus, setPaymentStatus, showDepositOption }) {
   return (
     <div className="space-y-1.5">
       <Label className="text-xs text-slate-500 block text-right">סטטוס תשלום</Label>
@@ -22,6 +22,14 @@ function PaymentStatusField({ paymentStatus, setPaymentStatus }) {
               לא שולם
             </div>
           </SelectItem>
+          {showDepositOption && (
+            <SelectItem value="awaiting_deposit">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                בהמתנה למקדמה – לא שולם
+              </div>
+            </SelectItem>
+          )}
           <SelectItem value="paid_partial">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-orange-400" />
@@ -62,6 +70,7 @@ export default function CustomerSection({
   setPaymentStatus,
   allowNonIsraeliPhone,
   setAllowNonIsraeliPhone,
+  showDepositOption = false,
 }) {
   const onPhoneChange = (raw) => {
     const v = allowNonIsraeliPhone ? sanitizeInternationalPhoneInput(raw) : formatIsraeliPhoneInput(raw);
@@ -121,7 +130,7 @@ export default function CustomerSection({
               />
             </label>
           </div>
-          <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} />
+          <PaymentStatusField paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus} showDepositOption={showDepositOption} />
           <div className="w-full min-w-0 space-y-1.5">
             <Label className="text-xs text-slate-500 block text-right">
               שם<span className="text-red-400 mr-0.5">*</span>
