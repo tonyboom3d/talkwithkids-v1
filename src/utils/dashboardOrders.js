@@ -14,14 +14,14 @@ export const STATUS_CONFIG = {
   cancelled: { label: "בוטל", className: "bg-red-100 text-red-700" },
   error: { label: "שגיאה", className: "bg-red-100 text-red-700" },
   awaiting_deposit: { label: "בהמתנה למקדמה – לא שולם", className: "bg-yellow-100 text-yellow-800" },
-  deposit_paid: { label: "שולמה מקדמה", className: "bg-sky-100 text-sky-700" },
+  deposit_paid: { label: "שולמה חלקית", className: "bg-orange-100 text-orange-700" },
   paid_partial: { label: "שולמה חלקית", className: "bg-orange-100 text-orange-700" },
   paid_pending_details: { label: "שולמה - לא הושלמה", className: "bg-violet-100 text-violet-700" },
   paid_completed: { label: "שולמה - הושלמה", className: "bg-emerald-100 text-emerald-700" },
   paid: { label: "שולם", className: "bg-emerald-100 text-emerald-700" },
 };
 
-export const STATUS_UPDATE_OPTIONS = ["sent", "opened", "awaiting_deposit", "deposit_paid", "paid_partial", "paid_pending_details", "paid_completed", "paid", "cancelled"];
+export const STATUS_UPDATE_OPTIONS = ["sent", "opened", "awaiting_deposit", "paid_partial", "paid_pending_details", "paid_completed", "paid", "cancelled"];
 
 export const SALES_STATUS_FILTERS = [
   "sent",
@@ -55,7 +55,7 @@ export function resolveRowTone(order) {
   }
 
   if (status === "awaiting_deposit") return "yellow";
-  if (status === "paid_partial") return "orange";
+  if (status === "paid_partial" || status === "deposit_paid") return "orange";
   return "default";
 }
 
@@ -263,6 +263,11 @@ export function normalizeOrder(order, options = {}) {
   normalized.depositPaidAmount = Number.isFinite(Number(order.depositPaidAmount)) ? Number(order.depositPaidAmount) : 0;
   normalized.unlockProgramOnPurchase = order.unlockProgramOnPurchase !== false;
   normalized.depositLinkText = order.depositLinkText || "";
+  try {
+    normalized.depositOptions = order.depositOptions ? JSON.parse(order.depositOptions) : null;
+  } catch {
+    normalized.depositOptions = null;
+  }
   normalized.rowTone = resolveRowTone(normalized);
 
   const paidForCommission = isPaidDisplayStatus(normalized.displayStatus);

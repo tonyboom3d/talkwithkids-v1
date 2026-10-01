@@ -161,7 +161,10 @@ export default function Dashboard() {
   const [depositAmount, setDepositAmount] = useState("");
   const [depositLinkText, setDepositLinkText] = useState("");
   const [balanceDueDate, setBalanceDueDate] = useState("");
-  const [unlockProgram, setUnlockProgram] = useState(true);
+  const [unlockProgram, setUnlockProgram] = useState(false);
+  const [shipAfterDeposit, setShipAfterDeposit] = useState(false);
+  const [deliveryInfo, setDeliveryInfo] = useState({ hasShipping: false, hasPlan: false });
+  const [isCheckingProducts, setIsCheckingProducts] = useState(false);
 
   const isDepositModuleVisible = isDepositModuleEnabled(user);
 
@@ -265,10 +268,11 @@ export default function Dashboard() {
       setDepositAmount("");
       setDepositLinkText("");
       setBalanceDueDate("");
-      setUnlockProgram(true);
+      setUnlockProgram(false);
+      setShipAfterDeposit(false);
     }
     // יציאה מסטטוסי תשלום עם עריכת מחיר — מחזירים מחיר קטלוג
-    if (paymentStatus !== "paid_partial" && paymentStatus !== "paid") {
+    if (paymentStatus !== "paid_partial" && paymentStatus !== "paid" && paymentStatus !== "awaiting_deposit") {
       setSelectedProducts((prev) => prev.map((p) => {
         const catalogPrice = Number.isFinite(Number(p.catalogPrice)) ? Number(p.catalogPrice) : Number(p.price) || 0;
         return {
@@ -293,6 +297,41 @@ export default function Dashboard() {
     if (selectedProductsTotal > 0) return;
     setPartialPaidAmount("");
   }, [selectedProductsTotal]);
+
+  // מקדמה: זיהוי מוצר שנשלח / תוכנית מחוברת (DeliveryRules) לפי המוצרים שנבחרו
+  const selectedProductIdsKey = useMemo(
+    () => selectedProducts.map((p) => p.id).filter(Boolean).sort().join(","),
+    [selectedProducts]
+  );
+  useEffect(() => {
+    const isDepositFlow = paymentStatus === "awaiting_deposit" && isDepositModuleVisible && !isDemo;
+    if (!isDepositFlow || !selectedProductIdsKey) {
+      setDeliveryInfo({ hasShipping: false, hasPlan: false });
+      setUnlockProgram(false);
+      setShipAfterDeposit(false);
+      setIsCheckingProducts(false);
+      return;
+    }
+    let cancelled = false;
+    setIsCheckingProducts(true);
+    (async () => {
+      try {
+        const info = await request("GET_PRODUCTS_DELIVERY_INFO", { productIds: selectedProductIdsKey.split(",") });
+        if (cancelled) return;
+        const next = { hasShipping: !!info?.hasShipping, hasPlan: !!info?.hasPlan };
+        setDeliveryInfo(next);
+        if (!next.hasPlan) setUnlockProgram(false);
+        if (!next.hasShipping) setShipAfterDeposit(false);
+      } catch (err) {
+        if (cancelled) return;
+        console.error("[UI] Failed to load products delivery info:", err);
+        setDeliveryInfo({ hasShipping: false, hasPlan: false });
+      } finally {
+        if (!cancelled) setIsCheckingProducts(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [paymentStatus, isDepositModuleVisible, isDemo, selectedProductIdsKey, request]);
 
   useEffect(() => {
     if (!canViewOthers || creatorOptions.length === 0) return;
@@ -488,7 +527,8 @@ export default function Dashboard() {
               amount: Number(depositAmount),
               linkText: depositLinkText,
               balanceDueDate: balanceDueDate || null,
-              unlockProgram,
+              unlockProgram: deliveryInfo.hasPlan ? unlockProgram : false,
+              shipAfterDeposit: deliveryInfo.hasShipping ? shipAfterDeposit : false,
             }
           : undefined,
       });
@@ -550,7 +590,8 @@ export default function Dashboard() {
     setDepositAmount("");
     setDepositLinkText("");
     setBalanceDueDate("");
-    setUnlockProgram(true);
+    setUnlockProgram(false);
+    setShipAfterDeposit(false);
     if (user?.id) {
       setAssignedEmployeeId(user.id);
     }
@@ -986,7 +1027,7 @@ export default function Dashboard() {
             isDemo={isDemo}
             selectedProducts={selectedProducts}
             setSelectedProducts={handleSetSelectedProducts}
-            allowPriceEdit={paymentStatus === "paid_partial" || paymentStatus === "paid"}
+            allowPriceEdit={paymentStatus === "paid_partial" || paymentStatus === "paid" || (paymentStatus === "awaiting_deposit" && isDepositModuleVisible)}
           />
 
           {paymentStatus === "paid_partial" && selectedProductsTotal > 0 && (
@@ -1043,8 +1084,14 @@ export default function Dashboard() {
               setDepositLinkText={setDepositLinkText}
               balanceDueDate={balanceDueDate}
               setBalanceDueDate={setBalanceDueDate}
+              hasProductsSelected={selectedProducts.length > 0}
+              isCheckingProducts={isCheckingProducts}
+              hasProgram={deliveryInfo.hasPlan}
+              hasShipping={deliveryInfo.hasShipping}
               unlockProgram={unlockProgram}
               setUnlockProgram={setUnlockProgram}
+              shipAfterDeposit={shipAfterDeposit}
+              setShipAfterDeposit={setShipAfterDeposit}
             />
           )}
 

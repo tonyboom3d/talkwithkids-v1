@@ -5,9 +5,29 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Wallet } from "lucide-react";
 
+function CheckOption({ checked, onToggle, label, checkedClass }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all w-full ${
+        checked ? checkedClass : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
+      }`}
+    >
+      {label}
+      <div className={`mr-auto w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+        checked ? "bg-emerald-600 border-emerald-600" : "border-slate-300"
+      }`}>
+        {checked && <div className="w-2 h-2 bg-white rounded-sm" />}
+      </div>
+    </button>
+  );
+}
+
 /**
  * מודול 1: בלוק ניהול מקדמה — מוצג רק כאשר paymentStatus === "awaiting_deposit"
  * (זמין רק לעובד/ת "טוני בדיקה" בשלב הפיתוח, נאכף גם בשרת).
+ * אפשרויות הקורס והמשלוח מוצגות רק אחרי בחירת מוצרים, ורק אם יש מוצר רלוונטי (DeliveryRules).
  */
 export default function DepositSection({
   totalPrice,
@@ -17,12 +37,19 @@ export default function DepositSection({
   setDepositLinkText,
   balanceDueDate,
   setBalanceDueDate,
+  hasProductsSelected,
+  isCheckingProducts,
+  hasProgram,
+  hasShipping,
   unlockProgram,
   setUnlockProgram,
+  shipAfterDeposit,
+  setShipAfterDeposit,
 }) {
   const numericDeposit = Number(depositAmount);
   const isValid = Number.isFinite(numericDeposit) && numericDeposit > 0 && numericDeposit < totalPrice;
   const remaining = isValid ? Math.max(0, totalPrice - numericDeposit) : 0;
+  const showOptions = hasProductsSelected && !isCheckingProducts;
 
   return (
     <motion.div
@@ -79,7 +106,7 @@ export default function DepositSection({
 
         <div className="space-y-1.5">
           <Label className="block text-right text-sm font-medium text-slate-700">
-            תאריך יעד לתשלום היתרה
+            תאריך יעד לתשלום המקדמה
           </Label>
           <Input
             type="date"
@@ -90,22 +117,27 @@ export default function DepositSection({
           />
         </div>
 
-        <button
-          type="button"
-          onClick={() => setUnlockProgram(!unlockProgram)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all w-full ${
-            unlockProgram
-              ? "bg-emerald-50 border-emerald-300 text-emerald-700"
-              : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
-          }`}
-        >
-          פתיחת הקורס/תוכנית הדיגיטלית באופן אוטומטי לאחר תשלום מלא
-          <div className={`mr-auto w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
-            unlockProgram ? "bg-emerald-600 border-emerald-600" : "border-slate-300"
-          }`}>
-            {unlockProgram && <div className="w-2 h-2 bg-white rounded-sm" />}
-          </div>
-        </button>
+        {hasProductsSelected && isCheckingProducts && (
+          <p className="text-xs text-slate-500">בודק אפשרויות לפי המוצרים שנבחרו...</p>
+        )}
+
+        {showOptions && hasProgram && (
+          <CheckOption
+            checked={unlockProgram}
+            onToggle={() => setUnlockProgram(!unlockProgram)}
+            label="פתיחת הקורס/תוכנית הדיגיטלית באופן אוטומטי לאחר תשלום מלא"
+            checkedClass="bg-emerald-50 border-emerald-300 text-emerald-700"
+          />
+        )}
+
+        {showOptions && hasShipping && (
+          <CheckOption
+            checked={shipAfterDeposit}
+            onToggle={() => setShipAfterDeposit(!shipAfterDeposit)}
+            label="שליחת ההזמנה לאחר תשלום המקדמה"
+            checkedClass="bg-emerald-50 border-emerald-300 text-emerald-700"
+          />
+        )}
       </div>
     </motion.div>
   );

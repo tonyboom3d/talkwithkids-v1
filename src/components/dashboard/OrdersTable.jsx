@@ -1200,7 +1200,7 @@ export default function OrdersTable({
                                               >
                                                 <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
                                                   <CalendarDays className="w-3 h-3" />
-                                                  <span>תאריך יעד לתשלום יתרה</span>
+                                                  <span>{order.displayStatus === "awaiting_deposit" ? "תאריך יעד לתשלום מקדמה" : "תאריך יעד לתשלום יתרה"}</span>
                                                 </div>
                                                 {editingDueDateRowId === order.rowId ? (
                                                   <div className="flex items-center gap-1.5">
@@ -1237,6 +1237,21 @@ export default function OrdersTable({
                                                   >
                                                     {order.balanceDueDate ? moment(order.balanceDueDate).format("DD/MM/YY") : "לא נקבע"}
                                                   </button>
+                                                )}
+                                              </div>
+                                            )}
+                                            {order.depositOptions && (order.depositOptions.hasShipping || order.depositOptions.hasPlan) && (
+                                              <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right col-span-2">
+                                                <p className="text-[10px] text-slate-400 mb-0.5">הגדרות מקדמה</p>
+                                                {order.depositOptions.hasShipping && (
+                                                  <p className="text-xs text-slate-700">
+                                                    שליחת ההזמנה לאחר מקדמה: <b>{order.depositOptions.shipAfterDeposit ? "מופעל" : "כבוי"}</b>
+                                                  </p>
+                                                )}
+                                                {order.depositOptions.hasPlan && (
+                                                  <p className="text-xs text-slate-700">
+                                                    פתיחת קורס/תוכנית לאחר תשלום מלא: <b>{order.depositOptions.unlockProgram ? "מופעל" : "כבוי"}</b>
+                                                  </p>
                                                 )}
                                               </div>
                                             )}
