@@ -59,6 +59,8 @@ import {
   STATUS_UPDATE_OPTIONS,
   isPaidDisplayStatus,
   resolveRemainingBalance,
+  resolveCompletePaymentDefault,
+  isDepositPayableStatus,
   ROW_TONE_CLASSNAMES,
 } from "@/utils/dashboardOrders";
 import { getOrderCreatorKey } from "@/utils/orderCreatorFilter";
@@ -320,7 +322,7 @@ export default function OrdersTable({
   const openPartialPayDialog = (order) => {
     const remaining = resolveRemainingBalance(order);
     setPartialPayOrder(order);
-    setPartialPayAmount(String(remaining));
+    setPartialPayAmount(String(resolveCompletePaymentDefault(order)));
     setPartialPayMethod("");
     setPartialPayNotes("");
     setPartialPayError("");
@@ -736,7 +738,7 @@ export default function OrdersTable({
                                   שינוי שיוך
                                 </DropdownMenuItem>
                               )}
-                              {order.displayStatus === "paid_partial" && (
+                              {(order.displayStatus === "paid_partial" || isDepositPayableStatus(order)) && (
                                 <DropdownMenuItem
                                   disabled={!onCompletePartialPayment || isBusy || isError}
                                   onClick={() => openPartialPayDialog(order)}
@@ -1017,7 +1019,7 @@ export default function OrdersTable({
                                               שינוי שיוך
                                             </DropdownMenuItem>
                                           )}
-                                          {order.displayStatus === "paid_partial" && (
+                                          {(order.displayStatus === "paid_partial" || isDepositPayableStatus(order)) && (
                                             <DropdownMenuItem
                                               disabled={!onCompletePartialPayment || isBusy || isError}
                                               onClick={() => openPartialPayDialog(order)}
@@ -1783,6 +1785,12 @@ export default function OrdersTable({
                 ₪{partialPayOrder ? resolveRemainingBalance(partialPayOrder).toLocaleString("he-IL") : 0}
               </span>
             </div>
+
+            {partialPayOrder?.displayStatus === "awaiting_deposit" && (
+              <p className="text-xs text-amber-800 text-right">
+                יתרת המקדמה: ₪{resolveCompletePaymentDefault(partialPayOrder).toLocaleString("he-IL")}. השלמת מלוא המקדמה תשלח ללקוח/ה בוואטסאפ קישור עם פירוט ההזמנה, המקדמה והיתרה, והשלמת פרטים.
+              </p>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1 text-right">סכום ששולם</label>

@@ -149,8 +149,27 @@ export function isPaidDisplayStatus(status) {
   return status === "paid" || status === "paid_partial" || status === "paid_pending_details" || status === "paid_completed";
 }
 
+/** הזמנת מקדמה שניתן להשלים לה תשלום ידנית (בהמתנה למקדמה / שולמה חלקית לאחר מקדמה) */
+export function isDepositPayableStatus(order) {
+  return (order?.displayStatus === "awaiting_deposit" || order?.displayStatus === "deposit_paid")
+    && Number(order?.depositAmount) > 0;
+}
+
+/** סכום ברירת מחדל בדיאלוג "השלמת תשלום": יתרת המקדמה בשלב ההמתנה, אחרת כל היתרה */
+export function resolveCompletePaymentDefault(order) {
+  if (order?.displayStatus === "awaiting_deposit" && Number(order?.depositAmount) > 0) {
+    return Math.max(0, Number(order.depositAmount) - Math.max(0, Number(order.depositPaidAmount ?? 0)));
+  }
+  return resolveRemainingBalance(order);
+}
+
 export function resolveRemainingBalance(order) {
-  if (!order || order.displayStatus !== "paid_partial") return 0;
+  if (!order) return 0;
+  if (isDepositPayableStatus(order)) {
+    const total = Math.max(0, Number(order.subtotalAmount ?? order.totalPrice ?? 0));
+    return Math.max(0, total - Math.max(0, Number(order.depositPaidAmount ?? 0)));
+  }
+  if (order.displayStatus !== "paid_partial") return 0;
   const subtotal = Math.max(0, Number(order.subtotalAmount ?? order.totalPrice ?? 0));
   const paid = Math.max(0, Number(order.partialPaidAmount ?? 0));
   return Math.max(0, subtotal - paid);
