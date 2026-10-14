@@ -1080,8 +1080,6 @@ export default function Dashboard() {
               totalPrice={selectedProductsTotal}
               depositAmount={depositAmount}
               setDepositAmount={setDepositAmount}
-              depositLinkText={depositLinkText}
-              setDepositLinkText={setDepositLinkText}
               balanceDueDate={balanceDueDate}
               setBalanceDueDate={setBalanceDueDate}
               hasProductsSelected={selectedProducts.length > 0}

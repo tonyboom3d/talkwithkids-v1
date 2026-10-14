@@ -2,7 +2,6 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Wallet } from "lucide-react";
 
 function CheckOption({ checked, onToggle, label, checkedClass }) {
@@ -33,8 +32,6 @@ export default function DepositSection({
   totalPrice,
   depositAmount,
   setDepositAmount,
-  depositLinkText,
-  setDepositLinkText,
   balanceDueDate,
   setBalanceDueDate,
   hasProductsSelected,
@@ -89,19 +86,6 @@ export default function DepositSection({
               יתרה לתשלום לאחר המקדמה: ₪{remaining.toLocaleString("he-IL")}
             </p>
           )}
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="block text-right text-sm font-medium text-slate-700">
-            טקסט מותאם לדף התשלום ולקבלה (עברית)
-          </Label>
-          <Textarea
-            value={depositLinkText}
-            onChange={(e) => setDepositLinkText(e.target.value)}
-            placeholder="לדוגמה: מקדמה עבור סדנת..."
-            className="min-h-[60px] text-sm border-yellow-200 focus:border-yellow-400 resize-none"
-            dir="rtl"
-          />
         </div>
 
         <div className="space-y-1.5">
