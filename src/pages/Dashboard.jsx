@@ -11,14 +11,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Send, Loader2, MessageSquare, Tag, Ticket, FileText, PackagePlus } from "lucide-react";
+import { Send, Loader2, MessageSquare, Tag, Ticket, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 import CustomerSection from "../components/dashboard/CustomerSection";
 import DepositSection from "../components/dashboard/DepositSection";
-import ReshipDialog from "../components/dashboard/ReshipDialog";
 import ProductSelector from "../components/dashboard/ProductSelector";
 import StoreCouponPicker from "../components/dashboard/StoreCouponPicker";
 import OrdersTable from "../components/dashboard/OrdersTable";
@@ -156,7 +155,6 @@ export default function Dashboard() {
   const [includeAllCreators, setIncludeAllCreators] = useState(true);
   const [selectedCreatorKeys, setSelectedCreatorKeys] = useState(() => new Set());
   const [showTransactionPicker, setShowTransactionPicker] = useState(false);
-  const [showReshipDialog, setShowReshipDialog] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [assignedEmployeeId, setAssignedEmployeeId] = useState("");
   // מודול 1: ניהול מקדמות — זמין רק לעובד/ת "טוני בדיקה" בשלב הפיתוח
@@ -875,19 +873,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleCreateReship = async (reshipPayload) => {
-    if (isDemo) {
-      await new Promise((resolve) => setTimeout(resolve, 900));
-      toast.success("(מצב דמו) הזמנת משלוח חוזר נוצרה");
-      return;
-    }
-    const result = await request("CREATE_RESHIP_ORDER", reshipPayload);
-    toast.success(
-      result.orderNumber ? `הזמנת משלוח חוזר נוצרה בהצלחה (מספר ${result.orderNumber})` : "הזמנת משלוח חוזר נוצרה בהצלחה"
-    );
-    loadOrders();
-  };
-
   return (
     <div className="min-h-screen bg-[#fafafa]" dir="rtl" aria-busy={isSubmitting}>
       <AnimatePresence>
@@ -990,15 +975,6 @@ export default function Dashboard() {
             <p className="text-sm text-slate-400 mt-0.5">יצירת קישורי תשלום ומעקב הזמנות</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 gap-1.5 text-xs font-medium"
-              onClick={() => setShowReshipDialog(true)}
-            >
-              <PackagePlus className="w-4 h-4" />
-              יצירת הזמנה (משלוח חוזר)
-            </Button>
             {/* כפתור "הפקת חשבונית" מוסתר כרגע — לא נדרש, ייתכן שנשתמש בו בעתיד */}
             {false && canGenerateInvoices && (
               <Button
@@ -1587,12 +1563,6 @@ export default function Dashboard() {
         request={request}
       />
 
-      <ReshipDialog
-        open={showReshipDialog}
-        onClose={() => setShowReshipDialog(false)}
-        isDemo={isDemo}
-        onSubmit={handleCreateReship}
-      />
     </div>
   );
 }
