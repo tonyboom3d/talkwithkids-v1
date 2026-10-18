@@ -90,7 +90,7 @@ export default function DepositSection({
 
         <div className="space-y-1.5">
           <Label className="block text-right text-sm font-medium text-slate-700">
-            תאריך יעד לתשלום המקדמה
+            תאריך יעד לתשלום היתרה
           </Label>
           <Input
             type="date"
@@ -109,7 +109,7 @@ export default function DepositSection({
           <CheckOption
             checked={unlockProgram}
             onToggle={() => setUnlockProgram(!unlockProgram)}
-            label="פתיחת הקורס/תוכנית הדיגיטלית באופן אוטומטי לאחר תשלום מלא"
+            label="פתיחת הקורס/תוכנית הדיגיטלית באופן אוטומטי לאחר תשלום המקדמה"
             checkedClass="bg-emerald-50 border-emerald-300 text-emerald-700"
           />
         )}
@@ -118,7 +118,7 @@ export default function DepositSection({
           <CheckOption
             checked={shipAfterDeposit}
             onToggle={() => setShipAfterDeposit(!shipAfterDeposit)}
-            label="שליחת ההזמנה לאחר תשלום המקדמה"
+            label="שליחת הערכה לאחר תשלום המקדמה"
             checkedClass="bg-emerald-50 border-emerald-300 text-emerald-700"
           />
         )}
