@@ -102,9 +102,10 @@ export default function CustomProductDialog({ open, onClose, isDemo, onConfirm }
         setImagePreview(dataUrl);
         setWixImage("");
       } else {
+        const baseName = String(file.name || "custom-product").replace(/\.[^.]+$/, "") || "custom-product";
         const result = await request("UPLOAD_CUSTOM_PRODUCT_IMAGE", {
           base64: dataUrl,
-          fileName: file.name || "custom-product.jpg",
+          fileName: `${baseName}.jpg`,
           mimeType: "image/jpeg",
         });
         setImagePreview(result?.publicUrl || "");
