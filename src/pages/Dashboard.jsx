@@ -165,6 +165,8 @@ export default function Dashboard() {
   const [shipAfterDeposit, setShipAfterDeposit] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState({ hasShipping: false, hasPlan: false });
   const [isCheckingProducts, setIsCheckingProducts] = useState(false);
+  // מוצר קאסטום: שיטת משלוח חובה (תפוז / בית / ללא משלוח) כשנבחר מוצר קאסטום
+  const [customShippingMethod, setCustomShippingMethod] = useState("");
 
   const isDepositModuleVisible = isDepositModuleEnabled(user);
 
@@ -186,6 +188,11 @@ export default function Dashboard() {
 
   const hasExclusiveProduct = useMemo(
     () => selectedProducts.some(p => p.id === EXCLUSIVE_PRODUCT_ID),
+    [selectedProducts]
+  );
+
+  const hasCustomProductsSelected = useMemo(
+    () => selectedProducts.some(p => p.isCustom),
     [selectedProducts]
   );
 
@@ -298,6 +305,10 @@ export default function Dashboard() {
     setPartialPaidAmount("");
   }, [selectedProductsTotal]);
 
+  useEffect(() => {
+    if (!hasCustomProductsSelected) setCustomShippingMethod("");
+  }, [hasCustomProductsSelected]);
+
   // מקדמה: זיהוי מוצר שנשלח / תוכנית מחוברת (DeliveryRules) לפי המוצרים שנבחרו
   const selectedProductIdsKey = useMemo(
     () => selectedProducts.map((p) => p.id).filter(Boolean).sort().join(","),
@@ -309,6 +320,15 @@ export default function Dashboard() {
       setDeliveryInfo({ hasShipping: false, hasPlan: false });
       setUnlockProgram(false);
       setShipAfterDeposit(false);
+      setIsCheckingProducts(false);
+      return;
+    }
+    // מוצר קאסטום אינו מהקטלוג — אין DeliveryRules לבדוק; שיטת המשלוח שנבחרה קובעת ישירות
+    if (hasCustomProductsSelected) {
+      const hasShipping = !!customShippingMethod && customShippingMethod !== "none";
+      setDeliveryInfo({ hasShipping, hasPlan: false });
+      setUnlockProgram(false);
+      if (!hasShipping) setShipAfterDeposit(false);
       setIsCheckingProducts(false);
       return;
     }
@@ -331,7 +351,7 @@ export default function Dashboard() {
       }
     })();
     return () => { cancelled = true; };
-  }, [paymentStatus, isDepositModuleVisible, isDemo, selectedProductIdsKey, request]);
+  }, [paymentStatus, isDepositModuleVisible, isDemo, selectedProductIdsKey, request, hasCustomProductsSelected, customShippingMethod]);
 
   useEffect(() => {
     if (!canViewOthers || creatorOptions.length === 0) return;
@@ -385,6 +405,10 @@ export default function Dashboard() {
     }
     if (selectedProducts.length === 0) {
       showError("יש לבחור לפחות מוצר אחד");
+      return;
+    }
+    if (hasCustomProductsSelected && !customShippingMethod) {
+      showError("יש לבחור שיטת משלוח למוצר הקאסטום");
       return;
     }
     const invalidPriceProduct = selectedProducts.find((p) => {
@@ -497,6 +521,7 @@ export default function Dashboard() {
         products: selectedProducts.map(p => {
           const unitPrice = Number.isFinite(Number(p.price)) ? Number(p.price) : 0;
           const catalogPrice = Number.isFinite(Number(p.catalogPrice)) ? Number(p.catalogPrice) : unitPrice;
+          const isCustom = !!p.isCustom;
           return {
             id: p.id,
             name: p.name,
@@ -505,7 +530,15 @@ export default function Dashboard() {
             catalogPrice,
             quantity: p.quantity,
             image: p.image,
-            productType: p.productType === 'DIGITAL' ? 'DIGITAL' : 'PHYSICAL',
+            isCustom,
+            ...(isCustom ? {
+              wixImage: p.wixImage || "",
+              notes: p.notes || "",
+              customShippingMethod,
+              productType: customShippingMethod === "none" ? "DIGITAL" : "PHYSICAL",
+            } : {
+              productType: p.productType === 'DIGITAL' ? 'DIGITAL' : 'PHYSICAL',
+            }),
           };
         }),
         coupon,
@@ -592,6 +625,7 @@ export default function Dashboard() {
     setBalanceDueDate("");
     setUnlockProgram(false);
     setShipAfterDeposit(false);
+    setCustomShippingMethod("");
     if (user?.id) {
       setAssignedEmployeeId(user.id);
     }
@@ -1028,6 +1062,8 @@ export default function Dashboard() {
             selectedProducts={selectedProducts}
             setSelectedProducts={handleSetSelectedProducts}
             allowPriceEdit={paymentStatus === "paid_partial" || paymentStatus === "paid" || (paymentStatus === "awaiting_deposit" && isDepositModuleVisible)}
+            customShippingMethod={customShippingMethod}
+            setCustomShippingMethod={setCustomShippingMethod}
           />
 
           {paymentStatus === "paid_partial" && selectedProductsTotal > 0 && (

@@ -3,23 +3,37 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ShoppingBag, Search, X, Plus, Minus, Package, ChevronDown } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ShoppingBag, Search, X, Plus, Minus, Package, ChevronDown, PackagePlus, Sparkles } from "lucide-react";
 import { LoadingSpinner } from "./LoadingSkeleton";
 import { DEMO_PRODUCTS } from "./DemoDataProvider";
 import { usePostMessage } from "@/hooks/usePostMessage";
+import CustomProductDialog from "./CustomProductDialog";
+
+const SHIPPING_METHOD_OPTIONS = [
+  { value: "tapuz", label: "משלוח תפוז" },
+  { value: "home", label: "משלוח מהבית" },
+  { value: "none", label: "ללא משלוח" },
+];
 
 export default function ProductSelector({
   isDemo,
   selectedProducts,
   setSelectedProducts,
   allowPriceEdit = false,
+  customShippingMethod = "",
+  setCustomShippingMethod = () => {},
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showCustomDialog, setShowCustomDialog] = useState(false);
   const dropdownRef = useRef(null);
   const { request } = usePostMessage();
+
+  const hasCatalogSelected = selectedProducts.some((p) => !p.isCustom);
+  const hasCustomSelected = selectedProducts.some((p) => p.isCustom);
 
   useEffect(() => {
     setIsLoading(true);
@@ -60,6 +74,7 @@ export default function ProductSelector({
   );
 
   const addProduct = (product) => {
+    if (hasCustomSelected) return; // לא ניתן לשלב מוצר קטלוג עם מוצר קאסטום
     const catalogPrice = Number(product.price);
     const unitPrice = Number.isFinite(catalogPrice) ? catalogPrice : 0;
     const existing = selectedProducts.find(p => p.id === product.id);
@@ -75,6 +90,12 @@ export default function ProductSelector({
       }]);
     }
     setIsOpen(false);
+  };
+
+  const addCustomProduct = (customProduct) => {
+    if (hasCatalogSelected) return; // לא ניתן לשלב מוצר קאסטום עם מוצר קטלוג
+    setSelectedProducts(prev => [...prev, customProduct]);
+    setShowCustomDialog(false);
   };
 
   const updateQuantity = (productId, delta) => {
@@ -154,7 +175,27 @@ export default function ProductSelector({
               transition={{ duration: 0.15 }}
               className="absolute z-30 top-full mt-1.5 w-full min-w-0 max-w-[100vw] bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden sm:max-w-none"
             >
-              <div className="p-3 border-b border-slate-100">
+              <div className="p-3 border-b border-slate-100 space-y-2">
+                <button
+                  type="button"
+                  disabled={hasCatalogSelected}
+                  onClick={() => {
+                    if (hasCatalogSelected) return;
+                    setIsOpen(false);
+                    setShowCustomDialog(true);
+                  }}
+                  title={hasCatalogSelected ? "לא ניתן להוסיף מוצר קאסטום כשנבחרו מוצרים מהקטלוג" : ""}
+                  className="flex w-full items-center justify-end gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline disabled:cursor-not-allowed disabled:text-slate-300 disabled:no-underline"
+                  dir="rtl"
+                >
+                  <PackagePlus className="w-4 h-4" />
+                  יצירת מוצר קאסטום
+                </button>
+                {hasCatalogSelected && (
+                  <p className="text-[11px] text-slate-400 text-right" dir="rtl">
+                    לא ניתן להוסיף מוצר קאסטום כשנבחרו מוצרים מהקטלוג
+                  </p>
+                )}
                 <div className="relative">
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input
@@ -167,6 +208,12 @@ export default function ProductSelector({
                   />
                 </div>
               </div>
+
+              {hasCustomSelected && (
+                <p className="px-3 py-2 text-[11px] text-slate-400 text-right border-b border-slate-100" dir="rtl">
+                  לא ניתן להוסיף מוצר מהקטלוג כשנבחר מוצר קאסטום
+                </p>
+              )}
 
               <div className="max-h-[min(16rem,45dvh)] overflow-y-auto overscroll-contain sm:max-h-64" dir="rtl">
                 {isLoading ? (
@@ -184,10 +231,12 @@ export default function ProductSelector({
                       <button
                         key={product.id}
                         type="button"
+                        disabled={hasCustomSelected}
                         onClick={() => addProduct(product)}
                         className={`w-full min-w-0 px-3 py-3 text-right transition-colors border-b border-slate-50 last:border-0 sm:px-4
                           flex flex-col gap-2.5 items-stretch max-sm:[direction:rtl]
                           sm:[direction:ltr] sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-2
+                          disabled:cursor-not-allowed disabled:opacity-40
                           ${isSelected ? "bg-blue-50/50" : "hover:bg-slate-50 active:bg-slate-100"}`}
                       >
                         <span className="text-[15px] leading-snug text-slate-800 sm:order-2 sm:min-w-0 sm:truncate sm:text-right sm:[direction:rtl]">
@@ -259,7 +308,18 @@ export default function ProductSelector({
                         <img src={product.image} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-slate-100 object-cover" />
                       )}
                       <div className="min-w-0 flex-1 space-y-0.5 text-right">
-                        <span className="block text-base text-slate-700">{product.name}</span>
+                        <span className="flex items-center justify-end gap-1.5 text-base text-slate-700">
+                          {product.isCustom && (
+                            <Badge className="border-0 bg-purple-100 text-[10px] text-purple-700 shrink-0">
+                              <Sparkles className="w-3 h-3 ml-0.5" />
+                              קאסטום
+                            </Badge>
+                          )}
+                          {product.name}
+                        </span>
+                        {product.isCustom && product.notes && (
+                          <span className="block text-xs text-slate-500">{product.notes}</span>
+                        )}
                         <span className="text-sm text-slate-500 tabular-nums">
                           סה״כ שורה: ₪{lineTotal.toLocaleString("he-IL")}
                         </span>
@@ -341,9 +401,37 @@ export default function ProductSelector({
               <span className="text-base text-slate-600 font-medium">סה״כ</span>
               <span className="text-lg font-bold text-slate-800 tabular-nums">₪{total.toLocaleString()}</span>
             </div>
+
+            {hasCustomSelected && (
+              <div className="space-y-2 rounded-lg border border-purple-200 bg-purple-50/60 px-3 py-2.5" dir="rtl">
+                <Label className="block text-right text-sm font-medium text-slate-700">
+                  שיטת משלוח למוצר הקאסטום
+                  <span className="text-red-400 mr-0.5">*</span>
+                </Label>
+                <RadioGroup
+                  value={customShippingMethod}
+                  onValueChange={setCustomShippingMethod}
+                  className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2"
+                >
+                  {SHIPPING_METHOD_OPTIONS.map((option) => (
+                    <label key={option.value} className="flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer">
+                      {option.label}
+                      <RadioGroupItem value={option.value} />
+                    </label>
+                  ))}
+                </RadioGroup>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
+
+      <CustomProductDialog
+        open={showCustomDialog}
+        onClose={() => setShowCustomDialog(false)}
+        isDemo={isDemo}
+        onConfirm={addCustomProduct}
+      />
     </motion.div>
   );
 }
