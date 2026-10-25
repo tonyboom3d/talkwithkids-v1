@@ -185,90 +185,90 @@ export default function CustomProductDialog({ open, onClose, isDemo, onConfirm }
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && !isUploadingImage) handleClose(); }}>
-      <DialogContent dir="rtl" className="max-w-md max-h-[min(92vh,calc(100dvh-2rem))] overflow-y-auto">
-        <DialogHeader className="text-right">
-          <DialogTitle className="flex items-center gap-2 text-right">
-            <PackagePlus className="w-[18px] h-[18px] text-slate-400" />
+      <DialogContent
+        dir="rtl"
+        className="top-2 flex max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-md translate-y-0 flex-col gap-2 overflow-hidden p-3 sm:top-[50%] sm:max-h-[min(88dvh,560px)] sm:translate-y-[-50%] sm:gap-3 sm:p-4"
+      >
+        <DialogHeader className="shrink-0 space-y-0.5 pr-6 text-right">
+          <DialogTitle className="flex items-center gap-1.5 text-right text-base">
+            <PackagePlus className="h-4 w-4 text-slate-400" />
             יצירת מוצר קאסטום
           </DialogTitle>
-          <DialogDescription className="text-right leading-relaxed">
-            מוצר שאינו מהקטלוג — ייווסף להזמנה כפריט נפרד עם פרטים שתגדירי כאן.
+          <DialogDescription className="text-right text-xs leading-snug">
+            מוצר שאינו מהקטלוג — יתווסף להזמנה.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-1">
-          <div className="space-y-1.5">
-            <Label className="block text-right text-sm font-medium text-slate-700">
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain">
+          <div className="space-y-1">
+            <Label className="block text-right text-xs font-medium text-slate-700">
               שם המוצר
-              <span className="text-red-400 mr-0.5">*</span>
+              <span className="mr-0.5 text-red-400">*</span>
             </Label>
             <Input
               value={form.name}
               onChange={handleField("name")}
               placeholder="לדוגמה: ערכת יצירה מותאמת"
-              className="h-10 text-right"
+              className="h-8 text-right text-sm"
               dir="rtl"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="block text-right text-sm font-medium text-slate-700">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-1">
+              <Label className="block text-right text-xs font-medium text-slate-700">
                 מחיר מלא
-                <span className="text-red-400 mr-0.5">*</span>
+                <span className="mr-0.5 text-red-400">*</span>
               </Label>
-              <div className="flex items-center gap-1">
+              <div className="relative">
                 <Input
                   type="number"
                   min="0"
                   step="0.01"
                   value={form.fullPrice}
                   onChange={handleField("fullPrice")}
-                  className="h-10 text-right"
+                  className="h-8 pl-5 text-sm"
                   dir="ltr"
                 />
-                <span className="shrink-0 text-sm text-slate-500">₪</span>
+                <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">₪</span>
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="block text-right text-sm font-medium text-slate-700">
-                מחיר הנחה
-              </Label>
-              <div className="flex items-center gap-1">
+            <div className="space-y-1">
+              <Label className="block text-right text-xs font-medium text-slate-700">מחיר הנחה</Label>
+              <div className="relative">
                 <Input
                   type="number"
                   min="0"
                   step="0.01"
                   value={form.discountPrice}
                   onChange={handleField("discountPrice")}
-                  placeholder="אופציונלי"
-                  className="h-10 text-right"
+                  className="h-8 pl-5 text-sm"
                   dir="ltr"
                 />
-                <span className="shrink-0 text-sm text-slate-500">₪</span>
+                <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">₪</span>
               </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="block text-right text-xs font-medium text-slate-700">כמות</Label>
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                value={form.quantity}
+                onChange={handleField("quantity")}
+                className="h-8 text-sm"
+                dir="ltr"
+              />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="block text-right text-sm font-medium text-slate-700">כמות</Label>
-            <Input
-              type="number"
-              min="1"
-              step="1"
-              value={form.quantity}
-              onChange={handleField("quantity")}
-              className="h-10 w-24 text-right"
-              dir="ltr"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="block text-right text-sm font-medium text-slate-700">תמונה (אופציונלי)</Label>
+          <div className="space-y-1">
+            <Label className="block text-right text-xs font-medium text-slate-700">תמונה (אופציונלי)</Label>
             {imagePreview ? (
-              <div className="flex items-center gap-3" dir="rtl">
-                <img src={imagePreview} alt="" className="h-16 w-16 rounded-lg border border-slate-200 object-cover" />
+              <div className="flex items-center gap-2" dir="rtl">
+                <img src={imagePreview} alt="" className="h-9 w-9 rounded-md border border-slate-200 object-cover" />
                 <button
                   type="button"
                   onClick={removeImage}
@@ -283,16 +283,16 @@ export default function CustomProductDialog({ open, onClose, isDemo, onConfirm }
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingImage}
-                className="flex h-16 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 text-sm text-slate-500 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
+                className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-slate-300 text-xs text-slate-500 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
               >
                 {isUploadingImage ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     מעלה תמונה...
                   </>
                 ) : (
                   <>
-                    <ImagePlus className="h-4 w-4" />
+                    <ImagePlus className="h-3.5 w-3.5" />
                     העלאת תמונה
                   </>
                 )}
@@ -307,13 +307,13 @@ export default function CustomProductDialog({ open, onClose, isDemo, onConfirm }
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="block text-right text-sm font-medium text-slate-700">הערות למוצר (ללקוח/ה)</Label>
+          <div className="space-y-1">
+            <Label className="block text-right text-xs font-medium text-slate-700">הערות למוצר (ללקוח/ה)</Label>
             <Textarea
               value={form.notes}
               onChange={handleField("notes")}
-              placeholder="לדוגמה: פרטים מיוחדים על המוצר שיוצגו ללקוח/ה"
-              className="min-h-[60px] text-sm border-slate-200 focus:border-slate-400 resize-none"
+              placeholder="פרטים שיוצגו ללקוח/ה"
+              className="min-h-[40px] resize-none border-slate-200 py-1.5 text-sm focus:border-slate-400"
               dir="rtl"
             />
           </div>
@@ -324,7 +324,7 @@ export default function CustomProductDialog({ open, onClose, isDemo, onConfirm }
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
-                className="text-sm text-red-500 text-center font-medium"
+                className="text-center text-xs font-medium text-red-500"
               >
                 {error}
               </motion.p>
@@ -332,16 +332,17 @@ export default function CustomProductDialog({ open, onClose, isDemo, onConfirm }
           </AnimatePresence>
         </div>
 
-        <DialogFooter className="gap-2 sm:justify-start sm:space-x-0">
+        <DialogFooter className="shrink-0 flex-row justify-start gap-2 space-x-0 border-t border-slate-100 pt-2">
           <Button
             type="button"
+            size="sm"
             onClick={handleConfirm}
             disabled={isUploadingImage}
-            className="bg-[#30D46B] text-black hover:bg-[#28b85f] font-medium"
+            className="bg-[#30D46B] font-medium text-black hover:bg-[#28b85f]"
           >
             אישור
           </Button>
-          <Button type="button" variant="ghost" onClick={handleClose} disabled={isUploadingImage}>
+          <Button type="button" size="sm" variant="ghost" onClick={handleClose} disabled={isUploadingImage}>
             ביטול
           </Button>
         </DialogFooter>
