@@ -8,15 +8,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
  */
 export default function FulfillmentStatusIcon({ status, tooltip = "", className = "", size = "w-4 h-4" }) {
   const icon = status === "yes" ? (
-    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 ${className}`}>
+    <span className={`inline-flex items-center justify-center text-emerald-600 ${className}`}>
       <Check className={size} strokeWidth={3} />
     </span>
   ) : status === "no" ? (
-    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full bg-red-100 text-red-600 ${className}`}>
+    <span className={`inline-flex items-center justify-center text-red-600 ${className}`}>
       <X className={size} strokeWidth={3} />
     </span>
   ) : (
-    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-400 ${className}`}>
+    <span className={`inline-flex items-center justify-center text-slate-400 ${className}`}>
       <Minus className={size} strokeWidth={3} />
     </span>
   );

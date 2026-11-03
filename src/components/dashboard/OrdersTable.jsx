@@ -736,15 +736,15 @@ export default function OrdersTable({
                             )}
                           </TableCell>
                         )}
-                        <TableCell className="px-2 py-2 overflow-hidden">
-                          <div className="flex items-center justify-end gap-1">
-                            {canGenerateInvoices && renderInvoiceIndicator(order, { compact: true })}
+                        <TableCell className="px-2 py-2 overflow-hidden text-right">
+                          <div className="flex items-center justify-start gap-1">
                             <Badge
                               variant="outline"
                               className={`inline-flex max-w-full truncate text-[10px] border-0 font-medium px-1.5 ${order.statusCfg.className}`}
                             >
                               <span className="truncate">{order.statusCfg.label}</span>
                             </Badge>
+                            {canGenerateInvoices && renderInvoiceIndicator(order, { compact: true })}
                           </div>
                         </TableCell>
                         <TableCell className="px-2 py-2">
