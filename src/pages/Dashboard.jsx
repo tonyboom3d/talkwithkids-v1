@@ -357,14 +357,6 @@ export default function Dashboard() {
   }, [paymentStatus, isDepositModuleVisible, isDemo, selectedProductIdsKey, request, hasCustomProductsSelected, customShippingMethod]);
 
   useEffect(() => {
-    if (!canViewOthers || creatorOptions.length === 0) return;
-    setSelectedCreatorKeys((prev) => {
-      if (prev.size > 0) return prev;
-      return new Set(creatorOptions.map((creator) => creator.id));
-    });
-  }, [canViewOthers, creatorOptions]);
-
-  useEffect(() => {
     if (hasExclusiveProduct && paymentTag === "ביט") {
       setPaymentTag("");
     }
