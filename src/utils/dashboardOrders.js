@@ -366,22 +366,47 @@ export function normalizeOrder(order, options = {}) {
   return normalized;
 }
 
-/** מסנן הזמנות לפי טווח תאריכים (לפי תאריך יצירה), כולל יום הסיום במלואו */
-export function filterOrdersByDateRange(orders = [], range) {
-  const from = range?.from ? new Date(range.from) : null;
-  const to = range?.to ? new Date(range.to) : null;
-  if (!from && !to) return orders;
+function coerceDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (typeof value === "object") {
+    const inner = value.$date || value.date || value._date;
+    if (inner) return coerceDate(inner);
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
 
-  const fromTime = from ? new Date(from).setHours(0, 0, 0, 0) : null;
-  const toTime = to ? new Date(to).setHours(23, 59, 59, 999) : null;
+/** יום קלנדרי בישראל, בפורמט YYYY-MM-DD — תואם לעמודת "תאריך" בטבלה */
+function israelDayKey(value) {
+  const date = coerceDate(value);
+  if (!date) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+/** אותו תאריך שמוצג בעמודת "תאריך": אירוע שליחה, ואם אין — תאריך היצירה */
+function resolveDisplayedOrderDate(order) {
+  const timeline = Array.isArray(order?.timeline) ? order.timeline : safeParseJson(order?.changeChain, []);
+  const sentDate = timeline.find((event) => (event?.action || event?.type) === "sent")?.date;
+  return sentDate || order?.sentDate || order?.orderDate || order?._createdDate || order?.date || "";
+}
+
+/** מסנן הזמנות לפי טווח תאריכים (לפי התאריך המוצג בטבלה), כולל את שני הקצוות */
+export function filterOrdersByDateRange(orders = [], range) {
+  if (!range?.from && !range?.to) return orders;
+  const fromKey = range?.from ? israelDayKey(range.from) : "";
+  const toKey = range?.to ? israelDayKey(range.to) : "";
 
   return (orders || []).filter((order) => {
-    const orderDate = order.orderDate || order._createdDate || order.date;
-    if (!orderDate) return false;
-    const time = new Date(orderDate).getTime();
-    if (isNaN(time)) return false;
-    if (fromTime != null && time < fromTime) return false;
-    if (toTime != null && time > toTime) return false;
+    const key = israelDayKey(resolveDisplayedOrderDate(order));
+    if (!key) return false;
+    if (fromKey && key < fromKey) return false;
+    if (toKey && key > toKey) return false;
     return true;
   });
 }
