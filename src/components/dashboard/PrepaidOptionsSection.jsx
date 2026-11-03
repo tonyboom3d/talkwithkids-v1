@@ -69,8 +69,18 @@ export default function PrepaidOptionsSection({
           />
         </div>
 
+        {!hasProductsSelected && (
+          <p className="text-xs text-slate-500">
+            אחרי בחירת מוצר יופיעו כאן אפשרויות לפתיחת קורס או שליחת ערכה, אם יש כאלה במוצר.
+          </p>
+        )}
+
         {hasProductsSelected && isCheckingProducts && (
           <p className="text-xs text-slate-500">בודק אפשרויות לפי המוצרים שנבחרו...</p>
+        )}
+
+        {showOptions && !hasProgram && !hasShipping && (
+          <p className="text-xs text-slate-500">למוצרים שנבחרו אין קורס מחובר או ערכה למשלוח.</p>
         )}
 
         {showOptions && hasProgram && (

@@ -1130,7 +1130,7 @@ export default function Dashboard() {
             </motion.div>
           )}
 
-          {paymentStatus === "paid_partial" && isDepositModuleVisible && selectedProductsTotal > 0 && (
+          {paymentStatus === "paid_partial" && isDepositModuleVisible && (
             <PrepaidOptionsSection
               balanceDueDate={balanceDueDate}
               setBalanceDueDate={setBalanceDueDate}
