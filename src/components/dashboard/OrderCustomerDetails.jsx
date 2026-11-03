@@ -67,7 +67,10 @@ export default function OrderCustomerDetails({
           {order.deliveryNumber && order.deliveryNumber !== "—" && (
             <span className="text-xs md:text-sm font-mono text-slate-600 truncate">{order.deliveryNumber}</span>
           )}
-          <FulfillmentStatusIcon status={order.shippingStatus} />
+          <FulfillmentStatusIcon
+            status={order.shippingStatus}
+            tooltip={order.shippingStatus === "yes" && order.deliveryNumber && order.deliveryNumber !== "—" ? order.deliveryNumber : ""}
+          />
         </div>
       </div>
       <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
@@ -76,7 +79,7 @@ export default function OrderCustomerDetails({
           <span>תוכנית</span>
         </div>
         <div className="flex items-center justify-end gap-1.5">
-          <FulfillmentStatusIcon status={order.planStatus} />
+          <FulfillmentStatusIcon status={order.planStatus} tooltip={order.planStatus === "yes" ? order.planName : ""} />
         </div>
       </div>
       {["awaiting_deposit", "deposit_paid", "paid_partial"].includes(order.displayStatus) && (

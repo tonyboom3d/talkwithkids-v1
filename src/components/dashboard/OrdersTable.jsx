@@ -597,24 +597,31 @@ export default function OrdersTable({
           <Table
             dir="rtl"
             containerClassName="orders-table-scroll"
-            className="w-full table-fixed min-w-[700px]"
+            className="w-full min-w-[720px] table-fixed md:min-w-0"
           >
+              <colgroup>
+                <col style={{ width: "2.75rem" }} />
+                {Array.from({ length: showProfitColumn ? 10 : 9 }).map((_, index) => (
+                  <col key={index} />
+                ))}
+                <col style={{ width: "2.75rem" }} />
+              </colgroup>
               <TableHeader>
                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
-                  <TableHead className="text-right text-xs font-medium text-slate-500 w-8 px-1" />
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">תאריך</TableHead>
-                  <TableHead className="orders-table-sticky-col sticky right-0 z-[12] bg-slate-50 text-right text-xs font-medium text-slate-500 px-1 shadow-[inset_1px_0_0_0_rgb(226_232_240)]">שם לקוח</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">סה"כ</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">שולם</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">יתרה</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-2" />
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-2">תאריך</TableHead>
+                  <TableHead className="orders-table-sticky-col sticky right-0 z-[12] bg-slate-50 text-right text-xs font-medium text-slate-500 px-2 shadow-[inset_1px_0_0_0_rgb(226_232_240)] md:static md:shadow-none">שם לקוח</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-2">סה"כ</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-2">שולם</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-2">יתרה</TableHead>
                   {showProfitColumn && (
-                    <TableHead className="text-right text-xs font-medium text-slate-500 px-1">רווח</TableHead>
+                    <TableHead className="text-right text-xs font-medium text-slate-500 px-2">רווח</TableHead>
                   )}
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1 w-[80px]">סטטוס</TableHead>
-                  <TableHead className="text-center text-xs font-medium text-slate-500 px-1 w-[48px]">תוכנית</TableHead>
-                  <TableHead className="text-center text-xs font-medium text-slate-500 px-1 w-[48px]">משלוח</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">יצר/ה</TableHead>
-                  <TableHead className="hidden md:table-cell text-left text-xs font-medium text-slate-500 w-8 px-1" />
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-2">סטטוס</TableHead>
+                  <TableHead className="text-center text-xs font-medium text-slate-500 px-2">תוכנית</TableHead>
+                  <TableHead className="text-center text-xs font-medium text-slate-500 px-2">משלוח</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-2">יצר/ה</TableHead>
+                  <TableHead className="hidden md:table-cell text-left text-xs font-medium text-slate-500 px-2" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -685,7 +692,7 @@ export default function OrdersTable({
                         <TableCell className="text-xs text-slate-500 whitespace-nowrap px-1 py-2">
                           {order.sentDate ? moment(order.sentDate).format("DD/MM") : "—"}
                         </TableCell>
-                        <TableCell className={`orders-table-sticky-col sticky right-0 z-[11] max-w-[min(140px,32vw)] px-1 py-2 text-xs font-medium text-slate-700 shadow-[inset_1px_0_0_0_rgb(226_232_240)] ${
+                        <TableCell className={`orders-table-sticky-col sticky right-0 z-[11] max-w-[min(140px,32vw)] px-2 py-2 text-xs font-medium text-slate-700 shadow-[inset_1px_0_0_0_rgb(226_232_240)] md:static md:max-w-none md:shadow-none ${
                           rowToneClass ? rowToneClass.split(" ")[0] : "bg-white md:group-hover:bg-slate-50"
                         }`}>
                           <span className="block truncate md:hidden">{formatShortName(order.customerName) || "—"}</span>
@@ -729,7 +736,7 @@ export default function OrdersTable({
                             )}
                           </TableCell>
                         )}
-                        <TableCell className="px-1 py-2 max-w-[90px] overflow-hidden">
+                        <TableCell className="px-2 py-2 overflow-hidden">
                           <div className="flex items-center justify-end gap-1">
                             {canGenerateInvoices && renderInvoiceIndicator(order, { compact: true })}
                             <Badge
@@ -740,11 +747,21 @@ export default function OrdersTable({
                             </Badge>
                           </div>
                         </TableCell>
-                        <TableCell className="text-center px-1 py-2">
-                          <FulfillmentStatusIcon status={order.planStatus} />
+                        <TableCell className="px-2 py-2">
+                          <div className="flex justify-center">
+                            <FulfillmentStatusIcon
+                              status={order.planStatus}
+                              tooltip={order.planStatus === "yes" ? order.planName : ""}
+                            />
+                          </div>
                         </TableCell>
-                        <TableCell className="text-center px-1 py-2">
-                          <FulfillmentStatusIcon status={order.shippingStatus} />
+                        <TableCell className="px-2 py-2">
+                          <div className="flex justify-center">
+                            <FulfillmentStatusIcon
+                              status={order.shippingStatus}
+                              tooltip={order.shippingStatus === "yes" && order.deliveryNumber && order.deliveryNumber !== "—" ? order.deliveryNumber : ""}
+                            />
+                          </div>
                         </TableCell>
                         <TableCell className="text-right px-1 py-2 text-xs font-medium text-slate-700 truncate">
                           {formatCreatorFirstName(order.creatorName)}

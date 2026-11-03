@@ -354,6 +354,7 @@ export function normalizeOrder(order, options = {}) {
   }
   normalized.hasPlan = !!order.hasPlan;
   normalized.hasShipping = !!order.hasShipping;
+  normalized.planName = String(order.planName || '').trim();
   normalized.planStatus = resolvePlanStatus(normalized);
   normalized.shippingStatus = resolveShippingStatus(normalized);
   normalized.rowTone = resolveRowTone(normalized);
