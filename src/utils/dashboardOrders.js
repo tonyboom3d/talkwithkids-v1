@@ -155,6 +155,13 @@ export function isDepositPayableStatus(order) {
     && Number(order?.depositAmount) > 0;
 }
 
+/** סטטוסים בהם ניתן להציע "השלמת תשלום" מתוך פעולות נוספות */
+export const COMPLETABLE_PAYMENT_STATUSES = ["sent", "opened", "unpaid", "awaiting_deposit", "deposit_paid", "paid_partial"];
+
+export function canCompletePayment(order) {
+  return COMPLETABLE_PAYMENT_STATUSES.includes(order?.displayStatus);
+}
+
 /** סכום ברירת מחדל בדיאלוג "השלמת תשלום": יתרת המקדמה בשלב ההמתנה, אחרת כל היתרה */
 export function resolveCompletePaymentDefault(order) {
   if (order?.displayStatus === "awaiting_deposit" && Number(order?.depositAmount) > 0) {
@@ -169,10 +176,15 @@ export function resolveRemainingBalance(order) {
     const total = Math.max(0, Number(order.subtotalAmount ?? order.totalPrice ?? 0));
     return Math.max(0, total - Math.max(0, Number(order.depositPaidAmount ?? 0)));
   }
-  if (order.displayStatus !== "paid_partial") return 0;
-  const subtotal = Math.max(0, Number(order.subtotalAmount ?? order.totalPrice ?? 0));
-  const paid = Math.max(0, Number(order.partialPaidAmount ?? 0));
-  return Math.max(0, subtotal - paid);
+  if (order.displayStatus === "paid_partial") {
+    const subtotal = Math.max(0, Number(order.subtotalAmount ?? order.totalPrice ?? 0));
+    const paid = Math.max(0, Number(order.partialPaidAmount ?? 0));
+    return Math.max(0, subtotal - paid);
+  }
+  if (["sent", "opened", "unpaid"].includes(order.displayStatus)) {
+    return Math.max(0, Number(order.totalAmount ?? order.subtotalAmount ?? 0));
+  }
+  return 0;
 }
 
 function resolvePartialPaidAmount(order, couponDetails, subtotal) {
@@ -196,6 +208,59 @@ function resolvePartialPaidAmount(order, couponDetails, subtotal) {
   }
 
   return 0;
+}
+
+/** "יעל כהן" → "יעל כ." — לתצוגה מצומצמת בנייד בלבד; לא משפיע על החיפוש */
+export function formatShortName(fullName) {
+  const parts = String(fullName || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0];
+  const firstName = parts[0];
+  const lastInitial = parts[parts.length - 1].charAt(0);
+  return lastInitial ? `${firstName} ${lastInitial}.` : firstName;
+}
+
+/** שם פרטי בלבד לתצוגת "יצר/ה" כטקסט רגיל (ללא תג צבעוני) */
+export function formatCreatorFirstName(creatorName) {
+  const trimmed = String(creatorName || "").trim();
+  if (!trimmed || trimmed === "—") return "—";
+  return trimmed.split(/\s+/)[0];
+}
+
+/** תוויות לתצוגת הסטטוס ההתחלתי באירוע "הזמנה נוצרה" בתרשים הזרימה */
+const INITIAL_STATUS_LABELS = {
+  sent: "לא שולמה",
+  opened: "לא שולמה",
+  unpaid: "לא שולמה",
+};
+
+export function resolveInitialStatusLabel(status) {
+  if (!status) return "";
+  return INITIAL_STATUS_LABELS[status] || STATUS_CONFIG[status]?.label || status;
+}
+
+/** הזמנות ישנות ללא initialStatus שמור — ניחוש לפי טקסט האירוע */
+export function inferLegacyInitialStatus(detail) {
+  const text = String(detail || "");
+  if (text.includes("בהמתנה למקדמה")) return "awaiting_deposit";
+  if (text.includes("שולמה חלקית") || text.includes("שולם מראש")) return "paid_partial";
+  if (text.includes("שולמה") || text.includes("שולם")) return "paid_pending_details";
+  return "sent";
+}
+
+/** מצב "תוכנית" לעמודה בטבלה: na = לא אמורה להיות תוכנית, yes/no = מחוברת/לא מחוברת עדיין */
+export function resolvePlanStatus(order) {
+  if (!order?.hasPlan) return "na";
+  const unlocked = (order.timeline || []).some((event) => (event.action || event.type) === "program_unlocked");
+  return unlocked ? "yes" : "no";
+}
+
+/** מצב "משלוח" לעמודה בטבלה: na = אין מוצר למשלוח בהזמנה, yes/no = נשלח/טרם נשלח */
+export function resolveShippingStatus(order) {
+  if (!order?.hasShipping) return "na";
+  const hasDeliveryNumber = !!order?.deliveryNumber && order.deliveryNumber !== "—";
+  const routed = hasDeliveryNumber || (order.timeline || []).some((event) => (event.action || event.type) === "shipment_routed");
+  return routed ? "yes" : "no";
 }
 
 export function resolveWhatsappDeliveryStatus(order) {
@@ -287,6 +352,10 @@ export function normalizeOrder(order, options = {}) {
   } catch {
     normalized.depositOptions = null;
   }
+  normalized.hasPlan = !!order.hasPlan;
+  normalized.hasShipping = !!order.hasShipping;
+  normalized.planStatus = resolvePlanStatus(normalized);
+  normalized.shippingStatus = resolveShippingStatus(normalized);
   normalized.rowTone = resolveRowTone(normalized);
 
   const paidForCommission = isPaidDisplayStatus(normalized.displayStatus);
@@ -294,4 +363,24 @@ export function normalizeOrder(order, options = {}) {
   normalized.profitAmount = paidForCommission ? totalAmount * (commissionRate / 100) : null;
 
   return normalized;
+}
+
+/** מסנן הזמנות לפי טווח תאריכים (לפי תאריך יצירה), כולל יום הסיום במלואו */
+export function filterOrdersByDateRange(orders = [], range) {
+  const from = range?.from ? new Date(range.from) : null;
+  const to = range?.to ? new Date(range.to) : null;
+  if (!from && !to) return orders;
+
+  const fromTime = from ? new Date(from).setHours(0, 0, 0, 0) : null;
+  const toTime = to ? new Date(to).setHours(23, 59, 59, 999) : null;
+
+  return (orders || []).filter((order) => {
+    const orderDate = order.orderDate || order._createdDate || order.date;
+    if (!orderDate) return false;
+    const time = new Date(orderDate).getTime();
+    if (isNaN(time)) return false;
+    if (fromTime != null && time < fromTime) return false;
+    if (toTime != null && time > toTime) return false;
+    return true;
+  });
 }

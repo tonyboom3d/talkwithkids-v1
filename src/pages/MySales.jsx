@@ -18,7 +18,7 @@ import {
   SALES_STATUS_FILTERS,
   STATUS_CONFIG,
 } from "@/utils/dashboardOrders";
-import { buildCreatorOptions, filterOrdersByCreators } from "@/utils/orderCreatorFilter";
+import { useCreatorFilter } from "@/hooks/useCreatorFilter";
 
 const DEMO_USER_NAME = "שרה מ.";
 const MY_SALES_REFRESH_KEY = "twk_my_sales_last_refresh";
@@ -68,8 +68,6 @@ export default function MySales() {
   const [orders, setOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(() => readSessionRefresh(MY_SALES_REFRESH_KEY));
-  const [includeAllCreators, setIncludeAllCreators] = useState(true);
-  const [selectedCreatorKeys, setSelectedCreatorKeys] = useState(() => new Set());
   const [showTransactionPicker, setShowTransactionPicker] = useState(false);
 
   const isDemo = !user;
@@ -113,18 +111,14 @@ export default function MySales() {
     [orders, commissionRate]
   );
 
-  const creatorOptions = useMemo(
-    () => (canViewOthers ? buildCreatorOptions(orders) : []),
-    [canViewOthers, orders]
-  );
-
-  useEffect(() => {
-    if (!canViewOthers || creatorOptions.length === 0) return;
-    setSelectedCreatorKeys((prev) => {
-      if (prev.size > 0) return prev;
-      return new Set(creatorOptions.map((creator) => creator.id));
-    });
-  }, [canViewOthers, creatorOptions]);
+  const {
+    creatorOptions,
+    includeAllCreators,
+    selectedCreatorKeys,
+    onIncludeAllChange,
+    onToggleCreator,
+    filterOrders: filterOrdersByCreatorSelection,
+  } = useCreatorFilter(orders, canViewOthers, user);
 
   const filteredOrders = useMemo(() => {
     const dateAndStatusFiltered = normalizedOrders.filter((order) => {
@@ -137,14 +131,8 @@ export default function MySales() {
       return matchesDate && matchesStatus;
     });
 
-    return filterOrdersByCreators(
-      dateAndStatusFiltered,
-      canViewOthers,
-      includeAllCreators,
-      selectedCreatorKeys,
-      user
-    );
-  }, [normalizedOrders, dateRange, selectedStatuses, canViewOthers, includeAllCreators, selectedCreatorKeys, user]);
+    return filterOrdersByCreatorSelection(dateAndStatusFiltered);
+  }, [normalizedOrders, dateRange, selectedStatuses, filterOrdersByCreatorSelection]);
 
   const paidOrders = useMemo(
     () => filteredOrders.filter((order) => isPaidDisplayStatus(order.displayStatus)),
@@ -478,21 +466,8 @@ export default function MySales() {
             includeAllCreators={includeAllCreators}
             selectedCreatorKeys={selectedCreatorKeys}
             disabled={isLoadingOrders || isAuthLoading}
-            onIncludeAllChange={(checked) => {
-              setIncludeAllCreators(checked);
-              if (checked) {
-                setSelectedCreatorKeys(new Set(creatorOptions.map((creator) => creator.id)));
-              }
-            }}
-            onToggleCreator={(creatorId, checked) => {
-              setIncludeAllCreators(false);
-              setSelectedCreatorKeys((prev) => {
-                const next = new Set(prev);
-                if (checked) next.add(creatorId);
-                else next.delete(creatorId);
-                return next;
-              });
-            }}
+            onIncludeAllChange={onIncludeAllChange}
+            onToggleCreator={onToggleCreator}
           />
         )}
 

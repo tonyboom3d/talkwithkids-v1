@@ -26,26 +26,19 @@ import OrderDetailPanel from "../components/dashboard/OrderDetailPanel";
 import TransactionPickerDialog from "../components/dashboard/TransactionPickerDialog";
 import EmployeeFilterField from "../components/dashboard/EmployeeFilterField";
 import EmployeeAssignField from "../components/dashboard/EmployeeAssignField";
+import DateRangePicker from "../components/dashboard/DateRangePicker";
 import { useAuth } from "@/lib/IframeAuthContext";
 import { usePostMessage, usePostMessageListener } from "@/hooks/usePostMessage";
 import { useScrollToTopOnOpen } from "@/hooks/useScrollToTopOnOpen";
-import { buildPublicOrderUrl } from "@/utils/dashboardOrders";
+import { buildPublicOrderUrl, filterOrdersByDateRange } from "@/utils/dashboardOrders";
 import { isValidIsraeliPhone, normalizeIsraeliPhone } from "@/utils/phoneUtils";
-import { buildCreatorOptions, filterOrdersByCreators } from "@/utils/orderCreatorFilter";
+import { useCreatorFilter } from "@/hooks/useCreatorFilter";
 import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
 import { isDepositModuleEnabled } from "@/utils/featureFlags";
+import { PAYMENT_METHOD_OPTIONS, SKIP_AUTO_INVOICE_PAYMENT_METHODS } from "@/utils/paymentMethods";
+import { isFutureDueDate, resolveMinFutureDueDate } from "@/utils/israelDate";
 
 const DASHBOARD_ORDERS_REFRESH_KEY = "twk_dashboard_orders_last_refresh";
-const CARDCOM_PHONE_PAYMENT_METHOD = "קארדקום טלפונית";
-const STANDING_ORDER_PAYMENT_METHOD = "הוראת קבע";
-const CASH_PAYMENT_METHOD = "מזומן";
-const WIX_PAYMENT_METHOD = "שולם דרך וויקס";
-const SKIP_AUTO_INVOICE_PAYMENT_METHODS = new Set([
-  CARDCOM_PHONE_PAYMENT_METHOD,
-  STANDING_ORDER_PAYMENT_METHOD,
-  CASH_PAYMENT_METHOD,
-  WIX_PAYMENT_METHOD,
-]);
 const EXCLUSIVE_PRODUCT_ID = "6d11d520-c010-552f-a976-b898ce21feda";
 
 function readSessionRefresh(key) {
@@ -153,8 +146,7 @@ export default function Dashboard() {
   const [validationError, setValidationError] = useState("");
   const [createdOrderState, setCreatedOrderState] = useState(null);
   const [isConfirmingSend, setIsConfirmingSend] = useState(false);
-  const [includeAllCreators, setIncludeAllCreators] = useState(true);
-  const [selectedCreatorKeys, setSelectedCreatorKeys] = useState(() => new Set());
+  const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [showTransactionPicker, setShowTransactionPicker] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [assignedEmployeeId, setAssignedEmployeeId] = useState("");
@@ -170,14 +162,24 @@ export default function Dashboard() {
   const [customShippingMethod, setCustomShippingMethod] = useState("");
 
   const isDepositModuleVisible = isDepositModuleEnabled(user);
+  const minDueDate = resolveMinFutureDueDate();
 
-  const creatorOptions = useMemo(
-    () => (canViewOthers ? buildCreatorOptions(orders) : []),
-    [canViewOthers, orders]
+  const {
+    creatorOptions,
+    includeAllCreators,
+    selectedCreatorKeys,
+    onIncludeAllChange,
+    onToggleCreator,
+    filterOrders: filterOrdersByCreatorSelection,
+  } = useCreatorFilter(orders, canViewOthers, user);
+
+  const dateFilteredOrders = useMemo(
+    () => filterOrdersByDateRange(orders, dateRange),
+    [orders, dateRange]
   );
   const visibleOrders = useMemo(
-    () => filterOrdersByCreators(orders, canViewOthers, includeAllCreators, selectedCreatorKeys, user),
-    [orders, canViewOthers, includeAllCreators, selectedCreatorKeys, user]
+    () => filterOrdersByCreatorSelection(dateFilteredOrders),
+    [dateFilteredOrders, filterOrdersByCreatorSelection]
   );
   const selectedProductsTotal = useMemo(
     () => selectedProducts.reduce((sum, product) => {
@@ -447,6 +449,16 @@ export default function Dashboard() {
         return;
       }
     }
+    if ((paymentStatus === "awaiting_deposit" || paymentStatus === "paid_partial") && isDepositModuleVisible) {
+      if (!String(balanceDueDate).trim()) {
+        showError("יש למלא תאריך יעד לתשלום היתרה");
+        return;
+      }
+      if (!isFutureDueDate(balanceDueDate)) {
+        showError("תאריך היעד לתשלום היתרה חייב להיות תאריך עתידי");
+        return;
+      }
+    }
     if ((paymentStatus === "paid" || paymentStatus === "paid_partial") && !paymentTag) {
       showError("יש לבחור אופן תשלום עבור הזמנה ששולמה");
       return;
@@ -565,6 +577,9 @@ export default function Dashboard() {
           : null,
         totalPrice: total,
         assignedEmployeeId: canViewOthers && assignedEmployeeId ? assignedEmployeeId : undefined,
+        balanceDueDate: paymentStatus === "paid_partial" && isDepositModuleVisible && !prepaidDepositChecked
+          ? (balanceDueDate || null)
+          : undefined,
         deposit: effectivePaymentStatus === "awaiting_deposit" && isDepositModuleVisible
           ? (prepaidDepositChecked
               ? {
@@ -1134,6 +1149,7 @@ export default function Dashboard() {
             <PrepaidOptionsSection
               balanceDueDate={balanceDueDate}
               setBalanceDueDate={setBalanceDueDate}
+              minDueDate={minDueDate}
               hasProductsSelected={selectedProducts.length > 0}
               isCheckingProducts={isCheckingProducts}
               hasProgram={deliveryInfo.hasPlan}
@@ -1152,6 +1168,7 @@ export default function Dashboard() {
               setDepositAmount={setDepositAmount}
               balanceDueDate={balanceDueDate}
               setBalanceDueDate={setBalanceDueDate}
+              minDueDate={minDueDate}
               hasProductsSelected={selectedProducts.length > 0}
               isCheckingProducts={isCheckingProducts}
               hasProgram={deliveryInfo.hasPlan}
@@ -1438,7 +1455,7 @@ export default function Dashboard() {
                     <Label className="text-sm font-medium text-slate-700">אמצעי תשלום</Label>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {["ביט", "פייבוקס", "הוראת קבע", "העברה בנקאית", "קארדקום טלפונית", "מזומן", "שולם דרך וויקס"]
+                    {PAYMENT_METHOD_OPTIONS
                       .filter(tag => !(hasExclusiveProduct && tag === "ביט"))
                       .map(tag => (
                       <button
@@ -1570,28 +1587,18 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Orders Table */}
-        {canViewOthers && creatorOptions.length > 0 && (
-          <EmployeeFilterField
-            creatorOptions={creatorOptions}
-            includeAllCreators={includeAllCreators}
-            selectedCreatorKeys={selectedCreatorKeys}
-            onIncludeAllChange={(checked) => {
-              setIncludeAllCreators(checked);
-              if (checked) {
-                setSelectedCreatorKeys(new Set(creatorOptions.map((creator) => creator.id)));
-              }
-            }}
-            onToggleCreator={(creatorId, checked) => {
-              setIncludeAllCreators(false);
-              setSelectedCreatorKeys((prev) => {
-                const next = new Set(prev);
-                if (checked) next.add(creatorId);
-                else next.delete(creatorId);
-                return next;
-              });
-            }}
-          />
-        )}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
+          {canViewOthers && creatorOptions.length > 0 && (
+            <EmployeeFilterField
+              creatorOptions={creatorOptions}
+              includeAllCreators={includeAllCreators}
+              selectedCreatorKeys={selectedCreatorKeys}
+              onIncludeAllChange={onIncludeAllChange}
+              onToggleCreator={onToggleCreator}
+            />
+          )}
+        </div>
 
         <OrdersTable
           orders={visibleOrders}

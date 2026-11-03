@@ -31,6 +31,7 @@ function CheckOption({ checked, onToggle, label, checkedClass }) {
 export default function PrepaidOptionsSection({
   balanceDueDate,
   setBalanceDueDate,
+  minDueDate,
   hasProductsSelected,
   isCheckingProducts,
   hasProgram,
@@ -58,15 +59,20 @@ export default function PrepaidOptionsSection({
 
         <div className="space-y-1.5">
           <Label className="block text-right text-sm font-medium text-slate-700">
-            תאריך יעד להשלמת התשלום (אופציונלי)
+            תאריך יעד להשלמת התשלום *
           </Label>
           <Input
             type="date"
+            required
+            min={minDueDate}
             value={balanceDueDate}
             onChange={(e) => setBalanceDueDate(e.target.value)}
             className="h-10 text-right"
             dir="ltr"
           />
+          {!balanceDueDate && (
+            <p className="text-xs text-orange-700">שדה חובה — יש לבחור תאריך עתידי בלבד</p>
+          )}
         </div>
 
         {!hasProductsSelected && (

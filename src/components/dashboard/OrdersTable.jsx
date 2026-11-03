@@ -13,8 +13,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -26,62 +24,51 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Banknote,
-  CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
   CircleAlert,
-  Copy,
   CreditCard,
-  Download,
   FileText,
   Mail,
-  MessageCircleMore,
   MessageSquarePlus,
   MoreHorizontal,
   Package,
-  Phone,
   RefreshCw,
   Search,
-  Send,
   Smartphone,
   UserRound,
   Workflow,
-  XCircle,
 } from "lucide-react";
 import { TableSkeleton } from "./LoadingSkeleton";
 import { useScrollToTopOnOpen } from "@/hooks/useScrollToTopOnOpen";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   normalizeOrder,
   STATUS_CONFIG,
-  STATUS_UPDATE_OPTIONS,
   isPaidDisplayStatus,
   resolveRemainingBalance,
   resolveCompletePaymentDefault,
-  isDepositPayableStatus,
+  canCompletePayment as isCompletablePaymentStatus,
   ROW_TONE_CLASSNAMES,
+  formatShortName,
+  formatCreatorFirstName,
+  resolveInitialStatusLabel,
+  inferLegacyInitialStatus,
 } from "@/utils/dashboardOrders";
 import { getOrderCreatorKey } from "@/utils/orderCreatorFilter";
-import { creatorTagStyleFromColor } from "@/utils/employeeTagStyle";
+import { PAYMENT_METHOD_OPTIONS, shouldSkipInvoiceForPaymentMethod } from "@/utils/paymentMethods";
+import { resolveMinFutureDueDate } from "@/utils/israelDate";
 import EmployeeAssignField from "./EmployeeAssignField";
+import OrderActionsMenu from "./OrderActionsMenu";
+import OrderCustomerDetails from "./OrderCustomerDetails";
+import OrderProductsList from "./OrderProductsList";
+import FulfillmentStatusIcon from "./FulfillmentStatusIcon";
 
 const PAGE_SIZE = 8;
 const TOP_DIALOG_CONTENT_CLASSNAME =
   "max-w-md top-4 left-[50%] max-h-[min(90vh,calc(100dvh-1rem))] translate-x-[-50%] translate-y-0 overflow-y-auto sm:top-6";
-const PAYMENT_METHOD_OPTIONS = ["ביט", "פייבוקס", "הוראת קבע", "העברה בנקאית", "קארדקום טלפונית", "מזומן", "שולם דרך וויקס"];
-const STANDING_ORDER_PAYMENT_METHOD = "הוראת קבע";
-const CARDCOM_PHONE_PAYMENT_METHOD = "קארדקום טלפונית";
-const CASH_PAYMENT_METHOD = "מזומן";
-const WIX_PAYMENT_METHOD = "שולם דרך וויקס";
-/** תואם ל-`shouldSkipInvoiceForPaymentMethod` ב-`src/backend/dashboardApi.jsw` */
-const SKIP_AUTO_INVOICE_PAYMENT_METHODS = new Set([
-  CARDCOM_PHONE_PAYMENT_METHOD,
-  STANDING_ORDER_PAYMENT_METHOD,
-  CASH_PAYMENT_METHOD,
-  WIX_PAYMENT_METHOD,
-]);
 
 function timelineDotClass(action) {
   switch (action) {
@@ -118,6 +105,18 @@ function getActorBadgeText(event) {
   return "משתמש/ת מורשה";
 }
 
+/** תקציר אירוע לתרשים הזרימה — אירוע "created" מציג את הסטטוס ההתחלתי, לדוגמה "הזמנה נוצרה - שולמה חלקית" */
+function formatTimelineEventSummary(event) {
+  if (!event) return "אין עדכונים";
+  const action = event.action || event.type;
+  if (action === "created") {
+    const initialStatus = event.initialStatus || inferLegacyInitialStatus(event.detail);
+    const label = resolveInitialStatusLabel(initialStatus);
+    return label ? `הזמנה נוצרה - ${label}` : "הזמנה נוצרה";
+  }
+  return event.text || event.detail || "עודכן אירוע בהזמנה";
+}
+
 function safeParseJson(value, fallback) {
   if (!value) return fallback;
   if (typeof value !== 'string') return Array.isArray(value) ? value : fallback;
@@ -129,7 +128,6 @@ export default function OrdersTable({
   isLoading,
   onCopyToClipboard,
   onResendWhatsapp,
-  onUpdateStatus,
   onDeleteOrder,
   onAddNote,
   onRefresh,
@@ -145,18 +143,15 @@ export default function OrdersTable({
   onCompletePartialPayment,
   onUpdateDeposit,
 }) {
+  const isMobile = useIsMobile();
+  const minDueDate = resolveMinFutureDueDate();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [expandedRowId, setExpandedRowId] = useState(null);
   // מודול 1: עריכת תאריך יעד לתשלום יתרה inline בתוך השורה המורחבת
   const [editingDueDateRowId, setEditingDueDateRowId] = useState(null);
   const [dueDateDraft, setDueDateDraft] = useState("");
-  const [statusOrder, setStatusOrder] = useState(null);
   const [deleteOrderState, setDeleteOrderState] = useState(null);
-  const [pendingStatus, setPendingStatus] = useState("sent");
-  const [pendingPaidAmount, setPendingPaidAmount] = useState("");
-  const [pendingPaymentTag, setPendingPaymentTag] = useState("");
-  const [statusFormError, setStatusFormError] = useState("");
   const [busyAction, setBusyAction] = useState({ type: "", rowId: "" });
   const [noteDrafts, setNoteDrafts] = useState({});
   const [resendConfirmOrder, setResendConfirmOrder] = useState(null);
@@ -181,7 +176,7 @@ export default function OrdersTable({
     [orders, commissionRate]
   );
 
-  useScrollToTopOnOpen(Boolean(statusOrder) || Boolean(resendConfirmOrder) || Boolean(deleteOrderState) || Boolean(invoiceOrder) || Boolean(invoiceDuplicateOrder) || Boolean(invoiceUnpaidWarningOrder) || Boolean(resendInvoiceOrder) || Boolean(assignOrderState) || Boolean(partialPayOrder));
+  useScrollToTopOnOpen(Boolean(resendConfirmOrder) || Boolean(deleteOrderState) || Boolean(invoiceOrder) || Boolean(invoiceDuplicateOrder) || Boolean(invoiceUnpaidWarningOrder) || Boolean(resendInvoiceOrder) || Boolean(assignOrderState) || Boolean(partialPayOrder));
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -225,51 +220,6 @@ export default function OrdersTable({
     } finally {
       setBusyAction({ type: "", rowId: "" });
     }
-  };
-
-  const closeStatusDialog = () => {
-    setStatusOrder(null);
-    setPendingStatus("sent");
-    setPendingPaidAmount("");
-    setPendingPaymentTag("");
-    setStatusFormError("");
-  };
-
-  const openStatusDialog = (order) => {
-    setStatusOrder(order);
-    setPendingStatus(order.displayStatus === "unpaid" ? "sent" : order.displayStatus);
-    setPendingPaidAmount(order.displayStatus === "paid_partial" && order.partialPaidAmount > 0 ? String(order.partialPaidAmount) : "");
-    setPendingPaymentTag(order.paymentMethod || "");
-    setStatusFormError("");
-  };
-
-  const handleConfirmStatus = async () => {
-    if (!statusOrder || !onUpdateStatus) return;
-    if (pendingStatus === "paid_partial") {
-      const subtotal = Math.max(0, Number(statusOrder.subtotalAmount) || 0);
-      const paidAmount = Number(pendingPaidAmount);
-      if (!String(pendingPaidAmount).trim()) {
-        setStatusFormError("יש למלא כמה שולם כבר עבור ההזמנה.");
-        return;
-      }
-      if (!Number.isFinite(paidAmount) || paidAmount <= 0 || paidAmount >= subtotal) {
-        setStatusFormError(`הסכום ששולם חייב להיות גדול מ-0 וקטן מ-₪${subtotal.toLocaleString("he-IL")}.`);
-        return;
-      }
-      if (!pendingPaymentTag) {
-        setStatusFormError("יש לבחור אופן תשלום עבור ההזמנה.");
-        return;
-      }
-    }
-    await runRowAction("status", statusOrder, async () => {
-      await onUpdateStatus(statusOrder.rowId, pendingStatus, pendingStatus === "paid_partial"
-        ? {
-          partialPayment: { amountPaid: Number(pendingPaidAmount) },
-          paymentTag: pendingPaymentTag,
-        }
-        : {});
-      closeStatusDialog();
-    });
   };
 
   const handleConfirmDelete = async () => {
@@ -352,7 +302,7 @@ export default function OrdersTable({
         amountPaid: amount,
         paymentMethod: partialPayMethod,
         notes: partialPayNotes,
-        generateInvoice: !SKIP_AUTO_INVOICE_PAYMENT_METHODS.has(partialPayMethod),
+        generateInvoice: !shouldSkipInvoiceForPaymentMethod(partialPayMethod),
       });
       setPartialPayOrder(null);
     });
@@ -647,26 +597,24 @@ export default function OrdersTable({
           <Table
             dir="rtl"
             containerClassName="orders-table-scroll"
-            className="w-full table-fixed min-w-[800px]"
+            className="w-full table-fixed min-w-[700px]"
           >
               <TableHeader>
                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
                   <TableHead className="text-right text-xs font-medium text-slate-500 w-8 px-1" />
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">תאריך</TableHead>
                   <TableHead className="orders-table-sticky-col sticky right-0 z-[12] bg-slate-50 text-right text-xs font-medium text-slate-500 px-1 shadow-[inset_1px_0_0_0_rgb(226_232_240)]">שם לקוח</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">טלפון</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">W/A</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">סה"כ</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">שולם</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">יתרה</TableHead>
                   {showProfitColumn && (
                     <TableHead className="text-right text-xs font-medium text-slate-500 px-1">רווח</TableHead>
                   )}
-                                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1 w-[80px]">סטטוס</TableHead>
-                                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1 w-[72px]">הזמנה</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1">משלוח</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-1 w-[80px]">סטטוס</TableHead>
+                  <TableHead className="text-center text-xs font-medium text-slate-500 px-1 w-[48px]">תוכנית</TableHead>
+                  <TableHead className="text-center text-xs font-medium text-slate-500 px-1 w-[48px]">משלוח</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-1">יצר/ה</TableHead>
-                  <TableHead className="text-left text-xs font-medium text-slate-500 w-8 px-1" />
+                  <TableHead className="hidden md:table-cell text-left text-xs font-medium text-slate-500 w-8 px-1" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -678,9 +626,7 @@ export default function OrdersTable({
                   const latestTimelineEvent = order.timeline.length > 0
                     ? order.timeline[order.timeline.length - 1]
                     : null;
-                  const latestTimelineText = latestTimelineEvent
-                    ? (latestTimelineEvent.text || latestTimelineEvent.detail || "עודכן אירוע בהזמנה")
-                    : "אין עדכונים";
+                  const latestTimelineText = formatTimelineEventSummary(latestTimelineEvent);
                   const latestTimelineDate = latestTimelineEvent?.date
                     ? moment(latestTimelineEvent.date).format("DD/MM/YY HH:mm")
                     : "";
@@ -701,169 +647,49 @@ export default function OrdersTable({
                                 type="button"
                                 onClick={(event) => event.stopPropagation()}
                                 disabled={isError}
-                                className="mx-auto flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 opacity-0 transition-all hover:bg-slate-100 group-hover:opacity-100 focus:opacity-100"
+                                className="mx-auto flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 opacity-100 transition-all hover:bg-slate-100 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100"
                               >
                                 <MoreHorizontal className="w-4 h-4" />
                               </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-52" dir="rtl">
-                              <DropdownMenuItem
-                                disabled={!order.publicOrderUrl || !onResendWhatsapp || isBusy || isCancelled || isError}
-                                className="bg-[#30D46B] text-black hover:bg-[#28b85f] focus:bg-[#28b85f] focus:text-black data-[highlighted]:bg-[#28b85f] data-[highlighted]:text-black"
-                                onClick={() => setResendConfirmOrder(order)}
-                              >
-                                <MessageCircleMore className="w-4 h-4" />
-                                שליחה חוזרת לוואטסאפ
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                disabled={!order.publicOrderUrl || isError}
-                                onClick={() => handleCopyLink(order)}
-                              >
-                                <Copy className="w-4 h-4" />
-                                העתקת קישור
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                disabled={!onUpdateStatus || isBusy || isError}
-                                onClick={() => openStatusDialog(order)}
-                              >
-                                <Workflow className="w-4 h-4" />
-                                שינוי סטטוס
-                              </DropdownMenuItem>
-                              {canViewOthers && employees.length > 0 && (
-                                <DropdownMenuItem
-                                  disabled={!onUpdateAssignment || isBusy || isError}
-                                  onClick={() => openAssignDialog(order)}
-                                >
-                                  <UserRound className="w-4 h-4" />
-                                  שינוי שיוך
-                                </DropdownMenuItem>
-                              )}
-                              {(order.displayStatus === "paid_partial" || isDepositPayableStatus(order)) && (
-                                <DropdownMenuItem
-                                  disabled={!onCompletePartialPayment || isBusy || isError}
-                                  onClick={() => openPartialPayDialog(order)}
-                                >
-                                  <Banknote className="w-4 h-4" />
-                                  השלמת תשלום
-                                </DropdownMenuItem>
-                              )}
-                              {canGenerateInvoices && (() => {
-                                const docs = getOrderInvoiceDocs(order);
-                                const hasDocs = docs.length > 0;
-                                return (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    {!hasDocs ? (
-                                      <DropdownMenuItem
-                                        disabled={isBusy || isError}
-                                        onClick={() => openInvoiceDialog(order)}
-                                      >
-                                        <FileText className="w-4 h-4" />
-                                        הפקת חשבונית
-                                      </DropdownMenuItem>
-                                    ) : docs.length === 1 ? (
-                                      <>
-                                        <DropdownMenuItem
-                                          onClick={() => {
-                                            const latestDoc = docs[docs.length - 1];
-                                            if (latestDoc?.url) window.open(latestDoc.url, "_blank");
-                                          }}
-                                        >
-                                          <Download className="w-4 h-4" />
-                                          צפייה / הורדת חשבונית
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          disabled={isBusy || isError}
-                                          onClick={() => {
-                                            setResendInvoiceOrder(order);
-                                            setResendInvoiceDocId(docs[0]?.docId ?? null);
-                                            setResendInvoiceMethod("email");
-                                          }}
-                                        >
-                                          <Send className="w-4 h-4" />
-                                          שליחה חוזרת של חשבונית
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          disabled={isBusy || isError}
-                                          onClick={() => openInvoiceDialog(order)}
-                                        >
-                                          <FileText className="w-4 h-4" />
-                                          הפקת חשבונית נוספת
-                                        </DropdownMenuItem>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <DropdownMenuLabel className="text-xs text-slate-400">צפייה / הורדה</DropdownMenuLabel>
-                                        {[...docs].reverse().map((doc) => (
-                                          <DropdownMenuItem
-                                            key={`view-${doc.docId || doc.docNumber}`}
-                                            disabled={!doc.url}
-                                            onClick={() => doc.url && window.open(doc.url, "_blank")}
-                                          >
-                                            <Download className="w-4 h-4" />
-                                            {formatInvoiceDocLabel(doc)}
-                                          </DropdownMenuItem>
-                                        ))}
-                                        <DropdownMenuLabel className="text-xs text-slate-400">שליחה חוזרת</DropdownMenuLabel>
-                                        {[...docs].reverse().map((doc) => (
-                                          <DropdownMenuItem
-                                            key={`resend-${doc.docId || doc.docNumber}`}
-                                            disabled={isBusy || isError}
-                                            onClick={() => {
-                                              setResendInvoiceOrder(order);
-                                              setResendInvoiceDocId(doc.docId ?? null);
-                                              setResendInvoiceMethod("email");
-                                            }}
-                                          >
-                                            <Send className="w-4 h-4" />
-                                            {formatInvoiceDocLabel(doc)}
-                                          </DropdownMenuItem>
-                                        ))}
-                                        <DropdownMenuItem
-                                          disabled={isBusy || isError}
-                                          onClick={() => openInvoiceDialog(order)}
-                                        >
-                                          <FileText className="w-4 h-4" />
-                                          הפקת חשבונית נוספת
-                                        </DropdownMenuItem>
-                                      </>
-                                    )}
-                                  </>
-                                );
-                              })()}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-red-600 focus:text-red-700"
-                                disabled={!onDeleteOrder || isBusy || isError}
-                                onClick={() => setDeleteOrderState(order)}
-                              >
-                                <XCircle className="w-4 h-4" />
-                                ביטול הזמנה
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
+                            <OrderActionsMenu
+                              order={order}
+                              align="start"
+                              className="w-52"
+                              isBusy={isBusy}
+                              isCancelled={isCancelled}
+                              isError={isError}
+                              canResendWhatsapp={!!onResendWhatsapp}
+                              onResendWhatsapp={() => setResendConfirmOrder(order)}
+                              onCopyLink={() => handleCopyLink(order)}
+                              onOpenOrder={() => order.publicOrderUrl && window.open(order.publicOrderUrl, "_blank", "noopener,noreferrer")}
+                              canAssign={canViewOthers && employees.length > 0}
+                              onAssign={() => openAssignDialog(order)}
+                              canCompletePayment={isCompletablePaymentStatus(order) && !!onCompletePartialPayment}
+                              onCompletePayment={() => openPartialPayDialog(order)}
+                              canGenerateInvoices={canGenerateInvoices}
+                              invoiceDocs={getOrderInvoiceDocs(order)}
+                              onViewDoc={(doc) => doc.url && window.open(doc.url, "_blank", "noopener,noreferrer")}
+                              onResendInvoiceDoc={(doc) => {
+                                setResendInvoiceOrder(order);
+                                setResendInvoiceDocId(doc.docId ?? null);
+                                setResendInvoiceMethod("email");
+                              }}
+                              onGenerateInvoice={() => openInvoiceDialog(order)}
+                              formatInvoiceDocLabel={formatInvoiceDocLabel}
+                              canDelete={!!onDeleteOrder}
+                              onDelete={() => setDeleteOrderState(order)}
+                            />
                           </DropdownMenu>
                         </TableCell>
                         <TableCell className="text-xs text-slate-500 whitespace-nowrap px-1 py-2">
-                          {order.sentDate ? moment(order.sentDate).format("DD/MM HH:mm") : "—"}
+                          {order.sentDate ? moment(order.sentDate).format("DD/MM") : "—"}
                         </TableCell>
                         <TableCell className={`orders-table-sticky-col sticky right-0 z-[11] max-w-[min(140px,32vw)] px-1 py-2 text-xs font-medium text-slate-700 shadow-[inset_1px_0_0_0_rgb(226_232_240)] ${
                           rowToneClass ? rowToneClass.split(" ")[0] : "bg-white md:group-hover:bg-slate-50"
                         }`}>
-                          <span className="block truncate">{order.customerName || "—"}</span>
-                        </TableCell>
-                        <TableCell className="text-xs text-slate-600 text-right tabular-nums px-1 py-2" dir="ltr">
-                          {order.customerPhone || "—"}
-                        </TableCell>
-                        <TableCell className="text-right whitespace-nowrap px-1 py-2">
-                          {order.whatsappDeliveryStatus === "success" ? (
-                            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" title="נשלח" />
-                          ) : order.whatsappDeliveryStatus === "requested" ? (
-                            <RefreshCw className="w-3 h-3 text-sky-500" title="ממתין" />
-                          ) : order.whatsappDeliveryStatus === "failed" ? (
-                            <CircleAlert className="w-3 h-3 text-red-500" title="נכשל" />
-                          ) : (
-                            <span className="text-xs text-slate-400">—</span>
-                          )}
+                          <span className="block truncate md:hidden">{formatShortName(order.customerName) || "—"}</span>
+                          <span className="hidden truncate md:block">{order.customerName || "—"}</span>
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap px-1 py-2">
                           <div className="font-semibold text-slate-800 tabular-nums text-xs">
@@ -903,41 +729,27 @@ export default function OrdersTable({
                             )}
                           </TableCell>
                         )}
-                                        <TableCell className="px-1 py-2 max-w-[80px] overflow-hidden">
-                                          <Badge
-                                            variant="outline"
-                                            className={`inline-flex max-w-full truncate text-[10px] border-0 font-medium px-1.5 ${order.statusCfg.className}`}
-                                          >
-                                            <span className="truncate">{order.statusCfg.label}</span>
-                                          </Badge>
-                                        </TableCell>
-                        <TableCell className="text-[11px] font-mono text-slate-500 whitespace-nowrap px-1 py-2">
+                        <TableCell className="px-1 py-2 max-w-[90px] overflow-hidden">
                           <div className="flex items-center justify-end gap-1">
                             {canGenerateInvoices && renderInvoiceIndicator(order, { compact: true })}
-                            <span className="truncate">{order.orderNumber}</span>
+                            <Badge
+                              variant="outline"
+                              className={`inline-flex max-w-full truncate text-[10px] border-0 font-medium px-1.5 ${order.statusCfg.className}`}
+                            >
+                              <span className="truncate">{order.statusCfg.label}</span>
+                            </Badge>
                           </div>
                         </TableCell>
-                        <TableCell className="text-[11px] font-mono text-slate-500 whitespace-nowrap px-1 py-2">
-                          {order.deliveryNumber}
+                        <TableCell className="text-center px-1 py-2">
+                          <FulfillmentStatusIcon status={order.planStatus} />
                         </TableCell>
-                        <TableCell className="text-right px-1 py-2">
-                          {order.creatorName && order.creatorName !== "—" ? (
-                            <span
-                              className={`inline-flex max-w-[80px] items-center gap-1 rounded-full border py-0.5 pl-1 pr-1.5 text-[10px] font-medium ${
-                                order.creatorTagColor
-                                  ? ""
-                                  : "border-slate-200 bg-slate-50 text-slate-700"
-                              }`}
-                              dir="ltr"
-                              style={creatorTagStyleFromColor(order.creatorTagColor)}
-                            >
-                              <span className="min-w-0 truncate">{order.creatorName}</span>
-                            </span>
-                          ) : (
-                            <span className="text-xs text-slate-400">—</span>
-                          )}
+                        <TableCell className="text-center px-1 py-2">
+                          <FulfillmentStatusIcon status={order.shippingStatus} />
                         </TableCell>
-                        <TableCell className="text-left px-1 py-2">
+                        <TableCell className="text-right px-1 py-2 text-xs font-medium text-slate-700 truncate">
+                          {formatCreatorFirstName(order.creatorName)}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-left px-1 py-2">
                           <button
                             type="button"
                             onClick={(event) => {
@@ -954,7 +766,7 @@ export default function OrdersTable({
 
                       {isExpanded && (
                         <TableRow className="bg-slate-50/60 hover:bg-slate-50/60">
-                          <TableCell colSpan={showProfitColumn ? 14 : 13} className="p-0">
+                          <TableCell colSpan={showProfitColumn ? 12 : 11} className="p-0">
                             <AnimatePresence initial={false}>
                               <motion.div
                                 initial={{ opacity: 0, height: 0, y: -4, scale: 0.985 }}
@@ -974,7 +786,7 @@ export default function OrdersTable({
                                         <span>{order.sentDate ? moment(order.sentDate).format("DD/MM/YYYY HH:mm") : "—"}</span>
                                       </div>
                                     </div>
-                                    <div className="flex items-center justify-end">
+                                    <div className="hidden md:flex items-center justify-end">
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                           <Button
@@ -988,140 +800,34 @@ export default function OrdersTable({
                                             פעולות נוספות
                                           </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-56" dir="rtl">
-                                          <DropdownMenuItem
-                                            disabled={!order.publicOrderUrl || !onResendWhatsapp || isBusy || isCancelled || isError}
-                                            onClick={() => setResendConfirmOrder(order)}
-                                          >
-                                            <MessageCircleMore className="w-4 h-4" />
-                                            שליחה חוזרת לוואטסאפ
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem
-                                            disabled={!order.publicOrderUrl || !onCopyToClipboard || isError}
-                                            onClick={() => handleCopyLink(order)}
-                                          >
-                                            <Copy className="w-4 h-4" />
-                                            העתקת קישור
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem
-                                            disabled={!onUpdateStatus || isBusy || isError}
-                                            onClick={() => openStatusDialog(order)}
-                                          >
-                                            <Workflow className="w-4 h-4" />
-                                            שינוי סטטוס
-                                          </DropdownMenuItem>
-                                          {canViewOthers && employees.length > 0 && (
-                                            <DropdownMenuItem
-                                              disabled={!onUpdateAssignment || isBusy || isError}
-                                              onClick={() => openAssignDialog(order)}
-                                            >
-                                              <UserRound className="w-4 h-4" />
-                                              שינוי שיוך
-                                            </DropdownMenuItem>
-                                          )}
-                                          {(order.displayStatus === "paid_partial" || isDepositPayableStatus(order)) && (
-                                            <DropdownMenuItem
-                                              disabled={!onCompletePartialPayment || isBusy || isError}
-                                              onClick={() => openPartialPayDialog(order)}
-                                            >
-                                              <Banknote className="w-4 h-4" />
-                                              השלמת תשלום
-                                            </DropdownMenuItem>
-                                          )}
-                                          {canGenerateInvoices && (() => {
-                                            const docs = getOrderInvoiceDocs(order);
-                                            const hasDocs = docs.length > 0;
-                                            return (
-                                              <>
-                                                <DropdownMenuSeparator />
-                                                {!hasDocs ? (
-                                                  <DropdownMenuItem
-                                                    disabled={isBusy || isError}
-                                                    onClick={() => openInvoiceDialog(order)}
-                                                  >
-                                                    <FileText className="w-4 h-4" />
-                                                    הפקת חשבונית
-                                                  </DropdownMenuItem>
-                                                ) : docs.length === 1 ? (
-                                                  <>
-                                                    <DropdownMenuItem
-                                                      onClick={() => {
-                                                        const latestDoc = docs[docs.length - 1];
-                                                        if (latestDoc?.url) window.open(latestDoc.url, "_blank");
-                                                      }}
-                                                    >
-                                                      <Download className="w-4 h-4" />
-                                                      צפייה / הורדת חשבונית
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                      disabled={isBusy || isError}
-                                                      onClick={() => {
-                                                        setResendInvoiceOrder(order);
-                                                        setResendInvoiceDocId(docs[0]?.docId ?? null);
-                                                        setResendInvoiceMethod("email");
-                                                      }}
-                                                    >
-                                                      <Send className="w-4 h-4" />
-                                                      שליחה חוזרת של חשבונית
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                      disabled={isBusy || isError}
-                                                      onClick={() => openInvoiceDialog(order)}
-                                                    >
-                                                      <FileText className="w-4 h-4" />
-                                                      הפקת חשבונית נוספת
-                                                    </DropdownMenuItem>
-                                                  </>
-                                                ) : (
-                                                  <>
-                                                    <DropdownMenuLabel className="text-xs text-slate-400">צפייה / הורדה</DropdownMenuLabel>
-                                                    {[...docs].reverse().map((doc) => (
-                                                      <DropdownMenuItem
-                                                        key={`view-${doc.docId || doc.docNumber}`}
-                                                        disabled={!doc.url}
-                                                        onClick={() => doc.url && window.open(doc.url, "_blank")}
-                                                      >
-                                                        <Download className="w-4 h-4" />
-                                                        {formatInvoiceDocLabel(doc)}
-                                                      </DropdownMenuItem>
-                                                    ))}
-                                                    <DropdownMenuLabel className="text-xs text-slate-400">שליחה חוזרת</DropdownMenuLabel>
-                                                    {[...docs].reverse().map((doc) => (
-                                                      <DropdownMenuItem
-                                                        key={`resend-${doc.docId || doc.docNumber}`}
-                                                        disabled={isBusy || isError}
-                                                        onClick={() => {
-                                                          setResendInvoiceOrder(order);
-                                                          setResendInvoiceDocId(doc.docId ?? null);
-                                                          setResendInvoiceMethod("email");
-                                                        }}
-                                                      >
-                                                        <Send className="w-4 h-4" />
-                                                        {formatInvoiceDocLabel(doc)}
-                                                      </DropdownMenuItem>
-                                                    ))}
-                                                    <DropdownMenuItem
-                                                      disabled={isBusy || isError}
-                                                      onClick={() => openInvoiceDialog(order)}
-                                                    >
-                                                      <FileText className="w-4 h-4" />
-                                                      הפקת חשבונית נוספת
-                                                    </DropdownMenuItem>
-                                                  </>
-                                                )}
-                                              </>
-                                            );
-                                          })()}
-                                          <DropdownMenuSeparator />
-                                          <DropdownMenuItem
-                                            className="text-red-600 focus:text-red-700"
-                                            disabled={!onDeleteOrder || isBusy || isError}
-                                            onClick={() => setDeleteOrderState(order)}
-                                          >
-                                            <XCircle className="w-4 h-4" />
-                                            ביטול הזמנה
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
+                                        <OrderActionsMenu
+                                          order={order}
+                                          align="end"
+                                          className="w-56"
+                                          isBusy={isBusy}
+                                          isCancelled={isCancelled}
+                                          isError={isError}
+                                          canResendWhatsapp={!!onResendWhatsapp}
+                                          onResendWhatsapp={() => setResendConfirmOrder(order)}
+                                          onCopyLink={() => handleCopyLink(order)}
+                                          onOpenOrder={() => order.publicOrderUrl && window.open(order.publicOrderUrl, "_blank", "noopener,noreferrer")}
+                                          canAssign={canViewOthers && employees.length > 0}
+                                          onAssign={() => openAssignDialog(order)}
+                                          canCompletePayment={isCompletablePaymentStatus(order) && !!onCompletePartialPayment}
+                                          onCompletePayment={() => openPartialPayDialog(order)}
+                                          canGenerateInvoices={canGenerateInvoices}
+                                          invoiceDocs={getOrderInvoiceDocs(order)}
+                                          onViewDoc={(doc) => doc.url && window.open(doc.url, "_blank", "noopener,noreferrer")}
+                                          onResendInvoiceDoc={(doc) => {
+                                            setResendInvoiceOrder(order);
+                                            setResendInvoiceDocId(doc.docId ?? null);
+                                            setResendInvoiceMethod("email");
+                                          }}
+                                          onGenerateInvoice={() => openInvoiceDialog(order)}
+                                          formatInvoiceDocLabel={formatInvoiceDocLabel}
+                                          canDelete={!!onDeleteOrder}
+                                          onDelete={() => setDeleteOrderState(order)}
+                                        />
                                       </DropdownMenu>
                                     </div>
                                   </div>
@@ -1139,265 +845,85 @@ export default function OrdersTable({
                                   )}
 
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 w-full items-start">
-                                    <Accordion type="multiple" className="space-y-2 md:space-y-3 w-full min-w-0">
-                                      <AccordionItem value={`${order.rowId}-customer`} className="w-full min-h-[56px] md:min-h-[72px] rounded-xl md:rounded-2xl border border-slate-200 bg-slate-50/70 px-2.5 md:px-3 border-b-0 overflow-hidden">
-                                        <AccordionTrigger className="min-h-[56px] md:min-h-[72px] py-0 text-right hover:no-underline">
-                                          <span className="flex w-full min-w-0 items-center justify-between gap-2 md:gap-3">
-                                            <span className="inline-flex items-center gap-1.5 md:gap-2 text-xs md:text-sm font-semibold text-slate-700 shrink-0">
-                                              <UserRound className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-400" />
-                                              פרטי לקוח ותשלום
-                                            </span>
-                                            <span className="min-w-0 flex-1" />
-                                          </span>
-                                        </AccordionTrigger>
-                                        <AccordionContent className="pb-2 md:pb-3 pt-1">
-                                          <div className="grid gap-1.5 md:gap-2 grid-cols-2">
-                                            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
-                                              <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
-                                                <UserRound className="w-3 h-3" />
-                                                <span>לקוח</span>
-                                              </div>
-                                              <p className="text-xs md:text-sm font-medium text-slate-700 truncate">{order.customerName || "—"}</p>
-                                            </div>
-                                            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
-                                              <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
-                                                <Phone className="w-3 h-3" />
-                                                <span>טלפון</span>
-                                              </div>
-                                              <p className="text-xs md:text-sm text-slate-700 tabular-nums" dir="ltr">{order.customerPhone || "—"}</p>
-                                            </div>
-                                            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
-                                              <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
-                                                <CalendarDays className="w-3 h-3" />
-                                                <span>תאריך יצירה</span>
-                                              </div>
-                                              <p className="text-xs md:text-sm text-slate-700">{order.orderDate ? moment(order.orderDate).format("DD/MM/YY HH:mm") : "—"}</p>
-                                            </div>
-                                            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
-                                              <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
-                                                <Workflow className="w-3 h-3" />
-                                                <span>סטטוס</span>
-                                              </div>
-                                              <Badge
-                                                variant="outline"
-                                                className={`inline-flex whitespace-nowrap text-[10px] border-0 font-medium ${order.statusCfg.className}`}
-                                              >
-                                                {order.statusCfg.label}
-                                              </Badge>
-                                            </div>
-                                            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
-                                              <p className="text-[10px] text-slate-400 mb-0.5">מס׳ הזמנה</p>
-                                              <p className="text-xs md:text-sm font-mono text-slate-600 truncate">{order.orderNumber}</p>
-                                            </div>
-                                            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
-                                              <p className="text-[10px] text-slate-400 mb-0.5">מס׳ משלוח תפוז</p>
-                                              <p className="text-xs md:text-sm font-mono text-slate-600 truncate">{order.deliveryNumber}</p>
-                                            </div>
-                                            {["awaiting_deposit", "deposit_paid", "paid_partial"].includes(order.displayStatus) && (
-                                              <div
-                                                className={`rounded-lg border px-2 py-1.5 md:px-3 md:py-2.5 text-right ${
-                                                  order.rowTone === "red" ? "border-red-200 bg-red-50" : "border-slate-200 bg-white"
-                                                }`}
-                                                onClick={(e) => e.stopPropagation()}
-                                              >
-                                                <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
-                                                  <CalendarDays className="w-3 h-3" />
-                                                  <span>{order.displayStatus === "awaiting_deposit" ? "תאריך יעד לתשלום יתרה" : "תאריך יעד לתשלום יתרה"}</span>
-                                                </div>
-                                                {editingDueDateRowId === order.rowId ? (
-                                                  <div className="flex items-center gap-1.5">
-                                                    <Input
-                                                      type="date"
-                                                      value={dueDateDraft}
-                                                      onChange={(e) => setDueDateDraft(e.target.value)}
-                                                      className="h-7 text-xs"
-                                                      dir="ltr"
-                                                    />
-                                                    <Button
-                                                      size="sm"
-                                                      className="h-7 px-2 text-[10px]"
-                                                      disabled={busyAction.type === "dueDate" && busyAction.rowId === order.rowId}
-                                                      onClick={() => handleSaveDueDate(order)}
-                                                    >
-                                                      שמירה
-                                                    </Button>
-                                                    <Button
-                                                      size="sm"
-                                                      variant="ghost"
-                                                      className="h-7 px-2 text-[10px]"
-                                                      onClick={closeDueDateEditor}
-                                                    >
-                                                      ביטול
-                                                    </Button>
-                                                  </div>
-                                                ) : (
-                                                  <button
-                                                    type="button"
-                                                    disabled={!onUpdateDeposit}
-                                                    onClick={() => openDueDateEditor(order)}
-                                                    className={`text-xs md:text-sm font-medium ${order.rowTone === "red" ? "text-red-700" : "text-slate-700"} ${onUpdateDeposit ? "hover:underline" : ""}`}
-                                                  >
-                                                    {order.balanceDueDate ? moment(order.balanceDueDate).format("DD/MM/YY") : "לא נקבע"}
-                                                  </button>
-                                                )}
-                                              </div>
-                                            )}
-                                            {order.depositOptions && (order.depositOptions.hasShipping || order.depositOptions.hasPlan) && (
-                                              <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right col-span-2">
-                                                <p className="text-[10px] text-slate-400 mb-0.5">הגדרות מקדמה</p>
-                                                {order.depositOptions.hasShipping && (
-                                                  <p className="text-xs text-slate-700">
-                                                    שליחת הערכה לאחר מקדמה: <b>{order.depositOptions.shipAfterDeposit ? "מופעל" : "כבוי"}</b>
-                                                  </p>
-                                                )}
-                                                {order.depositOptions.hasPlan && (
-                                                  <p className="text-xs text-slate-700">
-                                                    פתיחת קורס/תוכנית לאחר תשלום המקדמה: <b>{order.depositOptions.unlockProgram ? "מופעל" : "כבוי"}</b>
-                                                  </p>
-                                                )}
-                                              </div>
-                                            )}
-                                            {order.displayStatus === "paid_partial" && order.partialPaidAmount > 0 && (
-                                              <div className="rounded-lg border border-orange-200 bg-orange-50 px-2 py-1.5 md:px-3 md:py-2.5 text-right">
-                                                <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-orange-700">
-                                                  <CreditCard className="w-3 h-3" />
-                                                  <span>שולם מראש</span>
-                                                </div>
-                                                <p className="text-xs md:text-sm font-semibold text-orange-800">
-                                                  ₪{order.partialPaidAmount.toLocaleString("he-IL")}
-                                                </p>
-                                              </div>
-                                            )}
-                                            {order.displayStatus === "paid_partial" && order.partialPaidAmount > 0 && (
-                                              <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
-                                                <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
-                                                  <CreditCard className="w-3 h-3" />
-                                                  <span>יתרה לתשלום</span>
-                                                </div>
-                                                <p className="text-xs md:text-sm font-semibold text-[#C2410B]">
-                                                  ₪{(order.remainingPaymentAmount ?? 0).toLocaleString("he-IL")}
-                                                </p>
-                                              </div>
-                                            )}
-                                            {order.displayStatus !== "paid_partial" && order.partialPaidAmount > 0 && order.couponDetails?.source === "auto_paid" && (
-                                              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1.5 md:px-3 md:py-2.5 text-right">
-                                                <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-emerald-700">
-                                                  <CreditCard className="w-3 h-3" />
-                                                  <span>שולם בפועל</span>
-                                                </div>
-                                                <p className="text-xs md:text-sm font-semibold text-emerald-900">
-                                                  ₪{order.partialPaidAmount.toLocaleString("he-IL")}
-                                                </p>
-                                              </div>
-                                            )}
-                                            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
-                                              <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
-                                                <UserRound className="w-3 h-3" />
-                                                <span>נוצרה על ידי</span>
-                                              </div>
-                                              {order.creatorName && order.creatorName !== "—" ? (
-                                                <span
-                                                  className={`inline-flex max-w-full items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium ${
-                                                    order.creatorTagColor
-                                                      ? ""
-                                                      : "border-slate-200 bg-slate-50 text-slate-800"
-                                                  }`}
-                                                  dir="ltr"
-                                                  style={creatorTagStyleFromColor(order.creatorTagColor)}
-                                                >
-                                                  <span className="min-w-0 truncate">{order.creatorName}</span>
-                                                  <UserRound
-                                                    className={`h-3 w-3 shrink-0 ${order.creatorTagColor ? "text-current opacity-90" : "text-slate-500"}`}
-                                                    aria-hidden
-                                                  />
-                                                </span>
-                                              ) : (
-                                                <p className="text-xs text-slate-700">—</p>
-                                              )}
-                                            </div>
-                                            {order.orderChangeNotes && (
-                                              <div className="col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 md:px-3 md:py-2">
-                                                <p className="text-[10px] text-amber-700 mb-0.5 text-right">שינויים בערכה</p>
-                                                <p className="text-xs md:text-sm text-amber-900 text-right">{order.orderChangeNotes}</p>
-                                              </div>
-                                            )}
-                                            {order.notes && (
-                                              <div className="col-span-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2">
-                                                <p className="text-[10px] text-slate-400 mb-0.5 text-right">הערות פנימיות</p>
-                                                <p className="text-xs md:text-sm text-slate-600 text-right">{order.notes}</p>
-                                              </div>
-                                            )}
+                                    {isMobile ? (
+                                      <div className="space-y-2 w-full min-w-0">
+                                        <div className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-2.5 py-2.5">
+                                          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                                            <UserRound className="w-3.5 h-3.5 text-slate-400" />
+                                            פרטי לקוח ותשלום
                                           </div>
-                                        </AccordionContent>
-                                      </AccordionItem>
-
-                                      <AccordionItem value={`${order.rowId}-products`} className="w-full min-h-[56px] md:min-h-[72px] rounded-xl md:rounded-2xl border border-slate-200 bg-slate-50/70 px-2.5 md:px-3 border-b-0 overflow-hidden">
-                                        <AccordionTrigger className="min-h-[56px] md:min-h-[72px] py-0 text-right hover:no-underline">
-                                          <span className="flex w-full min-w-0 items-center justify-between gap-2 text-xs md:text-sm font-semibold text-slate-700">
-                                            <span className="inline-flex items-center gap-1.5 md:gap-2 text-xs md:text-sm font-semibold text-slate-700 shrink-0">
-                                              <Package className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-400" />
+                                          <OrderCustomerDetails
+                                            order={order}
+                                            editingDueDateRowId={editingDueDateRowId}
+                                            dueDateDraft={dueDateDraft}
+                                            setDueDateDraft={setDueDateDraft}
+                                            onOpenDueDateEditor={openDueDateEditor}
+                                            onCloseDueDateEditor={closeDueDateEditor}
+                                            onSaveDueDate={handleSaveDueDate}
+                                            busyAction={busyAction}
+                                            canEditDueDate={!!onUpdateDeposit}
+                                            minDueDate={minDueDate}
+                                          />
+                                        </div>
+                                        <div className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-2.5 py-2.5">
+                                          <div className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold text-slate-700">
+                                            <span className="inline-flex items-center gap-1.5">
+                                              <Package className="w-3.5 h-3.5 text-slate-400" />
                                               מוצרים
                                             </span>
-                                            <span className="truncate text-xs md:text-sm font-bold text-slate-800 text-right">
+                                            <span className="text-xs font-bold text-slate-800">
                                               סה"כ: {order.totalAmount.toLocaleString("he-IL")} ש"ח
                                             </span>
-                                          </span>
-                                        </AccordionTrigger>
-                                        <AccordionContent className="pb-3 pt-1">
-                                          <TooltipProvider delayDuration={120}>
-                                            <div className="space-y-2">
-                                              {order.products.length > 0 ? order.products.map((product, index) => {
-                                                const productImage = String(product.image || product.imageUrl || "").trim();
-                                                const lineTotal = Number((product.price || 0) * (product.quantity || 0));
-                                                return (
-                                                  <div key={`${order.rowId}-product-${index}`} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5">
-                                                    <div className="flex items-center justify-between gap-2 md:gap-3" dir="rtl">
-                                                      <div className="flex min-w-0 items-center justify-end gap-1.5 md:gap-2 text-right">
-                                                        <div className="min-w-0 text-right" dir="rtl">
-                                                          <p className="truncate text-xs md:text-sm text-slate-700">{product.name || "מוצר"}</p>
-                                                          <p className="text-[10px] md:text-xs text-slate-400">כמות: {product.quantity || 1}</p>
-                                                        </div>
-                                                        {productImage && (
-                                                          <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                              <button
-                                                                type="button"
-                                                                onClick={(event) => event.stopPropagation()}
-                                                                className="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100"
-                                                                aria-label={`תצוגה מוגדלת למוצר ${product.name || ""}`}
-                                                              >
-                                                                <img
-                                                                  src={productImage}
-                                                                  alt={product.name || "תמונת מוצר"}
-                                                                  className="h-full w-full object-cover"
-                                                                  loading="lazy"
-                                                                />
-                                                              </button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent side="left" className="border border-slate-200 bg-white p-1.5 shadow-lg">
-                                                              <img
-                                                                src={productImage}
-                                                                alt={product.name || "תצוגה מוגדלת"}
-                                                                className="h-40 w-40 rounded-md object-cover"
-                                                              />
-                                                            </TooltipContent>
-                                                          </Tooltip>
-                                                        )}
-                                                      </div>
-                                                      <span className="shrink-0 text-xs md:text-sm font-semibold text-slate-700">
-                                                        {lineTotal.toLocaleString("he-IL")} ש"ח
-                                                      </span>
-                                                    </div>
-                                                  </div>
-                                                );
-                                              }) : (
-                                                <p className="text-xs text-slate-400 text-right">אין פרטי מוצרים להצגה</p>
-                                              )}
-                                            </div>
-                                          </TooltipProvider>
-                                        </AccordionContent>
-                                      </AccordionItem>
-                                    </Accordion>
+                                          </div>
+                                          <OrderProductsList order={order} />
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <Accordion type="multiple" className="space-y-2 md:space-y-3 w-full min-w-0">
+                                        <AccordionItem value={`${order.rowId}-customer`} className="w-full min-h-[56px] md:min-h-[72px] rounded-xl md:rounded-2xl border border-slate-200 bg-slate-50/70 px-2.5 md:px-3 border-b-0 overflow-hidden">
+                                          <AccordionTrigger className="min-h-[56px] md:min-h-[72px] py-0 text-right hover:no-underline">
+                                            <span className="flex w-full min-w-0 items-center justify-between gap-2 md:gap-3">
+                                              <span className="inline-flex items-center gap-1.5 md:gap-2 text-xs md:text-sm font-semibold text-slate-700 shrink-0">
+                                                <UserRound className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-400" />
+                                                פרטי לקוח ותשלום
+                                              </span>
+                                              <span className="min-w-0 flex-1" />
+                                            </span>
+                                          </AccordionTrigger>
+                                          <AccordionContent className="pb-2 md:pb-3 pt-1">
+                                            <OrderCustomerDetails
+                                              order={order}
+                                              editingDueDateRowId={editingDueDateRowId}
+                                              dueDateDraft={dueDateDraft}
+                                              setDueDateDraft={setDueDateDraft}
+                                              onOpenDueDateEditor={openDueDateEditor}
+                                              onCloseDueDateEditor={closeDueDateEditor}
+                                              onSaveDueDate={handleSaveDueDate}
+                                              busyAction={busyAction}
+                                              canEditDueDate={!!onUpdateDeposit}
+                                              minDueDate={minDueDate}
+                                            />
+                                          </AccordionContent>
+                                        </AccordionItem>
+
+                                        <AccordionItem value={`${order.rowId}-products`} className="w-full min-h-[56px] md:min-h-[72px] rounded-xl md:rounded-2xl border border-slate-200 bg-slate-50/70 px-2.5 md:px-3 border-b-0 overflow-hidden">
+                                          <AccordionTrigger className="min-h-[56px] md:min-h-[72px] py-0 text-right hover:no-underline">
+                                            <span className="flex w-full min-w-0 items-center justify-between gap-2 text-xs md:text-sm font-semibold text-slate-700">
+                                              <span className="inline-flex items-center gap-1.5 md:gap-2 text-xs md:text-sm font-semibold text-slate-700 shrink-0">
+                                                <Package className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-400" />
+                                                מוצרים
+                                              </span>
+                                              <span className="truncate text-xs md:text-sm font-bold text-slate-800 text-right">
+                                                סה"כ: {order.totalAmount.toLocaleString("he-IL")} ש"ח
+                                              </span>
+                                            </span>
+                                          </AccordionTrigger>
+                                          <AccordionContent className="pb-3 pt-1">
+                                            <OrderProductsList order={order} />
+                                          </AccordionContent>
+                                        </AccordionItem>
+                                      </Accordion>
+                                    )}
 
                                     <Accordion type="multiple" className="space-y-2 md:space-y-3 w-full min-w-0">
                                       <AccordionItem value={`${order.rowId}-timeline`} className="w-full min-h-[56px] md:min-h-[72px] rounded-xl md:rounded-2xl border border-slate-200 bg-slate-50/70 px-2.5 md:px-3 border-b-0 overflow-hidden">
@@ -1406,6 +932,13 @@ export default function OrdersTable({
                                             <span className="inline-flex items-center gap-1.5 md:gap-2 text-xs md:text-sm font-semibold text-slate-700 shrink-0">
                                               <Workflow className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-400" />
                                               פעולות אחרונות
+                                              {order.whatsappDeliveryStatus === "success" ? (
+                                                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" title="וואטסאפ נשלח" />
+                                              ) : order.whatsappDeliveryStatus === "requested" ? (
+                                                <RefreshCw className="w-3 h-3 text-sky-500" title="וואטסאפ ממתין" />
+                                              ) : order.whatsappDeliveryStatus === "failed" ? (
+                                                <CircleAlert className="w-3 h-3 text-red-500" title="וואטסאפ נכשל" />
+                                              ) : null}
                                             </span>
                                             <span className="min-w-0 flex-1 text-right">
                                               {latestTimelineDate && (
@@ -1444,8 +977,11 @@ export default function OrdersTable({
                                                         </Badge>
                                                       </div>
                                                       <p className="text-xs md:text-sm text-slate-700">
-                                                        {event.text || event.detail || "עודכן אירוע בהזמנה"}
+                                                        {formatTimelineEventSummary(event)}
                                                       </p>
+                                                      {action === "created" && event.detail && (
+                                                        <p className="mt-0.5 text-[10px] md:text-xs text-slate-400">{event.detail}</p>
+                                                      )}
                                                     </div>
                                                   </div>
                                                 );
@@ -1540,106 +1076,6 @@ export default function OrdersTable({
           )}
         </>
       )}
-
-      <Dialog open={Boolean(statusOrder)} onOpenChange={(open) => !open && closeStatusDialog()}>
-        <DialogContent dir="rtl" className={TOP_DIALOG_CONTENT_CLASSNAME}>
-          <DialogHeader className="text-right">
-            <DialogTitle className="text-right">שינוי סטטוס הזמנה</DialogTitle>
-            <DialogDescription className="text-right">
-              בחרי את הסטטוס החדש עבור {statusOrder?.customerName || "ההזמנה"}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-2">
-            {STATUS_UPDATE_OPTIONS.map((statusKey) => {
-              const config = STATUS_CONFIG[statusKey];
-              const isSelected = pendingStatus === statusKey;
-              return (
-                <button
-                  key={statusKey}
-                  type="button"
-                  onClick={() => {
-                    setPendingStatus(statusKey);
-                    setStatusFormError("");
-                  }}
-                  className={`rounded-xl border px-3 py-2 text-sm font-medium transition-all ${
-                    isSelected
-                      ? "border-slate-900 bg-slate-900 text-white"
-                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
-                  }`}
-                >
-                  {config.label}
-                </button>
-              );
-            })}
-          </div>
-          {pendingStatus === "paid_partial" && (
-            <div className="space-y-3 rounded-xl border border-orange-200 bg-orange-50/70 p-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-slate-700 text-right">כמה שולם כבר עבור ההזמנה</p>
-                <div className="flex items-center gap-2" dir="rtl">
-                  <Input
-                    type="number"
-                    min="0"
-                    max={Math.max(0, (statusOrder?.subtotalAmount ?? 0) - 0.01)}
-                    step="0.01"
-                    value={pendingPaidAmount}
-                    onChange={(event) => {
-                      setPendingPaidAmount(event.target.value);
-                      setStatusFormError("");
-                    }}
-                    placeholder="סכום ששולם"
-                    className="h-10 text-right bg-white"
-                    dir="ltr"
-                  />
-                  <span className="text-sm font-semibold text-slate-600">₪</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-slate-700 text-right">אופן תשלום</p>
-                <div className="flex flex-wrap gap-2">
-                  {PAYMENT_METHOD_OPTIONS.map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => {
-                        setPendingPaymentTag(tag);
-                        setStatusFormError("");
-                      }}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
-                        pendingPaymentTag === tag
-                          ? "bg-slate-900 text-white border-slate-900"
-                          : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-                      }`}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {statusFormError ? (
-                <p className="text-xs text-red-600 text-right">{statusFormError}</p>
-              ) : (
-                <p className="text-xs text-orange-800 text-right">
-                  יווצר קישור חדש ליתרת התשלום והסכום שנקלט יישמר בהזמנה.
-                </p>
-              )}
-            </div>
-          )}
-          <DialogFooter className="sm:justify-start sm:space-x-0 gap-2">
-            <Button
-              type="button"
-              className="bg-slate-900 hover:bg-slate-800 text-white"
-              onClick={handleConfirmStatus}
-              disabled={busyAction.type === "status"}
-            >
-              שמירת סטטוס
-            </Button>
-            <Button type="button" variant="ghost" onClick={closeStatusDialog}>
-              ביטול
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={Boolean(resendConfirmOrder)}

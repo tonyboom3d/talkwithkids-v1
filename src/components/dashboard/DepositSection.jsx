@@ -34,6 +34,7 @@ export default function DepositSection({
   setDepositAmount,
   balanceDueDate,
   setBalanceDueDate,
+  minDueDate,
   hasProductsSelected,
   isCheckingProducts,
   hasProgram,
@@ -90,15 +91,20 @@ export default function DepositSection({
 
         <div className="space-y-1.5">
           <Label className="block text-right text-sm font-medium text-slate-700">
-            תאריך יעד לתשלום היתרה
+            תאריך יעד לתשלום היתרה *
           </Label>
           <Input
             type="date"
+            required
+            min={minDueDate}
             value={balanceDueDate}
             onChange={(e) => setBalanceDueDate(e.target.value)}
             className="h-10 text-right"
             dir="ltr"
           />
+          {!balanceDueDate && (
+            <p className="text-xs text-yellow-800">שדה חובה — יש לבחור תאריך עתידי בלבד</p>
+          )}
         </div>
 
         {hasProductsSelected && isCheckingProducts && (

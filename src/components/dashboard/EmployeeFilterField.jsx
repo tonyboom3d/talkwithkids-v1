@@ -71,17 +71,10 @@ export default function EmployeeFilterField({
                 <div key={id} className="flex items-center gap-2 space-x-reverse">
                   <Checkbox
                     id={`filter-creator-${id}`}
-                    checked={selectedCreatorKeys.has(id)}
-                    disabled={includeAllCreators}
+                    checked={!includeAllCreators && selectedCreatorKeys.has(id)}
                     onCheckedChange={(checked) => onToggleCreator(id, checked === true)}
                   />
-                  <Label
-                    htmlFor={`filter-creator-${id}`}
-                    className={cn(
-                      "flex-1 cursor-pointer truncate text-sm",
-                      includeAllCreators && "cursor-not-allowed text-slate-400"
-                    )}
-                  >
+                  <Label htmlFor={`filter-creator-${id}`} className={cn("flex-1 cursor-pointer truncate text-sm")}>
                     {label}
                   </Label>
                 </div>

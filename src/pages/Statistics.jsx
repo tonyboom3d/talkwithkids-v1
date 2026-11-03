@@ -17,7 +17,7 @@ import {
   Scatter,
   CartesianGrid,
 } from "recharts";
-import { TrendingUp, ShoppingBag, CreditCard, Percent, Loader2, CircleDot, Users, ChevronRight, ChevronLeft } from "lucide-react";
+import { TrendingUp, ShoppingBag, CreditCard, Percent, Loader2, CircleDot, Users } from "lucide-react";
 import moment from "moment";
 import { MiniCalendar } from "../components/dashboard/DateRangePicker";
 import EmployeeFilterField from "../components/dashboard/EmployeeFilterField";
@@ -26,7 +26,7 @@ import { usePostMessage } from "@/hooks/usePostMessage";
 import { toast } from "sonner";
 import { normalizeOrder, isPaidDisplayStatus } from "@/utils/dashboardOrders";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { buildCreatorOptions, filterOrdersByCreators } from "@/utils/orderCreatorFilter";
+import { useCreatorFilter } from "@/hooks/useCreatorFilter";
 
 const DEMO_USER_NAME = "שרה מ.";
 
@@ -194,9 +194,6 @@ export default function Statistics() {
   const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [orders, setOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
-  /** כש־canViewOthers: true = כל העובדים; false = רק הנבחרות ב־selectedCreatorKeys */
-  const [includeAllCreators, setIncludeAllCreators] = useState(true);
-  const [selectedCreatorKeys, setSelectedCreatorKeys] = useState(() => new Set());
 
   const isDemo = !user;
 
@@ -233,18 +230,14 @@ export default function Statistics() {
     [orders, commissionRate]
   );
 
-  const creatorOptions = useMemo(() => {
-    return canViewOthers ? buildCreatorOptions(normalizedOrders) : [];
-  }, [canViewOthers, normalizedOrders]);
-
-  /** אתחול רשימת נבחרות כשטוענים הזמנות (רק אם עדיין ריק, כדי לא לדרוס בחירה ידנית) */
-  useEffect(() => {
-    if (!canViewOthers || creatorOptions.length === 0) return;
-    setSelectedCreatorKeys((prev) => {
-      if (prev.size > 0) return prev;
-      return new Set(creatorOptions.map((c) => c.id));
-    });
-  }, [canViewOthers, creatorOptions]);
+  const {
+    creatorOptions,
+    includeAllCreators,
+    selectedCreatorKeys,
+    onIncludeAllChange,
+    onToggleCreator,
+    filterOrders: filterOrdersByCreatorSelection,
+  } = useCreatorFilter(normalizedOrders, canViewOthers, user);
 
   const dateFiltered = useMemo(() => {
     return normalizedOrders.filter((order) => {
@@ -256,15 +249,10 @@ export default function Statistics() {
     });
   }, [normalizedOrders, dateRange]);
 
-  const filteredOrders = useMemo(() => {
-    return filterOrdersByCreators(
-      dateFiltered,
-      canViewOthers,
-      includeAllCreators,
-      selectedCreatorKeys,
-      user
-    );
-  }, [dateFiltered, canViewOthers, includeAllCreators, selectedCreatorKeys, user]);
+  const filteredOrders = useMemo(
+    () => filterOrdersByCreatorSelection(dateFiltered),
+    [dateFiltered, filterOrdersByCreatorSelection]
+  );
 
   const paidOrders = useMemo(
     () => filteredOrders.filter((o) => isPaidDisplayStatus(o.displayStatus)),
@@ -398,20 +386,6 @@ export default function Statistics() {
   ];
 
   const isLoading = isLoadingOrders || isAuthLoading;
-
-  const toggleCreator = (id, checked) => {
-    setSelectedCreatorKeys((prev) => {
-      const next = new Set(prev);
-      if (checked) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-  };
-
-  const selectAllCreatorsInList = () => {
-    const all = new Set(creatorOptions.map((c) => c.id));
-    setSelectedCreatorKeys(all);
-  };
 
   return (
     <div className="min-h-screen bg-[#f8f8f8] p-3 md:p-6" dir="rtl">
@@ -634,11 +608,8 @@ export default function Statistics() {
                       includeAllCreators={includeAllCreators}
                       selectedCreatorKeys={selectedCreatorKeys}
                       disabled={isLoading}
-                      onIncludeAllChange={(checked) => {
-                        setIncludeAllCreators(checked);
-                        if (checked) selectAllCreatorsInList();
-                      }}
-                      onToggleCreator={toggleCreator}
+                      onIncludeAllChange={onIncludeAllChange}
+                      onToggleCreator={onToggleCreator}
                     />
                   )}
                 </div>
