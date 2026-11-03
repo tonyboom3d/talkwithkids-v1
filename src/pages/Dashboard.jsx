@@ -18,6 +18,7 @@ import { toast } from "sonner";
 
 import CustomerSection from "../components/dashboard/CustomerSection";
 import DepositSection from "../components/dashboard/DepositSection";
+import PrepaidOptionsSection from "../components/dashboard/PrepaidOptionsSection";
 import ProductSelector from "../components/dashboard/ProductSelector";
 import StoreCouponPicker from "../components/dashboard/StoreCouponPicker";
 import OrdersTable from "../components/dashboard/OrdersTable";
@@ -271,7 +272,7 @@ export default function Dashboard() {
       setSelectedStoreCoupon(null);
       setCouponValue("");
     }
-    if (paymentStatus !== "awaiting_deposit") {
+    if (paymentStatus !== "awaiting_deposit" && paymentStatus !== "paid_partial") {
       setDepositAmount("");
       setDepositLinkText("");
       setBalanceDueDate("");
@@ -315,7 +316,7 @@ export default function Dashboard() {
     [selectedProducts]
   );
   useEffect(() => {
-    const isDepositFlow = paymentStatus === "awaiting_deposit" && isDepositModuleVisible && !isDemo;
+    const isDepositFlow = (paymentStatus === "awaiting_deposit" || paymentStatus === "paid_partial") && isDepositModuleVisible && !isDemo;
     if (!isDepositFlow || !selectedProductIdsKey) {
       setDeliveryInfo({ hasShipping: false, hasPlan: false });
       setUnlockProgram(false);
@@ -511,6 +512,15 @@ export default function Dashboard() {
         }
       }
 
+      // מודול 1: "שולמה חלקית" + סימון קורס/ערכה — הסכום ששולם מחוץ למערכת הופך למקדמה,
+      // והקישור הראשון נשלח ב-0 ₪ (ראו backend/dashboardApi.jsw — requestedDeposit.prepaid).
+      const prepaidDepositChecked = (
+        paymentStatus === "paid_partial" &&
+        isDepositModuleVisible &&
+        ((deliveryInfo.hasPlan && unlockProgram) || (deliveryInfo.hasShipping && shipAfterDeposit))
+      );
+      const effectivePaymentStatus = prepaidDepositChecked ? "awaiting_deposit" : paymentStatus;
+
       const result = await request('CREATE_ORDER', {
         customer: {
           firstName: nameParts.firstName,
@@ -545,9 +555,9 @@ export default function Dashboard() {
         existingCoupon,
         notes,
         orderChanges,
-        paymentStatus,
+        paymentStatus: effectivePaymentStatus,
         paymentTag: paymentStatus === 'paid' || paymentStatus === "paid_partial" ? paymentTag : '',
-        partialPayment: paymentStatus === "paid_partial" && total > 0
+        partialPayment: paymentStatus === "paid_partial" && total > 0 && !prepaidDepositChecked
           ? { amountPaid: Number(partialPaidAmount) }
           : null,
         actualPaidAmount: paymentStatus === "paid" && hasCustomPaidAmount
@@ -555,14 +565,23 @@ export default function Dashboard() {
           : null,
         totalPrice: total,
         assignedEmployeeId: canViewOthers && assignedEmployeeId ? assignedEmployeeId : undefined,
-        deposit: paymentStatus === "awaiting_deposit" && isDepositModuleVisible
-          ? {
-              amount: Number(depositAmount),
-              linkText: depositLinkText,
-              balanceDueDate: balanceDueDate || null,
-              unlockProgram: deliveryInfo.hasPlan ? unlockProgram : false,
-              shipAfterDeposit: deliveryInfo.hasShipping ? shipAfterDeposit : false,
-            }
+        deposit: effectivePaymentStatus === "awaiting_deposit" && isDepositModuleVisible
+          ? (prepaidDepositChecked
+              ? {
+                  amount: Number(partialPaidAmount),
+                  linkText: depositLinkText,
+                  balanceDueDate: balanceDueDate || null,
+                  unlockProgram: deliveryInfo.hasPlan ? unlockProgram : false,
+                  shipAfterDeposit: deliveryInfo.hasShipping ? shipAfterDeposit : false,
+                  prepaid: true,
+                }
+              : {
+                  amount: Number(depositAmount),
+                  linkText: depositLinkText,
+                  balanceDueDate: balanceDueDate || null,
+                  unlockProgram: deliveryInfo.hasPlan ? unlockProgram : false,
+                  shipAfterDeposit: deliveryInfo.hasShipping ? shipAfterDeposit : false,
+                })
           : undefined,
       });
 
@@ -1109,6 +1128,21 @@ export default function Dashboard() {
                 })()}
               </div>
             </motion.div>
+          )}
+
+          {paymentStatus === "paid_partial" && isDepositModuleVisible && selectedProductsTotal > 0 && (
+            <PrepaidOptionsSection
+              balanceDueDate={balanceDueDate}
+              setBalanceDueDate={setBalanceDueDate}
+              hasProductsSelected={selectedProducts.length > 0}
+              isCheckingProducts={isCheckingProducts}
+              hasProgram={deliveryInfo.hasPlan}
+              hasShipping={deliveryInfo.hasShipping}
+              unlockProgram={unlockProgram}
+              setUnlockProgram={setUnlockProgram}
+              shipAfterDeposit={shipAfterDeposit}
+              setShipAfterDeposit={setShipAfterDeposit}
+            />
           )}
 
           {paymentStatus === "awaiting_deposit" && isDepositModuleVisible && (
