@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Calendar as CalendarIcon, ChevronRight, ChevronLeft, X } from "lucide-react";
 import moment from "moment";
 
@@ -79,9 +80,18 @@ export default function DateRangePicker({ value, onChange }) {
   const [range, setRange] = useState(value || { from: null, to: null });
   const [hovered, setHovered] = useState(null);
   const ref = useRef(null);
+  const mobilePanelRef = useRef(null);
+  const desktopPanelRef = useRef(null);
 
   useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handler = (e) => {
+      if (
+        ref.current?.contains(e.target)
+        || mobilePanelRef.current?.contains(e.target)
+        || desktopPanelRef.current?.contains(e.target)
+      ) return;
+      setOpen(false);
+    };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
@@ -123,6 +133,33 @@ export default function DateRangePicker({ value, onChange }) {
 
   const hasFilter = value?.from || value?.to;
 
+  const renderPanelBody = () => (
+    <>
+      <div className="flex flex-row sm:flex-col gap-1 overflow-x-auto pb-2 sm:pb-0 border-b sm:border-b-0 sm:border-l border-slate-100 sm:pl-4 sm:min-w-[130px] shrink-0">
+        <p className="text-[10px] text-slate-400 font-semibold uppercase shrink-0 self-center sm:self-auto sm:mb-1">קיצורים</p>
+        {PRESETS.map(p => (
+          <button key={p.label} onClick={() => handlePreset(p)}
+            className="text-right text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 px-2 py-1.5 rounded-lg transition-colors whitespace-nowrap shrink-0">
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex-1 min-w-0">
+        <MiniCalendar
+          viewDate={viewDate}
+          setViewDate={setViewDate}
+          range={range}
+          onDayClick={handleDayClick}
+          hovered={hovered}
+          setHovered={setHovered}
+        />
+        {range.from && !range.to && (
+          <p className="text-xs text-slate-400 text-center mt-2">בחר תאריך סיום</p>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <div className="relative z-[60] overflow-visible" ref={ref} dir="rtl">
       <button
@@ -139,36 +176,25 @@ export default function DateRangePicker({ value, onChange }) {
         )}
       </button>
 
+      {open && typeof document !== "undefined" && createPortal(
+        <div className="sm:hidden" dir="rtl">
+          <div className="fixed inset-0 z-[80] bg-black/30" onMouseDown={() => setOpen(false)} />
+          <div
+            ref={mobilePanelRef}
+            className="fixed z-[90] left-1/2 top-1/2 w-[calc(100vw-1.5rem)] max-w-sm max-h-[min(90vh,calc(100dvh-1rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto bg-white rounded-2xl border border-slate-200 shadow-xl p-3 flex flex-col gap-3"
+          >
+            {renderPanelBody()}
+          </div>
+        </div>,
+        document.body
+      )}
+
       {open && (
         <div
-          className="absolute top-full mt-2 right-0 z-50 bg-white rounded-2xl border border-slate-200 shadow-xl p-3 sm:p-4
-            flex flex-col sm:flex-row gap-3 sm:gap-4
-            w-[calc(100vw-2rem)] sm:w-max sm:min-w-[520px] sm:max-w-none"
+          ref={desktopPanelRef}
+          className="hidden sm:flex absolute top-full mt-2 right-0 z-50 bg-white rounded-2xl border border-slate-200 shadow-xl p-4 flex-row gap-4 w-max min-w-[520px]"
         >
-          {/* Presets */}
-          <div className="flex flex-row sm:flex-col gap-1 overflow-x-auto pb-2 sm:pb-0 border-b sm:border-b-0 sm:border-l border-slate-100 sm:pl-4 sm:min-w-[130px] shrink-0">
-            <p className="text-[10px] text-slate-400 font-semibold uppercase shrink-0 self-center sm:self-auto sm:mb-1">קיצורים</p>
-            {PRESETS.map(p => (
-              <button key={p.label} onClick={() => handlePreset(p)}
-                className="text-right text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 px-2 py-1.5 rounded-lg transition-colors whitespace-nowrap shrink-0">
-                {p.label}
-              </button>
-            ))}
-          </div>
-          {/* Calendar */}
-          <div className="flex-1">
-            <MiniCalendar
-              viewDate={viewDate}
-              setViewDate={setViewDate}
-              range={range}
-              onDayClick={handleDayClick}
-              hovered={hovered}
-              setHovered={setHovered}
-            />
-            {range.from && !range.to && (
-              <p className="text-xs text-slate-400 text-center mt-2">בחר תאריך סיום</p>
-            )}
-          </div>
+          {renderPanelBody()}
         </div>
       )}
     </div>
