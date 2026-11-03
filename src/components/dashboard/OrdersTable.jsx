@@ -467,41 +467,6 @@ export default function OrdersTable({
     return date ? `חשבונית מס׳ ${number} — ${date}` : `חשבונית מס׳ ${number}`;
   };
 
-  const renderPaidAmountCell = (order) => {
-    if (order.displayStatus === "paid_partial" && order.partialPaidAmount > 0) {
-      return (
-        <div className="text-right whitespace-nowrap">
-          <div className="text-sm font-semibold text-emerald-900">
-            ₪{order.partialPaidAmount.toLocaleString("he-IL")}
-          </div>
-        </div>
-      );
-    }
-
-    if (order.partialPaidAmount > 0 && order.couponDetails?.source === "auto_paid" && isPaidDisplayStatus(order.displayStatus)) {
-      return (
-        <div className="text-right whitespace-nowrap">
-          <div className="text-sm font-semibold text-emerald-900">
-            ₪{order.partialPaidAmount.toLocaleString("he-IL")}
-          </div>
-        </div>
-      );
-    }
-
-    if (isPaidDisplayStatus(order.displayStatus)) {
-      const fullyPaidAmount = order.couponDetails?.source === "auto_paid"
-        ? order.subtotalAmount
-        : order.totalAmount;
-      return (
-        <span className="text-sm font-semibold text-emerald-900 whitespace-nowrap">
-          ₪{fullyPaidAmount.toLocaleString("he-IL")}
-        </span>
-      );
-    }
-
-    return <span className="text-xs text-slate-400">—</span>;
-  };
-
   const resolveActualPaidAmount = (order) => {
     if (!isPaidDisplayStatus(order.displayStatus)) return 0;
     if (order.displayStatus === "paid_partial") return Math.max(0, Number(order.partialPaidAmount || 0));
@@ -597,30 +562,41 @@ export default function OrdersTable({
           <Table
             dir="rtl"
             containerClassName="orders-table-scroll"
-            className="w-full min-w-[720px] table-fixed md:min-w-0"
+            className="w-full min-w-0 table-fixed"
           >
               <colgroup>
                 <col style={{ width: "2.75rem" }} />
-                {Array.from({ length: showProfitColumn ? 10 : 9 }).map((_, index) => (
-                  <col key={index} />
-                ))}
-                <col style={{ width: "2.75rem" }} />
+                <col />
+                <col />
+                <col />
+                <col className="hidden md:table-column" />
+                {showProfitColumn && <col className="hidden md:table-column" />}
+                <col className="hidden md:table-column" />
+                <col className="hidden md:table-column" />
+                <col className="hidden md:table-column" />
+                <col />
+                <col className="hidden md:table-column" style={{ width: "2.75rem" }} />
               </colgroup>
               <TableHeader>
                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-2" />
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-2">תאריך</TableHead>
                   <TableHead className="orders-table-sticky-col sticky right-0 z-[12] bg-slate-50 text-right text-xs font-medium text-slate-500 px-2 shadow-[inset_1px_0_0_0_rgb(226_232_240)] md:static md:shadow-none">שם לקוח</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-2">סה"כ</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-2">שולם</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-2">יתרה</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-2">
+                    <span className="md:hidden">סכום</span>
+                    <span className="hidden md:inline">סה"כ</span>
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell text-right text-xs font-medium text-slate-500 px-2">יתרה</TableHead>
                   {showProfitColumn && (
-                    <TableHead className="text-right text-xs font-medium text-slate-500 px-2">רווח</TableHead>
+                    <TableHead className="hidden md:table-cell text-right text-xs font-medium text-slate-500 px-2">רווח</TableHead>
                   )}
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-2">סטטוס</TableHead>
-                  <TableHead className="text-center text-xs font-medium text-slate-500 px-2">תוכנית</TableHead>
-                  <TableHead className="text-center text-xs font-medium text-slate-500 px-2">משלוח</TableHead>
-                  <TableHead className="text-right text-xs font-medium text-slate-500 px-2">יצר/ה</TableHead>
+                  <TableHead className="hidden md:table-cell text-right text-xs font-medium text-slate-500 px-2">סטטוס</TableHead>
+                  <TableHead className="hidden md:table-cell text-center text-xs font-medium text-slate-500 px-2">תוכנית</TableHead>
+                  <TableHead className="hidden md:table-cell text-center text-xs font-medium text-slate-500 px-2">משלוח</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500 px-2">
+                    <span className="md:hidden">שיוך</span>
+                    <span className="hidden md:inline">יצר/ה</span>
+                  </TableHead>
                   <TableHead className="hidden md:table-cell text-left text-xs font-medium text-slate-500 px-2" />
                 </TableRow>
               </TableHeader>
@@ -708,20 +684,17 @@ export default function OrdersTable({
                             if (!Number.isFinite(actualPaid) || actualPaid <= 0) return null;
                             if (Math.round(actualPaid) === Math.round(total)) return null;
                             return (
-                              <div className="text-[10px] font-semibold text-emerald-900 tabular-nums">
+                              <div className="hidden md:block text-[10px] font-semibold text-emerald-900 tabular-nums">
                                 ₪{actualPaid.toLocaleString("he-IL")}
                               </div>
                             );
                           })()}
                         </TableCell>
-                        <TableCell className="text-right whitespace-nowrap px-1 py-2">
-                          {renderPaidAmountCell(order)}
-                        </TableCell>
-                        <TableCell className="text-right whitespace-nowrap px-1 py-2">
+                        <TableCell className="hidden md:table-cell text-right whitespace-nowrap px-1 py-2">
                           {renderRemainingAmountCell(order)}
                         </TableCell>
                         {showProfitColumn && (
-                          <TableCell className="text-right whitespace-nowrap px-1 py-2">
+                          <TableCell className="hidden md:table-cell text-right whitespace-nowrap px-1 py-2">
                             {isPaidDisplayStatus(order.displayStatus) ? (
                               <div>
                                 <div className="text-xs font-semibold text-emerald-700">
@@ -736,7 +709,7 @@ export default function OrdersTable({
                             )}
                           </TableCell>
                         )}
-                        <TableCell className="px-2 py-2 overflow-hidden text-right">
+                        <TableCell className="hidden md:table-cell px-2 py-2 overflow-hidden text-right">
                           <div className="flex items-center justify-start gap-1">
                             <Badge
                               variant="outline"
@@ -747,7 +720,7 @@ export default function OrdersTable({
                             {canGenerateInvoices && renderInvoiceIndicator(order, { compact: true })}
                           </div>
                         </TableCell>
-                        <TableCell className="px-2 py-2">
+                        <TableCell className="hidden md:table-cell px-2 py-2">
                           <div className="flex justify-center">
                             <FulfillmentStatusIcon
                               status={order.planStatus}
@@ -755,7 +728,7 @@ export default function OrdersTable({
                             />
                           </div>
                         </TableCell>
-                        <TableCell className="px-2 py-2">
+                        <TableCell className="hidden md:table-cell px-2 py-2">
                           <div className="flex justify-center">
                             <FulfillmentStatusIcon
                               status={order.shippingStatus}
@@ -783,7 +756,7 @@ export default function OrdersTable({
 
                       {isExpanded && (
                         <TableRow className="bg-slate-50/60 hover:bg-slate-50/60">
-                          <TableCell colSpan={showProfitColumn ? 12 : 11} className="p-0">
+                          <TableCell colSpan={showProfitColumn ? 11 : 10} className="p-0">
                             <AnimatePresence initial={false}>
                               <motion.div
                                 initial={{ opacity: 0, height: 0, y: -4, scale: 0.985 }}
