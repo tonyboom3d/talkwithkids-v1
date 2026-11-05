@@ -1262,6 +1262,13 @@
         currentOrder = order;
         console.log("[TWK-IFRAME] renderOrder payload:", order);
         setText("heroTitle", (order.customerName || "אהובה") + ", ההזמנה שלך כמעט מוכנה!");
+        var heroSubtitle = document.querySelector(".hero-subtitle");
+        var zeroUnpaid = Number(order.payPrice) <= 0.009 && (order.status === "sent" || order.status === "opened" || order.status === "unpaid");
+        if (heroSubtitle) {
+          heroSubtitle.textContent = zeroUnpaid
+            ? "להשלמת הפרטים"
+            : "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התשלום";
+        }
         setText("customerName", order.customerName || "לא זמין");
         setText("createdDate", formatDate(order.createdDate));
         setText("customerPhone", order.customerPhone || "לא זמין");
