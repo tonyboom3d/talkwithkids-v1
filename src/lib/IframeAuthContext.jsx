@@ -13,6 +13,7 @@ export const IframeAuthProvider = ({ children }) => {
   const [commissionRate, setCommissionRate] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [switchingAccount, setSwitchingAccount] = useState(false);
 
   useEffect(() => {
     let resolved = false;
@@ -64,6 +65,25 @@ export const IframeAuthProvider = ({ children }) => {
     };
   }, []);
 
+  const switchAccount = async () => {
+    setSwitchingAccount(true);
+    try {
+      const payload = await postMessageClient.request('LOGOUT_AND_LOGIN', {}, 180000);
+      setUser(payload.user);
+      setCanViewOthers(!!payload.canViewOthers);
+      setCanGenerateInvoices(!!payload.canGenerateInvoices);
+      setCommissionRate(payload.commissionRate || 0);
+      setError(null);
+      setIsLoading(false);
+    } catch (err) {
+      setError(err && err.message
+        ? err
+        : { code: 'NOT_AUTHORIZED', message: 'אין הרשאת גישה לדאשבורד', action: 'INIT' });
+    } finally {
+      setSwitchingAccount(false);
+    }
+  };
+
   return (
     <IframeAuthContext.Provider value={{
       user,
@@ -72,6 +92,8 @@ export const IframeAuthProvider = ({ children }) => {
       commissionRate,
       isLoading,
       error,
+      switchingAccount,
+      switchAccount,
     }}>
       {children}
     </IframeAuthContext.Provider>

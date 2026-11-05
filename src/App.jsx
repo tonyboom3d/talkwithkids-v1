@@ -28,7 +28,7 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   : <>{children}</>;
 
 const AuthenticatedApp = () => {
-  const { isLoading, error } = useAuth();
+  const { isLoading, error, switchingAccount, switchAccount } = useAuth();
   const [slowLoad, setSlowLoad] = useState(false);
 
   useEffect(() => {
@@ -70,9 +70,19 @@ const AuthenticatedApp = () => {
                   : 'אירעה שגיאה בעת ניסיון ההתחברות.')}
           </p>
         </div>
+        {(error.code === 'NOT_AUTHORIZED' || error.code === 'NO_MEMBER') && (
+          <button
+            type="button"
+            onClick={switchAccount}
+            disabled={switchingAccount}
+            className="mt-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 transition-colors disabled:opacity-60"
+          >
+            {switchingAccount ? 'מתנתק ופותח התחברות...' : 'התנתקות והתחברות לחשבון אחר'}
+          </button>
+        )}
         <button
           onClick={() => window.location.reload()}
-          className="mt-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 transition-colors"
+          className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
         >
           ריענון הדף
         </button>

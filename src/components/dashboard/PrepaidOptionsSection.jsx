@@ -51,7 +51,7 @@ export default function PrepaidOptionsSection({
       transition={{ duration: 0.25 }}
       className="space-y-3"
     >
-      <div className="rounded-xl border border-orange-200 bg-orange-50/70 px-4 py-3 space-y-3" dir="rtl">
+      <div className="min-w-0 overflow-hidden rounded-xl border border-orange-200 bg-orange-50/70 px-3 py-3 space-y-3 sm:px-4" dir="rtl">
         <div className="flex items-center gap-2">
           <CalendarClock className="w-4 h-4 text-orange-700" />
           <Label className="text-sm font-medium text-slate-700">תאריך יעד ואפשרויות נוספות</Label>
@@ -61,15 +61,17 @@ export default function PrepaidOptionsSection({
           <Label className="block text-right text-sm font-medium text-slate-700">
             תאריך יעד להשלמת התשלום *
           </Label>
-          <Input
-            type="date"
-            required
-            min={minDueDate}
-            value={balanceDueDate}
-            onChange={(e) => setBalanceDueDate(e.target.value)}
-            className="h-10 text-right"
-            dir="ltr"
-          />
+          <div className="grid w-full min-w-0">
+            <Input
+              type="date"
+              required
+              min={minDueDate}
+              value={balanceDueDate}
+              onChange={(e) => setBalanceDueDate(e.target.value)}
+              className="box-border h-10 w-full min-w-0 max-w-full px-2"
+              dir="ltr"
+            />
+          </div>
           {!balanceDueDate && (
             <p className="text-xs text-orange-700">שדה חובה — יש לבחור תאריך עתידי בלבד</p>
           )}

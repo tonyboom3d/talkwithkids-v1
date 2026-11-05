@@ -668,10 +668,14 @@ export default function OrdersTable({
                         <TableCell className="text-xs text-slate-500 whitespace-nowrap px-1 py-2">
                           {order.sentDate ? moment(order.sentDate).format("DD/MM") : "—"}
                         </TableCell>
-                        <TableCell className={`orders-table-sticky-col sticky right-0 z-[11] max-w-[min(140px,32vw)] px-2 py-2 text-xs font-medium text-slate-700 shadow-[inset_1px_0_0_0_rgb(226_232_240)] md:static md:max-w-none md:shadow-none ${
+                        <TableCell className={`orders-table-sticky-col sticky right-0 z-[11] px-2 py-2 text-xs font-medium text-slate-700 shadow-[inset_1px_0_0_0_rgb(226_232_240)] md:static md:max-w-none md:shadow-none ${
+                          isExpanded ? "whitespace-normal" : "max-w-[min(140px,32vw)]"
+                        } ${
                           rowToneClass ? rowToneClass.split(" ")[0] : "bg-white md:group-hover:bg-slate-50"
                         }`}>
-                          <span className="block truncate md:hidden">{formatShortName(order.customerName) || "—"}</span>
+                          <span className={`block md:hidden ${isExpanded ? "whitespace-normal break-words" : "truncate"}`}>
+                            {(isExpanded ? order.customerName : formatShortName(order.customerName)) || "—"}
+                          </span>
                           <span className="hidden truncate md:block">{order.customerName || "—"}</span>
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap px-1 py-2">
@@ -736,7 +740,7 @@ export default function OrdersTable({
                             />
                           </div>
                         </TableCell>
-                        <TableCell className="text-right px-1 py-2 text-xs font-medium text-slate-700 truncate">
+                        <TableCell className={`text-right px-1 py-2 text-xs font-medium text-slate-700 ${isExpanded ? "whitespace-normal break-words" : "truncate"}`}>
                           {formatCreatorFirstName(order.creatorName)}
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-left px-1 py-2">
@@ -765,7 +769,7 @@ export default function OrdersTable({
                                 transition={{ duration: 0.22, ease: "easeOut" }}
                                 className="overflow-hidden"
                               >
-                                <div className="p-2 md:p-4 max-w-[100vw] md:max-w-none" style={{boxSizing:'border-box'}}>
+                                <div className="box-border w-0 min-w-full p-2 md:p-4">
                                 <div className="rounded-2xl border border-slate-200/80 bg-white p-2.5 md:p-4 space-y-3 w-full box-border" dir="rtl">
                                   <div className="flex flex-wrap items-start justify-between gap-2">
                                     <div className="text-right">
@@ -936,7 +940,7 @@ export default function OrdersTable({
                                                   {latestTimelineDate}
                                                 </span>
                                               )}
-                                              <span className="block truncate whitespace-nowrap text-[11px] md:text-xs text-slate-600">
+                                              <span className="block whitespace-normal break-words text-[11px] leading-snug text-slate-600 md:truncate md:whitespace-nowrap md:text-xs">
                                                 {latestTimelineText}
                                               </span>
                                             </span>

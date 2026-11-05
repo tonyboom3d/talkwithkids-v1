@@ -56,7 +56,7 @@ export default function DepositSection({
       transition={{ duration: 0.25 }}
       className="space-y-3"
     >
-      <div className="rounded-xl border border-yellow-200 bg-yellow-50/70 px-4 py-3 space-y-3" dir="rtl">
+      <div className="min-w-0 overflow-hidden rounded-xl border border-yellow-200 bg-yellow-50/70 px-3 py-3 space-y-3 sm:px-4" dir="rtl">
         <div className="flex items-center gap-2">
           <Wallet className="w-4 h-4 text-yellow-700" />
           <Label className="text-sm font-medium text-slate-700">ניהול מקדמה</Label>
@@ -93,15 +93,17 @@ export default function DepositSection({
           <Label className="block text-right text-sm font-medium text-slate-700">
             תאריך יעד לתשלום היתרה *
           </Label>
-          <Input
-            type="date"
-            required
-            min={minDueDate}
-            value={balanceDueDate}
-            onChange={(e) => setBalanceDueDate(e.target.value)}
-            className="h-10 text-right"
-            dir="ltr"
-          />
+          <div className="grid w-full min-w-0">
+            <Input
+              type="date"
+              required
+              min={minDueDate}
+              value={balanceDueDate}
+              onChange={(e) => setBalanceDueDate(e.target.value)}
+              className="box-border h-10 w-full min-w-0 max-w-full px-2"
+              dir="ltr"
+            />
+          </div>
           {!balanceDueDate && (
             <p className="text-xs text-yellow-800">שדה חובה — יש לבחור תאריך עתידי בלבד</p>
           )}

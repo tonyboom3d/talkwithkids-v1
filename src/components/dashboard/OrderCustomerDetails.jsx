@@ -23,13 +23,13 @@ export default function OrderCustomerDetails({
   minDueDate,
 }) {
   return (
-    <div className="grid gap-1.5 md:gap-2 grid-cols-2">
+    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 md:gap-2">
       <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
         <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
           <UserRound className="w-3 h-3" />
           <span>לקוח</span>
         </div>
-        <p className="text-xs md:text-sm font-medium text-slate-700 truncate">{order.customerName || "—"}</p>
+        <p className="break-words text-xs font-medium text-slate-700 md:text-sm">{order.customerName || "—"}</p>
       </div>
       <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
         <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
@@ -56,7 +56,7 @@ export default function OrderCustomerDetails({
       </div>
       <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
         <p className="text-[10px] text-slate-400 mb-0.5">מס׳ הזמנה</p>
-        <p className="text-xs md:text-sm font-mono text-slate-600 truncate">{order.orderNumber}</p>
+        <p className="break-all text-xs font-mono text-slate-600 md:text-sm">{order.orderNumber}</p>
       </div>
       <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">
         <div className="mb-0.5 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
@@ -65,7 +65,7 @@ export default function OrderCustomerDetails({
         </div>
         <div className="flex items-center justify-end gap-1.5">
           {order.deliveryNumber && order.deliveryNumber !== "—" && (
-            <span className="text-xs md:text-sm font-mono text-slate-600 truncate">{order.deliveryNumber}</span>
+            <span className="break-all text-xs font-mono text-slate-600 md:text-sm">{order.deliveryNumber}</span>
           )}
           <FulfillmentStatusIcon
             status={order.shippingStatus}
@@ -180,7 +180,7 @@ export default function OrderCustomerDetails({
           <UserRound className="w-3 h-3" />
           <span>נוצרה על ידי</span>
         </div>
-        <p className="text-xs md:text-sm text-slate-700 truncate">{formatCreatorFirstName(order.creatorName)}</p>
+        <p className="break-words text-xs text-slate-700 md:text-sm">{formatCreatorFirstName(order.creatorName)}</p>
       </div>
       {order.orderChangeNotes && (
         <div className="col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 md:px-3 md:py-2">
