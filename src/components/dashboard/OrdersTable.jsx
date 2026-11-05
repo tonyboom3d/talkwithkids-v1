@@ -565,39 +565,39 @@ export default function OrdersTable({
             className="w-full min-w-0 table-fixed"
           >
               <colgroup>
-                <col style={{ width: "2.75rem" }} />
-                <col />
-                <col />
-                <col />
-                <col className="hidden md:table-column" />
-                {showProfitColumn && <col className="hidden md:table-column" />}
-                <col className="hidden md:table-column" />
-                <col className="hidden md:table-column" />
-                <col className="hidden md:table-column" />
-                <col />
-                <col className="hidden md:table-column" style={{ width: "2.75rem" }} />
+                <col style={{ width: isMobile ? "12%" : "2.75rem" }} />
+                <col style={isMobile ? { width: "16%" } : undefined} />
+                <col style={isMobile ? { width: "32%" } : undefined} />
+                <col style={isMobile ? { width: "20%" } : undefined} />
+                {!isMobile && <col />}
+                {!isMobile && showProfitColumn && <col />}
+                {!isMobile && <col />}
+                {!isMobile && <col />}
+                {!isMobile && <col />}
+                <col style={isMobile ? { width: "20%" } : undefined} />
+                {!isMobile && <col style={{ width: "2.75rem" }} />}
               </colgroup>
               <TableHeader>
                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-2" />
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-2">תאריך</TableHead>
-                  <TableHead className="orders-table-sticky-col sticky right-0 z-[12] bg-slate-50 text-right text-xs font-medium text-slate-500 px-2 shadow-[inset_1px_0_0_0_rgb(226_232_240)] md:static md:shadow-none">שם לקוח</TableHead>
+                  <TableHead className="bg-slate-50 text-right text-xs font-medium text-slate-500 px-2">שם לקוח</TableHead>
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-2">
                     <span className="md:hidden">סכום</span>
                     <span className="hidden md:inline">סה"כ</span>
                   </TableHead>
-                  <TableHead className="hidden md:table-cell text-right text-xs font-medium text-slate-500 px-2">יתרה</TableHead>
-                  {showProfitColumn && (
-                    <TableHead className="hidden md:table-cell text-right text-xs font-medium text-slate-500 px-2">רווח</TableHead>
+                  {!isMobile && <TableHead className="text-right text-xs font-medium text-slate-500 px-2">יתרה</TableHead>}
+                  {!isMobile && showProfitColumn && (
+                    <TableHead className="text-right text-xs font-medium text-slate-500 px-2">רווח</TableHead>
                   )}
-                  <TableHead className="hidden md:table-cell text-right text-xs font-medium text-slate-500 px-2">סטטוס</TableHead>
-                  <TableHead className="hidden md:table-cell text-center text-xs font-medium text-slate-500 px-2">תוכנית</TableHead>
-                  <TableHead className="hidden md:table-cell text-center text-xs font-medium text-slate-500 px-2">משלוח</TableHead>
+                  {!isMobile && <TableHead className="text-right text-xs font-medium text-slate-500 px-2">סטטוס</TableHead>}
+                  {!isMobile && <TableHead className="text-center text-xs font-medium text-slate-500 px-2">תוכנית</TableHead>}
+                  {!isMobile && <TableHead className="text-center text-xs font-medium text-slate-500 px-2">משלוח</TableHead>}
                   <TableHead className="text-right text-xs font-medium text-slate-500 px-2">
                     <span className="md:hidden">שיוך</span>
                     <span className="hidden md:inline">יצר/ה</span>
                   </TableHead>
-                  <TableHead className="hidden md:table-cell text-left text-xs font-medium text-slate-500 px-2" />
+                  {!isMobile && <TableHead className="text-left text-xs font-medium text-slate-500 px-2" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -665,20 +665,16 @@ export default function OrdersTable({
                             />
                           </DropdownMenu>
                         </TableCell>
-                        <TableCell className="text-xs text-slate-500 whitespace-nowrap px-1 py-2">
+                        <TableCell className="overflow-hidden whitespace-nowrap px-1 py-2 text-xs text-slate-500">
                           {order.sentDate ? moment(order.sentDate).format("DD/MM") : "—"}
                         </TableCell>
-                        <TableCell className={`orders-table-sticky-col sticky right-0 z-[11] px-2 py-2 text-xs font-medium text-slate-700 shadow-[inset_1px_0_0_0_rgb(226_232_240)] md:static md:max-w-none md:shadow-none ${
-                          isExpanded ? "whitespace-normal" : "max-w-[min(140px,32vw)]"
-                        } ${
+                        <TableCell className={`max-w-[8.5rem] overflow-hidden px-2 py-2 text-xs font-medium text-slate-700 md:max-w-none ${
                           rowToneClass ? rowToneClass.split(" ")[0] : "bg-white md:group-hover:bg-slate-50"
                         }`}>
-                          <span className={`block md:hidden ${isExpanded ? "whitespace-normal break-words" : "truncate"}`}>
-                            {(isExpanded ? order.customerName : formatShortName(order.customerName)) || "—"}
-                          </span>
+                          <span className="block truncate md:hidden">{formatShortName(order.customerName) || "—"}</span>
                           <span className="hidden truncate md:block">{order.customerName || "—"}</span>
                         </TableCell>
-                        <TableCell className="text-right whitespace-nowrap px-1 py-2">
+                        <TableCell className="overflow-hidden text-right whitespace-nowrap px-1 py-2">
                           <div className="font-semibold text-slate-800 tabular-nums text-xs">
                             ₪{order.totalAmount.toLocaleString("he-IL")}
                           </div>
@@ -694,11 +690,13 @@ export default function OrdersTable({
                             );
                           })()}
                         </TableCell>
-                        <TableCell className="hidden md:table-cell text-right whitespace-nowrap px-1 py-2">
-                          {renderRemainingAmountCell(order)}
-                        </TableCell>
-                        {showProfitColumn && (
-                          <TableCell className="hidden md:table-cell text-right whitespace-nowrap px-1 py-2">
+                        {!isMobile && (
+                          <TableCell className="text-right whitespace-nowrap px-1 py-2">
+                            {renderRemainingAmountCell(order)}
+                          </TableCell>
+                        )}
+                        {!isMobile && showProfitColumn && (
+                          <TableCell className="text-right whitespace-nowrap px-1 py-2">
                             {isPaidDisplayStatus(order.displayStatus) ? (
                               <div>
                                 <div className="text-xs font-semibold text-emerald-700">
@@ -713,7 +711,7 @@ export default function OrdersTable({
                             )}
                           </TableCell>
                         )}
-                        <TableCell className="hidden md:table-cell px-2 py-2 overflow-hidden text-right">
+                        {!isMobile && <TableCell className="overflow-hidden px-2 py-2 text-right">
                           <div className="flex items-center justify-start gap-1">
                             <Badge
                               variant="outline"
@@ -723,27 +721,31 @@ export default function OrdersTable({
                             </Badge>
                             {canGenerateInvoices && renderInvoiceIndicator(order, { compact: true })}
                           </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell px-2 py-2">
-                          <div className="flex justify-center">
-                            <FulfillmentStatusIcon
-                              status={order.planStatus}
-                              tooltip={order.planStatus === "yes" ? order.planName : ""}
-                            />
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell px-2 py-2">
-                          <div className="flex justify-center">
-                            <FulfillmentStatusIcon
-                              status={order.shippingStatus}
-                              tooltip={order.shippingStatus === "yes" && order.deliveryNumber && order.deliveryNumber !== "—" ? order.deliveryNumber : ""}
-                            />
-                          </div>
-                        </TableCell>
-                        <TableCell className={`text-right px-1 py-2 text-xs font-medium text-slate-700 ${isExpanded ? "whitespace-normal break-words" : "truncate"}`}>
+                        </TableCell>}
+                        {!isMobile && (
+                          <TableCell className="px-2 py-2">
+                            <div className="flex justify-center">
+                              <FulfillmentStatusIcon
+                                status={order.planStatus}
+                                tooltip={order.planStatus === "yes" ? order.planName : ""}
+                              />
+                            </div>
+                          </TableCell>
+                        )}
+                        {!isMobile && (
+                          <TableCell className="px-2 py-2">
+                            <div className="flex justify-center">
+                              <FulfillmentStatusIcon
+                                status={order.shippingStatus}
+                                tooltip={order.shippingStatus === "yes" && order.deliveryNumber && order.deliveryNumber !== "—" ? order.deliveryNumber : ""}
+                              />
+                            </div>
+                          </TableCell>
+                        )}
+                        <TableCell className="truncate overflow-hidden px-1 py-2 text-right text-xs font-medium text-slate-700">
                           {formatCreatorFirstName(order.creatorName)}
                         </TableCell>
-                        <TableCell className="hidden md:table-cell text-left px-1 py-2">
+                        {!isMobile && <TableCell className="text-left px-1 py-2">
                           <button
                             type="button"
                             onClick={(event) => {
@@ -755,12 +757,12 @@ export default function OrdersTable({
                           >
                             {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                           </button>
-                        </TableCell>
+                        </TableCell>}
                       </TableRow>
 
                       {isExpanded && (
                         <TableRow className="bg-slate-50/60 hover:bg-slate-50/60">
-                          <TableCell colSpan={showProfitColumn ? 11 : 10} className="p-0">
+                          <TableCell colSpan={isMobile ? 5 : (showProfitColumn ? 11 : 10)} className="p-0">
                             <AnimatePresence initial={false}>
                               <motion.div
                                 initial={{ opacity: 0, height: 0, y: -4, scale: 0.985 }}
@@ -769,7 +771,7 @@ export default function OrdersTable({
                                 transition={{ duration: 0.22, ease: "easeOut" }}
                                 className="overflow-hidden"
                               >
-                                <div className="box-border w-0 min-w-full p-2 md:p-4">
+                                <div className="box-border w-full min-w-0 max-w-full p-2 md:p-4">
                                 <div className="rounded-2xl border border-slate-200/80 bg-white p-2.5 md:p-4 space-y-3 w-full box-border" dir="rtl">
                                   <div className="flex flex-wrap items-start justify-between gap-2">
                                     <div className="text-right">
