@@ -79,6 +79,9 @@ export default function OrderCustomerDetails({
           <span>תוכנית</span>
         </div>
         <div className="flex items-center justify-end gap-1.5">
+          {order.hasPlan && order.planName ? (
+            <span className="break-words text-xs font-medium text-slate-700 md:text-sm">{order.planName}</span>
+          ) : null}
           <FulfillmentStatusIcon status={order.planStatus} tooltip={order.planStatus === "yes" ? order.planName : ""} />
         </div>
       </div>
