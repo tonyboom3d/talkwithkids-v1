@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, CreditCard, Package, Phone, UserRound, Workflow } from "lucide-react";
 import FulfillmentStatusIcon from "./FulfillmentStatusIcon";
-import { formatCreatorFirstName } from "@/utils/dashboardOrders";
+import { formatCreatorFirstName, isZeroUnpaidOrder } from "@/utils/dashboardOrders";
 
 /**
  * תוכן "פרטי לקוח ותשלום" — משותף לתצוגת האקורדיון (מחשב) ולכרטיס המאוחד (נייד).
@@ -51,7 +51,7 @@ export default function OrderCustomerDetails({
           <span>סטטוס</span>
         </div>
         <Badge variant="outline" className={`inline-flex whitespace-nowrap text-[10px] border-0 font-medium ${order.statusCfg.className}`}>
-          {order.statusCfg.label}
+          {isZeroUnpaidOrder(order) ? "להשלמת פרטים" : order.statusCfg.label}
         </Badge>
       </div>
       <div className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:px-3 md:py-2.5 text-right">

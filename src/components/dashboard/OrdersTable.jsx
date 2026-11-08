@@ -48,6 +48,7 @@ import {
   normalizeOrder,
   STATUS_CONFIG,
   isPaidDisplayStatus,
+  isZeroUnpaidOrder,
   resolveRemainingBalance,
   resolveCompletePaymentDefault,
   canCompletePayment as isCompletablePaymentStatus,
@@ -494,6 +495,10 @@ export default function OrdersTable({
       remainingAmount = Math.max(0, Number(order.totalAmount ?? 0));
     }
 
+    if (isZeroUnpaidOrder(order)) {
+      return <span className="text-xs font-semibold whitespace-nowrap text-violet-700">להשלמת פרטים</span>;
+    }
+
     return (
       <span className="text-sm font-semibold whitespace-nowrap text-[#C2410B]">
         ₪{remainingAmount.toLocaleString("he-IL")}
@@ -684,7 +689,7 @@ export default function OrdersTable({
                             if (!Number.isFinite(actualPaid) || actualPaid <= 0) return null;
                             if (Math.round(actualPaid) === Math.round(total)) return null;
                             return (
-                              <div className="hidden md:block text-[10px] font-semibold text-emerald-900 tabular-nums">
+                              <div className="text-[10px] font-semibold text-emerald-900 tabular-nums">
                                 ₪{actualPaid.toLocaleString("he-IL")}
                               </div>
                             );
@@ -717,7 +722,7 @@ export default function OrdersTable({
                               variant="outline"
                               className={`inline-flex max-w-full truncate text-[10px] border-0 font-medium px-1.5 ${order.statusCfg.className}`}
                             >
-                              <span className="truncate">{order.statusCfg.label}</span>
+                              <span className="truncate">{isZeroUnpaidOrder(order) ? "להשלמת פרטים" : order.statusCfg.label}</span>
                             </Badge>
                             {canGenerateInvoices && renderInvoiceIndicator(order, { compact: true })}
                           </div>

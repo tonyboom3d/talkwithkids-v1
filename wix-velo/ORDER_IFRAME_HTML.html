@@ -1266,7 +1266,7 @@
         var zeroUnpaid = Number(order.payPrice) <= 0.009 && (order.status === "sent" || order.status === "opened" || order.status === "unpaid");
         if (heroSubtitle) {
           heroSubtitle.textContent = zeroUnpaid
-            ? "להשלמת הפרטים"
+            ? "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התהליך"
             : "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התשלום";
         }
         setText("customerName", order.customerName || "לא זמין");
@@ -1286,8 +1286,8 @@
           couponRow.style.display = "none";
         }
 
-        if (order.canContinue && order.ctaLabel) {
-          payButton.textContent = order.ctaLabel;
+        if (order.canContinue && (order.ctaLabel || zeroUnpaid)) {
+          payButton.textContent = zeroUnpaid ? "להשלמת הפרטים >>" : order.ctaLabel;
           payButton.href = "#";
           payButton.style.display = "inline-flex";
           payButton.style.alignItems = "center";

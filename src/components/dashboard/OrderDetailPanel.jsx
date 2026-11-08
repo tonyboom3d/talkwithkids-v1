@@ -11,6 +11,7 @@ import {
 import moment from "moment";
 import { toast } from "sonner";
 import { computeDisplayTotalAfterCoupon } from "@/utils/orderTotals";
+import { isZeroUnpaidOrder } from "@/utils/dashboardOrders";
 
 function safeParseJson(value, fallback) {
   if (value == null || value === "") return fallback;
@@ -28,6 +29,10 @@ const timelineIcons = {
   whatsapp_pending: { icon: Clock, color: "bg-sky-100 text-sky-600" },
   whatsapp_sent_success: { icon: CheckCircle2, color: "bg-emerald-100 text-emerald-600" },
   whatsapp_sent_failed: { icon: XCircle, color: "bg-red-100 text-red-600" },
+  deposit_reminder_email_sent: { icon: CheckCircle2, color: "bg-emerald-100 text-emerald-600" },
+  deposit_reminder_whatsapp_sent: { icon: CheckCircle2, color: "bg-emerald-100 text-emerald-600" },
+  deposit_reminder_email_failed: { icon: XCircle, color: "bg-red-100 text-red-600" },
+  deposit_reminder_whatsapp_failed: { icon: XCircle, color: "bg-red-100 text-red-600" },
   link_opened: { icon: Eye, color: "bg-purple-100 text-purple-600" },
   opened: { icon: Eye, color: "bg-purple-100 text-purple-600" },
   paid: { icon: CheckCircle2, color: "bg-emerald-100 text-emerald-600" },
@@ -234,7 +239,9 @@ export default function OrderDetailPanel({ order, onClose, onAddNote, onCancelLi
           {/* Payment Link */}
           {checkoutLink && (
             <div className="space-y-3">
-              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">קישור תשלום</h4>
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                {isZeroUnpaidOrder(order) ? "קישור להשלמת פרטים" : "קישור תשלום"}
+              </h4>
               {isLinkCancelled ? (
                 <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 flex items-center gap-2 justify-end">
                   <span className="text-sm font-medium text-red-600">קישור מבוטל</span>

@@ -149,6 +149,13 @@ export function isPaidDisplayStatus(status) {
   return status === "paid" || status === "paid_partial" || status === "paid_pending_details" || status === "paid_completed";
 }
 
+/** קישור ללקוחה על 0 ש"ח בסטטוס שטרם שולם — השלמת פרטים, בלי תשלום */
+export function isZeroUnpaidOrder(order) {
+  const status = order?.displayStatus;
+  if (!["sent", "opened", "unpaid"].includes(status)) return false;
+  return Number(order?.totalAmount ?? 0) <= 0.009;
+}
+
 /** הזמנת מקדמה שניתן להשלים לה תשלום ידנית (בהמתנה למקדמה / שולמה חלקית לאחר מקדמה) */
 export function isDepositPayableStatus(order) {
   return (order?.displayStatus === "awaiting_deposit" || order?.displayStatus === "deposit_paid")

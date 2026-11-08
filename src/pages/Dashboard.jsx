@@ -188,6 +188,35 @@ export default function Dashboard() {
     }, 0),
     [selectedProducts]
   );
+  const zeroCustomerLink = useMemo(() => {
+    const prepaid = paymentStatus === "paid_partial" && isDepositModuleVisible
+      && ((deliveryInfo.hasPlan && unlockProgram) || (deliveryInfo.hasShipping && shipAfterDeposit));
+    if (prepaid) return true;
+    if (paymentStatus !== "unpaid" || selectedProducts.length === 0) return false;
+    if (selectedProductsTotal <= 0.009) return true;
+    if (!couponEnabled) return false;
+    if (couponMode === "create") {
+      const parsed = parseCustomPayAmount(couponValue, selectedProductsTotal);
+      return parsed.hasValue && parsed.isValid && parsed.payAmount <= 0.009;
+    }
+    if (couponMode === "existing" && selectedStoreCoupon) {
+      return computeDiscountForSubtotal(selectedProductsTotal, selectedStoreCoupon).discountedTotal <= 0.009;
+    }
+    return false;
+  }, [
+    paymentStatus,
+    isDepositModuleVisible,
+    deliveryInfo.hasPlan,
+    deliveryInfo.hasShipping,
+    unlockProgram,
+    shipAfterDeposit,
+    selectedProducts.length,
+    selectedProductsTotal,
+    couponEnabled,
+    couponMode,
+    couponValue,
+    selectedStoreCoupon,
+  ]);
 
   const hasExclusiveProduct = useMemo(
     () => selectedProducts.some(p => p.id === EXCLUSIVE_PRODUCT_ID),
@@ -499,6 +528,7 @@ export default function Dashboard() {
           orderNumber: "",
           orderUrl: buildPublicOrderUrl(demoDynamicId),
           isDemo: true,
+          zeroLink: zeroCustomerLink,
         });
         setIsSubmitting(false);
       }, 1500);
@@ -598,6 +628,7 @@ export default function Dashboard() {
         orderNumber: result.orderNumber || "",
         orderUrl: result.orderUrl || buildPublicOrderUrl(result.dynamicLinkId || ""),
         isDemo: false,
+        zeroLink: zeroCustomerLink || prepaidDepositChecked,
       };
       const partialInvoiceAmount = Number(partialPaidAmount);
       const partialInvoiceMethod = paymentTag;
@@ -981,8 +1012,9 @@ export default function Dashboard() {
                 : "ההזמנה נוצרה בהצלחה"}
             </DialogTitle>
             <DialogDescription className="text-right leading-relaxed">
-              ההזמנה נוצרה ונשמרה במערכת. פרטי ההזמנה עדיין לא נשלחו לוובהוק.
-              רק לאחר לחיצה על אישור, הקישור יישלח ללקוח.
+              {createdOrderState?.zeroLink
+                ? "ההזמנה נוצרה על 0 ש״ח. בקישור יופיע «להשלים את התהליך», והכפתור «להשלמת הפרטים». רק לאחר אישור הקישור יישלח ללקוח."
+                : "ההזמנה נוצרה ונשמרה במערכת. פרטי ההזמנה עדיין לא נשלחו לוובהוק. רק לאחר לחיצה על אישור, הקישור יישלח ללקוח."}
             </DialogDescription>
           </DialogHeader>
 
@@ -1558,6 +1590,11 @@ export default function Dashboard() {
                 </motion.p>
               )}
             </AnimatePresence>
+            {zeroCustomerLink && (
+              <p className="text-sm text-violet-700 text-center font-medium">
+                בקישור: להשלים את התהליך. הכפתור: להשלמת הפרטים.
+              </p>
+            )}
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting}
@@ -1571,7 +1608,7 @@ export default function Dashboard() {
               ) : (
                 <span className="flex items-center gap-2">
                   <Send className="w-4 h-4" />
-                 יצירת הזמנה
+                  {zeroCustomerLink ? "יצירת קישור להשלמת פרטים" : "יצירת הזמנה"}
                 </span>
               )}
             </Button>
