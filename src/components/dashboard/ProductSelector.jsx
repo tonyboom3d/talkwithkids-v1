@@ -189,7 +189,7 @@ export default function ProductSelector({
                   dir="rtl"
                 >
                   <PackagePlus className="w-4 h-4" />
-                  יצירת מוצר קאסטום
+                  מוצר אחר
                 </button>
                 {hasCatalogSelected && (
                   <p className="text-[11px] text-slate-400 text-right" dir="rtl">
