@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import moment from "moment";
@@ -143,11 +143,15 @@ export default function OrdersTable({
   onUpdateAssignment,
   onCompletePartialPayment,
   onUpdateDeposit,
+  onLoadOlderOrders,
+  isLoadingOlder = false,
+  olderExhausted = false,
 }) {
   const isMobile = useIsMobile();
   const minDueDate = resolveMinFutureDueDate();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [pageDraft, setPageDraft] = useState("1");
   const [expandedRowId, setExpandedRowId] = useState(null);
   // מודול 1: עריכת תאריך יעד לתשלום יתרה inline בתוך השורה המורחבת
   const [editingDueDateRowId, setEditingDueDateRowId] = useState(null);
@@ -200,6 +204,23 @@ export default function OrdersTable({
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
+  useEffect(() => {
+    setPageDraft(String(page));
+  }, [page]);
+
+  const jumpToPage = () => {
+    const next = Number(pageDraft);
+    if (!Number.isFinite(next)) {
+      setPageDraft(String(page));
+      return;
+    }
+    setPage(Math.min(totalPages, Math.max(1, Math.trunc(next))));
+  };
 
   const handleSearch = (value) => {
     setSearch(value);
@@ -1048,8 +1069,8 @@ export default function OrdersTable({
               </TableBody>
             </Table>
 
-          {totalPages > 1 && (
-            <div className="px-3 py-3 md:px-6 border-t border-slate-100 flex items-center justify-between" dir="rtl">
+          <div className="px-3 py-3 md:px-6 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2" dir="rtl">
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
@@ -1060,9 +1081,6 @@ export default function OrdersTable({
                 <ChevronRight className="w-4 h-4" />
                 הבא
               </Button>
-              <span className="text-xs text-slate-400">
-                עמוד {page} מתוך {totalPages}
-              </span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -1074,7 +1092,42 @@ export default function OrdersTable({
                 <ChevronLeft className="w-4 h-4" />
               </Button>
             </div>
-          )}
+            <form
+              className="flex items-center gap-1.5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                jumpToPage();
+              }}
+            >
+              <span className="text-xs text-slate-400">עמוד</span>
+              <Input
+                type="number"
+                min={1}
+                max={totalPages}
+                inputMode="numeric"
+                value={pageDraft}
+                onChange={(event) => setPageDraft(event.target.value)}
+                className="h-8 w-14 px-1 text-center text-xs"
+                aria-label="מספר עמוד"
+              />
+              <span className="text-xs text-slate-400">מתוך {totalPages}</span>
+              <Button type="submit" variant="outline" size="sm" className="h-8 text-xs">
+                עבור
+              </Button>
+            </form>
+            {onLoadOlderOrders && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={onLoadOlderOrders}
+                disabled={isLoadingOlder || olderExhausted}
+              >
+                {olderExhausted ? "אין הזמנות ישנות נוספות" : isLoadingOlder ? "טוען..." : "הזמנות מלפני יותר מחודש"}
+              </Button>
+            )}
+          </div>
         </>
       )}
 

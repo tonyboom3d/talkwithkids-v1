@@ -132,6 +132,9 @@ export default function Dashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orders, setOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [olderCursor, setOlderCursor] = useState(null);
+  const [olderExhausted, setOlderExhausted] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(() => readSessionRefresh(DASHBOARD_ORDERS_REFRESH_KEY));
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [paymentTag, setPaymentTag] = useState("");
@@ -255,6 +258,8 @@ export default function Dashboard() {
     try {
       const result = await request('GET_ORDERS');
       setOrders(result.orders || []);
+      setOlderCursor(null);
+      setOlderExhausted(false);
       const nowIso = new Date().toISOString();
       setLastRefreshedAt(nowIso);
       saveSessionRefresh(DASHBOARD_ORDERS_REFRESH_KEY, nowIso);
@@ -265,6 +270,26 @@ export default function Dashboard() {
       setIsLoadingOrders(false);
     }
   }, [isDemo, request]);
+
+  const loadOlderOrders = useCallback(async () => {
+    if (isDemo || isLoadingOlder || olderExhausted) return;
+    setIsLoadingOlder(true);
+    try {
+      const result = await request("GET_OLDER_ORDERS", { beforeDate: olderCursor || null });
+      const incoming = result?.orders || [];
+      setOrders((prev) => {
+        const seen = new Set(prev.map((order) => order._id || order.id));
+        return prev.concat(incoming.filter((order) => !seen.has(order._id || order.id)));
+      });
+      if (result?.oldestDate) setOlderCursor(result.oldestDate);
+      if (!incoming.length || !result?.hasMore) setOlderExhausted(true);
+    } catch (err) {
+      console.error("[UI] Failed to load older orders:", err);
+      toast.error("שגיאה בטעינת הזמנות ישנות");
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  }, [isDemo, isLoadingOlder, olderExhausted, olderCursor, request]);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
@@ -1648,6 +1673,9 @@ export default function Dashboard() {
           onUpdateAssignment={handleUpdateAssignment}
           onCompletePartialPayment={handleCompletePartialPayment}
           onUpdateDeposit={handleUpdateDeposit}
+          onLoadOlderOrders={isDemo ? undefined : loadOlderOrders}
+          isLoadingOlder={isLoadingOlder}
+          olderExhausted={olderExhausted}
         />
       </div>
 
