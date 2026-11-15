@@ -1260,96 +1260,89 @@ export default function OrdersTable({
           }
         }}
       >
-        <DialogContent dir="rtl" className={TOP_DIALOG_CONTENT_CLASSNAME}>
-          <DialogHeader className="text-right">
-            <DialogTitle className="text-right">השלמת תשלום</DialogTitle>
-            <DialogDescription className="text-right">
-              השלמת תשלום עבור הזמנה #{partialPayOrder?.orderNumber || ""} — {partialPayOrder?.customerName || ""}
+        <DialogContent dir="rtl" className={`${TOP_DIALOG_CONTENT_CLASSNAME} gap-2 p-4`}>
+          <DialogHeader className="space-y-1 text-right">
+            <DialogTitle className="text-right text-base">השלמת תשלום</DialogTitle>
+            <DialogDescription className="text-right text-xs">
+              הזמנה #{partialPayOrder?.orderNumber || ""} — {partialPayOrder?.customerName || ""}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-              <span className="text-sm text-amber-800 font-medium">יתרה לתשלום</span>
-              <span className="text-lg font-bold text-amber-900">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              <span className="text-xs font-medium text-amber-800">יתרה לתשלום</span>
+              <span className="text-base font-bold text-amber-900">
                 ₪{partialPayOrder ? resolveRemainingBalance(partialPayOrder).toLocaleString("he-IL") : 0}
               </span>
             </div>
 
             {partialPayOrder?.displayStatus === "awaiting_deposit" && (
-              <p className="text-xs text-amber-800 text-right">
-                יתרת המקדמה: ₪{resolveCompletePaymentDefault(partialPayOrder).toLocaleString("he-IL")}. השלמת מלוא המקדמה תשלח ללקוח/ה בוואטסאפ קישור עם פירוט ההזמנה, המקדמה והיתרה, והשלמת פרטים.
+              <p className="text-right text-[11px] leading-snug text-amber-800">
+                יתרת מקדמה ₪{resolveCompletePaymentDefault(partialPayOrder).toLocaleString("he-IL")}. השלמת המקדמה שולחת ללקוח/ה קישור להשלמת פרטים.
               </p>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1 text-right">סכום ששולם</label>
-              <Input
-                type="number"
-                min="0"
-                max={partialPayOrder ? resolveRemainingBalance(partialPayOrder) : 0}
-                step="0.01"
-                value={partialPayAmount}
-                onChange={(e) => { setPartialPayAmount(e.target.value); setPartialPayError(""); }}
-                disabled={busyAction.type === "partialPay"}
-                className="text-right"
-                placeholder="₪"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1 text-right">אופן תשלום</label>
-              <div className="flex flex-wrap gap-2">
-                {PAYMENT_METHOD_OPTIONS.map((method) => (
-                  <button
-                    key={method}
-                    type="button"
-                    onClick={() => {
-                      setPartialPayMethod(method);
-                      setPartialPayError("");
-                    }}
-                    disabled={busyAction.type === "partialPay"}
-                    className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
-                      partialPayMethod === method
-                        ? "bg-slate-900 text-white border-slate-900"
-                        : "bg-white text-slate-700 border-slate-300 hover:border-slate-400"
-                    }`}
-                  >
-                    {method}
-                  </button>
-                ))}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="mb-1 block text-right text-xs font-medium text-slate-700">סכום ששולם</label>
+                <Input
+                  type="number"
+                  min="0"
+                  max={partialPayOrder ? resolveRemainingBalance(partialPayOrder) : 0}
+                  step="0.01"
+                  value={partialPayAmount}
+                  onChange={(e) => { setPartialPayAmount(e.target.value); setPartialPayError(""); }}
+                  disabled={busyAction.type === "partialPay"}
+                  className="h-9 text-right"
+                  placeholder="₪"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-right text-xs font-medium text-slate-700">אופן תשלום</label>
+                <select
+                  value={partialPayMethod}
+                  onChange={(e) => { setPartialPayMethod(e.target.value); setPartialPayError(""); }}
+                  disabled={busyAction.type === "partialPay"}
+                  className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-right text-sm text-slate-800"
+                >
+                  <option value="">בחירה</option>
+                  {PAYMENT_METHOD_OPTIONS.map((method) => (
+                    <option key={method} value={method}>{method}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1 text-right">הערות</label>
+              <label className="mb-1 block text-right text-xs font-medium text-slate-700">הערות</label>
               <Textarea
                 value={partialPayNotes}
                 onChange={(e) => setPartialPayNotes(e.target.value)}
                 disabled={busyAction.type === "partialPay"}
-                rows={2}
-                className="text-right"
-                placeholder="הערות נוספות (אופציונלי)"
+                rows={1}
+                className="min-h-9 text-right"
+                placeholder="אופציונלי"
               />
             </div>
 
             {partialPayError && (
-              <p className="text-sm text-red-600 text-right">{partialPayError}</p>
+              <p className="text-right text-xs text-red-600">{partialPayError}</p>
             )}
           </div>
 
-          <DialogFooter className="sm:justify-start sm:space-x-0 gap-2">
+          <DialogFooter className="flex-row gap-2 sm:space-x-0">
             <Button
               type="button"
-              className="bg-slate-900 hover:bg-slate-800 text-white"
+              className="h-9 flex-1 bg-slate-900 text-white hover:bg-slate-800"
               onClick={handleConfirmPartialPay}
               disabled={busyAction.type === "partialPay"}
             >
-              {busyAction.type === "partialPay" ? "שומר..." : "שמירת תשלום"}
+              {busyAction.type === "partialPay" ? "שומר..." : "אישור"}
             </Button>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
+              className="h-9 flex-1"
               onClick={() => { setPartialPayOrder(null); setPartialPayError(""); }}
               disabled={busyAction.type === "partialPay"}
             >
