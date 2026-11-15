@@ -161,7 +161,7 @@ export default function Dashboard() {
   const [shipAfterDeposit, setShipAfterDeposit] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState({ hasShipping: false, hasPlan: false });
   const [isCheckingProducts, setIsCheckingProducts] = useState(false);
-  // מוצר קאסטום: שיטת משלוח חובה (תפוז / בית / ללא משלוח) כשנבחר מוצר קאסטום
+  // מוצר אחר: שיטת משלוח חובה (בית / ללא משלוח)
   const [customShippingMethod, setCustomShippingMethod] = useState("");
 
   const isDepositModuleVisible = isDepositModuleEnabled(user);
@@ -381,7 +381,7 @@ export default function Dashboard() {
       setIsCheckingProducts(false);
       return;
     }
-    // מוצר קאסטום אינו מהקטלוג — אין DeliveryRules לבדוק; שיטת המשלוח שנבחרה קובעת ישירות
+    // מוצר אחר אינו מהקטלוג — אין DeliveryRules לבדוק; שיטת המשלוח שנבחרה קובעת ישירות
     if (hasCustomProductsSelected) {
       const hasShipping = !!customShippingMethod && customShippingMethod !== "none";
       setDeliveryInfo({ hasShipping, hasPlan: false });
@@ -458,7 +458,7 @@ export default function Dashboard() {
       return;
     }
     if (hasCustomProductsSelected && !customShippingMethod) {
-      showError("יש לבחור שיטת משלוח למוצר הקאסטום");
+      showError("יש לבחור משלוח מהבית או ללא משלוח למוצר אחר");
       return;
     }
     const invalidPriceProduct = selectedProducts.find((p) => {

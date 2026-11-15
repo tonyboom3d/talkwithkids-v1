@@ -523,6 +523,10 @@
       border-radius: 18px;
     }
 
+    .product-card--no-image {
+      grid-template-columns: 1fr;
+    }
+
     .product-image-wrap {
       width: 88px;
       height: 88px;
@@ -1207,12 +1211,12 @@
 
         list.forEach(function (product) {
           var card = document.createElement("article");
-          card.className = "product-card";
+          card.className = product.image ? "product-card" : "product-card product-card--no-image";
 
-          var imageWrap = document.createElement("div");
-          imageWrap.className = "product-image-wrap";
-
+          var imageWrap = null;
           if (product.image) {
+            imageWrap = document.createElement("div");
+            imageWrap.className = "product-image-wrap";
             var image = document.createElement("img");
             image.className = "product-image";
             image.src = product.image;
@@ -1220,11 +1224,6 @@
             image.loading = "lazy";
             image.referrerPolicy = "no-referrer";
             imageWrap.appendChild(image);
-          } else {
-            var placeholder = document.createElement("div");
-            placeholder.className = "product-image-placeholder";
-            placeholder.textContent = "ללא תמונה";
-            imageWrap.appendChild(placeholder);
           }
 
           var main = document.createElement("div");
@@ -1253,7 +1252,7 @@
           setStruckPrice(valueNodes[1], product.unitPrice, product.originalUnitPrice);
           setStruckPrice(valueNodes[2], product.lineTotal, product.originalLineTotal);
 
-          card.appendChild(imageWrap);
+          if (imageWrap) card.appendChild(imageWrap);
           card.appendChild(main);
           productsList.appendChild(card);
         });

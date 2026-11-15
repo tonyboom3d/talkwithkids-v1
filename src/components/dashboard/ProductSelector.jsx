@@ -11,7 +11,6 @@ import { usePostMessage } from "@/hooks/usePostMessage";
 import CustomProductDialog from "./CustomProductDialog";
 
 const SHIPPING_METHOD_OPTIONS = [
-  { value: "tapuz", label: "משלוח תפוז" },
   { value: "home", label: "משלוח מהבית" },
   { value: "none", label: "ללא משלוח" },
 ];
@@ -74,7 +73,7 @@ export default function ProductSelector({
   );
 
   const addProduct = (product) => {
-    if (hasCustomSelected) return; // לא ניתן לשלב מוצר קטלוג עם מוצר קאסטום
+    if (hasCustomSelected) return; // לא ניתן לשלב מוצר קטלוג עם מוצר אחר
     const catalogPrice = Number(product.price);
     const unitPrice = Number.isFinite(catalogPrice) ? catalogPrice : 0;
     const existing = selectedProducts.find(p => p.id === product.id);
@@ -93,7 +92,7 @@ export default function ProductSelector({
   };
 
   const addCustomProduct = (customProduct) => {
-    if (hasCatalogSelected) return; // לא ניתן לשלב מוצר קאסטום עם מוצר קטלוג
+    if (hasCatalogSelected) return; // לא ניתן לשלב מוצר אחר עם מוצר קטלוג
     setSelectedProducts(prev => [...prev, customProduct]);
     setShowCustomDialog(false);
   };
@@ -184,7 +183,7 @@ export default function ProductSelector({
                     setIsOpen(false);
                     setShowCustomDialog(true);
                   }}
-                  title={hasCatalogSelected ? "לא ניתן להוסיף מוצר קאסטום כשנבחרו מוצרים מהקטלוג" : ""}
+                  title={hasCatalogSelected ? "לא ניתן להוסיף מוצר אחר כשנבחרו מוצרים מהקטלוג" : ""}
                   className="flex w-full items-center justify-end gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline disabled:cursor-not-allowed disabled:text-slate-300 disabled:no-underline"
                   dir="rtl"
                 >
@@ -193,7 +192,7 @@ export default function ProductSelector({
                 </button>
                 {hasCatalogSelected && (
                   <p className="text-[11px] text-slate-400 text-right" dir="rtl">
-                    לא ניתן להוסיף מוצר קאסטום כשנבחרו מוצרים מהקטלוג
+                    לא ניתן להוסיף מוצר אחר כשנבחרו מוצרים מהקטלוג
                   </p>
                 )}
                 <div className="relative">
@@ -211,7 +210,7 @@ export default function ProductSelector({
 
               {hasCustomSelected && (
                 <p className="px-3 py-2 text-[11px] text-slate-400 text-right border-b border-slate-100" dir="rtl">
-                  לא ניתן להוסיף מוצר מהקטלוג כשנבחר מוצר קאסטום
+                  לא ניתן להוסיף מוצר מהקטלוג כשנבחר מוצר אחר
                 </p>
               )}
 
@@ -312,7 +311,7 @@ export default function ProductSelector({
                           {product.isCustom && (
                             <Badge className="border-0 bg-purple-100 text-[10px] text-purple-700 shrink-0">
                               <Sparkles className="w-3 h-3 ml-0.5" />
-                              קאסטום
+                              מוצר אחר
                             </Badge>
                           )}
                           {product.name}
@@ -405,7 +404,7 @@ export default function ProductSelector({
             {hasCustomSelected && (
               <div className="space-y-2 rounded-lg border border-purple-200 bg-purple-50/60 px-3 py-2.5" dir="rtl">
                 <Label className="block text-right text-sm font-medium text-slate-700">
-                  שיטת משלוח למוצר הקאסטום
+                  מאיפה המשלוח למוצר אחר
                   <span className="text-red-400 mr-0.5">*</span>
                 </Label>
                 <RadioGroup

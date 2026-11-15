@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Dialog,
@@ -12,8 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ImagePlus, Loader2, PackagePlus, X } from "lucide-react";
-import { usePostMessage } from "@/hooks/usePostMessage";
+import { PackagePlus } from "lucide-react";
 
 const EMPTY_STATE = {
   name: "",
@@ -23,58 +22,17 @@ const EMPTY_STATE = {
   notes: "",
 };
 
-const MAX_IMAGE_DIMENSION = 1200;
-const IMAGE_QUALITY = 0.85;
-const ACCEPTED_IMAGE_TYPES = /^image\/(jpeg|png|webp)$/i;
-
-/** מקבל File, מקטין ל-1200px ומחזיר data URL (JPEG) לתצוגה/העלאה */
-function resizeImageToDataUrl(file, maxDim = MAX_IMAGE_DIMENSION, quality = IMAGE_QUALITY) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("קריאת הקובץ נכשלה"));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error("לא ניתן לקרוא את התמונה"));
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > maxDim || height > maxDim) {
-          const scale = maxDim / Math.max(width, height);
-          width = Math.round(width * scale);
-          height = Math.round(height * scale);
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
 /**
- * פופאפ ליצירת מוצר קאסטום (לא מהקטלוג) להוספה להזמנה:
- * שם, מחיר מלא, מחיר הנחה, תמונה (מועלית ל-Media Manager), כמות והערות ללקוח.
+ * פופאפ ליצירת מוצר אחר (לא מהקטלוג) להוספה להזמנה:
+ * שם, מחיר מלא, מחיר הנחה, כמות והערות ללקוח.
  */
-export default function CustomProductDialog({ open, onClose, isDemo, onConfirm }) {
+export default function CustomProductDialog({ open, onClose, onConfirm }) {
   const [form, setForm] = useState({ ...EMPTY_STATE });
-  const [imagePreview, setImagePreview] = useState("");
-  const [wixImage, setWixImage] = useState("");
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [error, setError] = useState("");
-  const fileInputRef = useRef(null);
-  const { request } = usePostMessage();
 
   const resetForm = () => {
     setForm({ ...EMPTY_STATE });
-    setImagePreview("");
-    setWixImage("");
     setError("");
-    setIsUploadingImage(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const showError = (msg) => {
@@ -84,47 +42,6 @@ export default function CustomProductDialog({ open, onClose, isDemo, onConfirm }
 
   const handleField = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
-  };
-
-  const handleImageSelect = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!ACCEPTED_IMAGE_TYPES.test(file.type)) {
-      showError("יש להעלות קובץ תמונה מסוג JPG, PNG או WEBP");
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-
-    setIsUploadingImage(true);
-    try {
-      const dataUrl = await resizeImageToDataUrl(file);
-      if (isDemo) {
-        setImagePreview(dataUrl);
-        setWixImage("");
-      } else {
-        const baseName = String(file.name || "custom-product").replace(/\.[^.]+$/, "") || "custom-product";
-        const result = await request("UPLOAD_CUSTOM_PRODUCT_IMAGE", {
-          base64: dataUrl,
-          fileName: `${baseName}.jpg`,
-          mimeType: "image/jpeg",
-        });
-        setImagePreview(result?.publicUrl || "");
-        setWixImage(result?.wixImage || "");
-      }
-    } catch (err) {
-      console.error("[UI] Custom product image upload failed:", err);
-      showError(err?.message || "העלאת התמונה נכשלה");
-      setImagePreview("");
-      setWixImage("");
-    } finally {
-      setIsUploadingImage(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  const removeImage = () => {
-    setImagePreview("");
-    setWixImage("");
   };
 
   const handleClose = () => {
@@ -160,12 +77,6 @@ export default function CustomProductDialog({ open, onClose, isDemo, onConfirm }
     }
 
     const quantityNum = Math.max(1, Math.round(Number(form.quantity) || 1));
-
-    if (isUploadingImage) {
-      showError("יש להמתין לסיום העלאת התמונה");
-      return;
-    }
-
     const effectivePrice = discountNum != null ? discountNum : fullPriceNum;
 
     onConfirm({
@@ -176,15 +87,15 @@ export default function CustomProductDialog({ open, onClose, isDemo, onConfirm }
       unitPrice: effectivePrice,
       catalogPrice: fullPriceNum,
       quantity: quantityNum,
-      image: imagePreview || "",
-      wixImage: wixImage || "",
+      image: "",
+      wixImage: "",
       notes: form.notes.trim(),
     });
     resetForm();
   };
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && !isUploadingImage) handleClose(); }}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) handleClose(); }}>
       <DialogContent
         dir="rtl"
         className="top-2 flex max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-md translate-y-0 flex-col gap-2 overflow-hidden p-3 sm:top-[50%] sm:max-h-[min(88dvh,560px)] sm:translate-y-[-50%] sm:gap-3 sm:p-4"
@@ -192,7 +103,7 @@ export default function CustomProductDialog({ open, onClose, isDemo, onConfirm }
         <DialogHeader className="shrink-0 space-y-0.5 pr-6 text-right">
           <DialogTitle className="flex items-center gap-1.5 text-right text-base">
             <PackagePlus className="h-4 w-4 text-slate-400" />
-            יצירת מוצר קאסטום
+            יצירת מוצר אחר
           </DialogTitle>
           <DialogDescription className="text-right text-xs leading-snug">
             מוצר שאינו מהקטלוג — יתווסף להזמנה.
@@ -265,49 +176,6 @@ export default function CustomProductDialog({ open, onClose, isDemo, onConfirm }
           </div>
 
           <div className="space-y-1">
-            <Label className="block text-right text-xs font-medium text-slate-700">תמונה (אופציונלי)</Label>
-            {imagePreview ? (
-              <div className="flex items-center gap-2" dir="rtl">
-                <img src={imagePreview} alt="" className="h-9 w-9 rounded-md border border-slate-200 object-cover" />
-                <button
-                  type="button"
-                  onClick={removeImage}
-                  className="flex items-center gap-1 text-xs text-slate-500 hover:text-red-500"
-                >
-                  <X className="h-3.5 w-3.5" />
-                  הסרת תמונה
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploadingImage}
-                className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-slate-300 text-xs text-slate-500 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
-              >
-                {isUploadingImage ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    מעלה תמונה...
-                  </>
-                ) : (
-                  <>
-                    <ImagePlus className="h-3.5 w-3.5" />
-                    העלאת תמונה
-                  </>
-                )}
-              </button>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleImageSelect}
-              className="hidden"
-            />
-          </div>
-
-          <div className="space-y-1">
             <Label className="block text-right text-xs font-medium text-slate-700">הערות למוצר (ללקוח/ה)</Label>
             <Textarea
               value={form.notes}
@@ -337,12 +205,11 @@ export default function CustomProductDialog({ open, onClose, isDemo, onConfirm }
             type="button"
             size="sm"
             onClick={handleConfirm}
-            disabled={isUploadingImage}
             className="bg-[#30D46B] font-medium text-black hover:bg-[#28b85f]"
           >
             אישור
           </Button>
-          <Button type="button" size="sm" variant="ghost" onClick={handleClose} disabled={isUploadingImage}>
+          <Button type="button" size="sm" variant="ghost" onClick={handleClose}>
             ביטול
           </Button>
         </DialogFooter>
