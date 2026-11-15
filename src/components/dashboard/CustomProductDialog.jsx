@@ -16,15 +16,14 @@ import { PackagePlus } from "lucide-react";
 
 const EMPTY_STATE = {
   name: "",
-  fullPrice: "",
-  discountPrice: "",
+  price: "",
   quantity: "1",
   notes: "",
 };
 
 /**
  * פופאפ ליצירת מוצר אחר (לא מהקטלוג) להוספה להזמנה:
- * שם, מחיר מלא, מחיר הנחה, כמות והערות ללקוח.
+ * שם, מחיר, כמות והערות ללקוח.
  */
 export default function CustomProductDialog({ open, onClose, onConfirm }) {
   const [form, setForm] = useState({ ...EMPTY_STATE });
@@ -56,36 +55,21 @@ export default function CustomProductDialog({ open, onClose, onConfirm }) {
       return;
     }
 
-    const fullPriceNum = Number(form.fullPrice);
-    if (!Number.isFinite(fullPriceNum) || fullPriceNum <= 0) {
-      showError("יש למלא מחיר מלא גדול מ-0");
+    const priceNum = Number(form.price);
+    if (!Number.isFinite(priceNum) || priceNum <= 0) {
+      showError("יש למלא מחיר מוצר גדול מ-0");
       return;
     }
 
-    const discountTrim = String(form.discountPrice || "").trim();
-    let discountNum = null;
-    if (discountTrim !== "") {
-      discountNum = Number(discountTrim);
-      if (!Number.isFinite(discountNum) || discountNum < 0) {
-        showError("מחיר ההנחה לא תקין");
-        return;
-      }
-      if (discountNum > fullPriceNum) {
-        showError("מחיר ההנחה לא יכול להיות גבוה מהמחיר המלא");
-        return;
-      }
-    }
-
     const quantityNum = Math.max(1, Math.round(Number(form.quantity) || 1));
-    const effectivePrice = discountNum != null ? discountNum : fullPriceNum;
 
     onConfirm({
       id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       isCustom: true,
       name: trimmedName,
-      price: effectivePrice,
-      unitPrice: effectivePrice,
-      catalogPrice: fullPriceNum,
+      price: priceNum,
+      unitPrice: priceNum,
+      catalogPrice: priceNum,
       quantity: quantityNum,
       image: "",
       wixImage: "",
@@ -125,10 +109,10 @@ export default function CustomProductDialog({ open, onClose, onConfirm }) {
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label className="block text-right text-xs font-medium text-slate-700">
-                מחיר מלא
+                מחיר המוצר
                 <span className="mr-0.5 text-red-400">*</span>
               </Label>
               <div className="relative">
@@ -136,24 +120,8 @@ export default function CustomProductDialog({ open, onClose, onConfirm }) {
                   type="number"
                   min="0"
                   step="0.01"
-                  value={form.fullPrice}
-                  onChange={handleField("fullPrice")}
-                  className="h-8 pl-5 text-sm"
-                  dir="ltr"
-                />
-                <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">₪</span>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <Label className="block text-right text-xs font-medium text-slate-700">מחיר הנחה</Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.discountPrice}
-                  onChange={handleField("discountPrice")}
+                  value={form.price}
+                  onChange={handleField("price")}
                   className="h-8 pl-5 text-sm"
                   dir="ltr"
                 />
