@@ -588,6 +588,14 @@
       color: var(--text);
     }
 
+    .product-price-old {
+      margin-inline-end: 6px;
+      color: var(--muted);
+      font-weight: 600;
+      text-decoration: line-through;
+      text-decoration-thickness: 2px;
+    }
+
     .detail-label {
       margin: 0 0 8px;
       font-size: 0.85rem;
@@ -956,7 +964,7 @@
           
             <h1 id="heroTitle" class="hero-title"></h1>
             <p class="hero-subtitle">
-              כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התשלום 
+              כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את ההזמנה
             </p>
             <div id="statusChip" class="status-chip"></div>
           </div>
@@ -968,11 +976,11 @@
           <div id="heroPriceRow" class="hero-price-row" style="display: none;" aria-live="polite">
             <div id="heroPriceCouponWrap" class="hero-price-coupon-wrap" style="display: none;">
               <div class="hero-price-coupon-line">
-                <span class="hero-price-mini-label">מחיר מלא</span>
+                <span class="hero-price-mini-label">מחיר לפני הנחה</span>
                 <span id="heroPriceOriginal" class="price-strikethrough"></span>
               </div>
               <div class="hero-price-coupon-line">
-                <span class="hero-price-mini-label">מחיר לתשלום</span>
+                <span class="hero-price-mini-label">מחיר אחרי הנחה</span>
                 <span id="heroPricePay" class="price-final"></span>
               </div>
             </div>
@@ -1098,6 +1106,21 @@
         if (appShell) {
           appShell.classList.toggle("app-shell--error", target === errorScreen);
         }
+      }
+
+      function setStruckPrice(node, payAmount, fullAmount) {
+        var pay = Number(payAmount) || 0;
+        var full = Number(fullAmount);
+        node.textContent = "";
+        if (Number.isFinite(full) && full > pay + 0.009) {
+          var oldPrice = document.createElement("span");
+          oldPrice.className = "product-price-old";
+          oldPrice.textContent = "לפני הנחה " + formatPrice(full);
+          node.appendChild(oldPrice);
+          node.appendChild(document.createTextNode("אחרי הנחה " + formatPrice(pay)));
+          return;
+        }
+        node.appendChild(document.createTextNode(formatPrice(pay)));
       }
 
       function formatPrice(value) {
@@ -1227,8 +1250,8 @@
           var valueNodes = main.querySelectorAll(".product-meta-value");
           nameNode.textContent = product.name || "מוצר";
           valueNodes[0].textContent = String(product.quantity || 1);
-          valueNodes[1].textContent = formatPrice(product.unitPrice);
-          valueNodes[2].textContent = formatPrice(product.lineTotal);
+          setStruckPrice(valueNodes[1], product.unitPrice, product.originalUnitPrice);
+          setStruckPrice(valueNodes[2], product.lineTotal, product.originalLineTotal);
 
           card.appendChild(imageWrap);
           card.appendChild(main);
@@ -1263,11 +1286,14 @@
         console.log("[TWK-IFRAME] renderOrder payload:", order);
         setText("heroTitle", (order.customerName || "אהובה") + ", ההזמנה שלך כמעט מוכנה!");
         var heroSubtitle = document.querySelector(".hero-subtitle");
-        var zeroUnpaid = Number(order.payPrice) <= 0.009 && (order.status === "sent" || order.status === "opened" || order.status === "unpaid");
+        var unpaidStatus = order.status === "sent" || order.status === "opened" || order.status === "unpaid";
+        var zeroUnpaid = Number(order.payPrice) <= 0.009 && unpaidStatus;
         if (heroSubtitle) {
           heroSubtitle.textContent = zeroUnpaid
             ? "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התהליך"
-            : "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התשלום";
+            : unpaidStatus
+              ? "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את ההזמנה"
+              : "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התשלום";
         }
         setText("customerName", order.customerName || "לא זמין");
         setText("createdDate", formatDate(order.createdDate));

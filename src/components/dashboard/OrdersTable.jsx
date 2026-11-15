@@ -1115,7 +1115,7 @@ export default function OrdersTable({
                 עבור
               </Button>
             </form>
-            {onLoadOlderOrders && (
+            {onLoadOlderOrders && page === totalPages && (
               <Button
                 type="button"
                 variant="outline"
@@ -1124,7 +1124,7 @@ export default function OrdersTable({
                 onClick={onLoadOlderOrders}
                 disabled={isLoadingOlder || olderExhausted}
               >
-                {olderExhausted ? "אין הזמנות ישנות נוספות" : isLoadingOlder ? "טוען..." : "הזמנות מלפני יותר מחודש"}
+                {olderExhausted ? "אין הזמנות ישנות נוספות" : isLoadingOlder ? "טוען..." : "טען הזמנות ישנות יותר"}
               </Button>
             )}
           </div>

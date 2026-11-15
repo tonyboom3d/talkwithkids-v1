@@ -338,6 +338,7 @@ export default function Dashboard() {
     // יציאה מסטטוסי תשלום עם עריכת מחיר — מחזירים מחיר קטלוג
     if (paymentStatus !== "paid_partial" && paymentStatus !== "paid" && paymentStatus !== "awaiting_deposit") {
       setSelectedProducts((prev) => prev.map((p) => {
+        if (p.isCustom) return p;
         const catalogPrice = Number.isFinite(Number(p.catalogPrice)) ? Number(p.catalogPrice) : Number(p.price) || 0;
         return {
           ...p,
