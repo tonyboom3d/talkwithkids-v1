@@ -105,7 +105,7 @@ export default function DepositSection({
             />
           </div>
           {!balanceDueDate && (
-            <p className="text-xs text-yellow-800">שדה חובה — יש לבחור תאריך עתידי בלבד</p>
+            <p className="text-xs text-yellow-800">שדה חובה — אפשר לבחור את היום או תאריך עתידי</p>
           )}
         </div>
 

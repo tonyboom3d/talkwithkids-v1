@@ -36,7 +36,7 @@ import { useCreatorFilter } from "@/hooks/useCreatorFilter";
 import { DEMO_ORDERS } from "../components/dashboard/DemoDataProvider";
 import { isDepositModuleEnabled } from "@/utils/featureFlags";
 import { PAYMENT_METHOD_OPTIONS, SKIP_AUTO_INVOICE_PAYMENT_METHODS } from "@/utils/paymentMethods";
-import { isFutureDueDate, resolveMinFutureDueDate } from "@/utils/israelDate";
+import { isDueDateToday, isDueDateTodayOrFuture, resolveMinDueDate } from "@/utils/israelDate";
 
 const DASHBOARD_ORDERS_REFRESH_KEY = "twk_dashboard_orders_last_refresh";
 const EXCLUSIVE_PRODUCT_ID = "6d11d520-c010-552f-a976-b898ce21feda";
@@ -165,7 +165,13 @@ export default function Dashboard() {
   const [customShippingMethod, setCustomShippingMethod] = useState("");
 
   const isDepositModuleVisible = isDepositModuleEnabled(user);
-  const minDueDate = resolveMinFutureDueDate();
+  const minDueDate = resolveMinDueDate();
+
+  useEffect(() => {
+    if (!isDueDateToday(balanceDueDate)) return;
+    setUnlockProgram(false);
+    setShipAfterDeposit(false);
+  }, [balanceDueDate]);
 
   const {
     creatorOptions,
@@ -193,6 +199,7 @@ export default function Dashboard() {
   );
   const zeroCustomerLink = useMemo(() => {
     const prepaid = paymentStatus === "paid_partial" && isDepositModuleVisible
+      && !isDueDateToday(balanceDueDate)
       && ((deliveryInfo.hasPlan && unlockProgram) || (deliveryInfo.hasShipping && shipAfterDeposit));
     if (prepaid) return true;
     if (paymentStatus !== "unpaid" || selectedProducts.length === 0) return false;
@@ -213,6 +220,7 @@ export default function Dashboard() {
     deliveryInfo.hasShipping,
     unlockProgram,
     shipAfterDeposit,
+    balanceDueDate,
     selectedProducts.length,
     selectedProductsTotal,
     couponEnabled,
@@ -501,8 +509,8 @@ export default function Dashboard() {
         showError("יש למלא תאריך יעד לתשלום היתרה");
         return;
       }
-      if (!isFutureDueDate(balanceDueDate)) {
-        showError("תאריך היעד לתשלום היתרה חייב להיות תאריך עתידי");
+      if (!isDueDateTodayOrFuture(balanceDueDate)) {
+        showError("תאריך היעד לתשלום היתרה לא יכול להיות בעבר");
         return;
       }
     }
@@ -577,6 +585,7 @@ export default function Dashboard() {
       const prepaidDepositChecked = (
         paymentStatus === "paid_partial" &&
         isDepositModuleVisible &&
+        !isDueDateToday(balanceDueDate) &&
         ((deliveryInfo.hasPlan && unlockProgram) || (deliveryInfo.hasShipping && shipAfterDeposit))
       );
       const effectivePaymentStatus = prepaidDepositChecked ? "awaiting_deposit" : paymentStatus;

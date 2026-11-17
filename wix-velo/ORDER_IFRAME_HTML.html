@@ -1003,7 +1003,7 @@
               </div>
               <div class="hero-price-three-divider"></div>
               <div class="hero-price-three-line">
-                <span class="hero-price-three-label">נותר לתשלום</span>
+                <span id="heroPriceThreeRemainingLabel" class="hero-price-three-label">נותר לתשלום</span>
                 <span id="heroPriceThreeRemaining" class="price-final"></span>
               </div>
             </div>
@@ -1158,11 +1158,31 @@
         return s !== "paid_completed" && s !== "paid";
       }
 
+      function setRemainingPriceLabel(text) {
+        var label = document.getElementById("heroPriceThreeRemainingLabel");
+        if (label) label.textContent = text;
+      }
+
       function renderHeroPrice(order) {
         if (!shouldShowHeroPrice(order)) {
           heroPriceRow.style.display = "none";
           return;
         }
+        if (order.detailsOnly) {
+          var fullPrice = Number(order.originalPrice != null ? order.originalPrice : order.totalPrice) || 0;
+          var paidOutside = Number(order.actualPaidAmount) || Number(order.depositPaidAmount) || Number(order.depositAmount) || 0;
+          var laterBalance = Math.max(0, fullPrice - paidOutside);
+          heroPriceRow.style.display = "block";
+          heroPriceCouponWrap.style.display = "none";
+          heroPriceSingleWrap.style.display = "none";
+          heroPriceThreeWrap.style.display = "flex";
+          heroPriceThreeOriginal.textContent = formatPrice(fullPrice);
+          heroPriceThreePaid.textContent = formatPrice(paidOutside);
+          heroPriceThreeRemaining.textContent = formatPrice(laterBalance);
+          setRemainingPriceLabel("יתרה להמשך");
+          return;
+        }
+        setRemainingPriceLabel("נותר לתשלום");
         var pay = order.payPrice != null ? order.payPrice : order.totalPrice;
         var orig = order.originalPrice != null ? order.originalPrice : order.totalPrice;
         var actualPaid = Number(order.actualPaidAmount) || 0;
@@ -1260,7 +1280,13 @@
 
       function showRedirectOverlay() {
         // עבור הזמנות ששולמו כבר — מסתירים את המשפט "תועברי לעמוד התשלום"
-        redirectSubtext.style.display = (currentOrder && currentOrder.isAlreadyPaid) ? "none" : "";
+        if (currentOrder && currentOrder.detailsOnly) {
+          redirectSubtext.textContent = "עוד רגע תועברי להשלמת הפרטים.";
+          redirectSubtext.style.display = "";
+        } else {
+          redirectSubtext.textContent = "עוד רגע תועברי לעמוד התשלום המאובטח.";
+          redirectSubtext.style.display = (currentOrder && currentOrder.isAlreadyPaid) ? "none" : "";
+        }
         redirectOverlay.classList.add("is-visible");
         redirectOverlay.setAttribute("aria-hidden", "false");
       }
@@ -1288,19 +1314,22 @@
         var unpaidStatus = order.status === "sent" || order.status === "opened" || order.status === "unpaid";
         var zeroUnpaid = Number(order.payPrice) <= 0.009 && unpaidStatus;
         if (heroSubtitle) {
-          heroSubtitle.textContent = zeroUnpaid
-            ? "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התהליך"
-            : unpaidStatus
-              ? "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את ההזמנה"
-              : "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התשלום";
+          heroSubtitle.textContent = order.detailsOnly && order.heroSubtitle
+            ? order.heroSubtitle
+            : zeroUnpaid
+              ? "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התהליך"
+              : unpaidStatus
+                ? "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את ההזמנה"
+                : "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התשלום";
         }
         setText("customerName", order.customerName || "לא זמין");
         setText("createdDate", formatDate(order.createdDate));
         setText("customerPhone", order.customerPhone || "לא זמין");
-        setText("statusText", order.statusText || "ממתין לתשלום");
+        var visibleStatus = order.detailsOnly ? "אין צורך בתשלום כעת" : (order.statusText || "ממתין לתשלום");
+        setText("statusText", visibleStatus);
 
         var statusChip = document.getElementById("statusChip");
-        statusChip.textContent = order.statusText || "ממתין לתשלום";
+        statusChip.textContent = visibleStatus;
         statusChip.className = "status-chip " + (order.statusTone || "waiting");
 
         var couponRow = document.getElementById("couponRow");

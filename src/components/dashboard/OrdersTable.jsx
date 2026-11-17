@@ -60,7 +60,7 @@ import {
 } from "@/utils/dashboardOrders";
 import { getOrderCreatorKey } from "@/utils/orderCreatorFilter";
 import { PAYMENT_METHOD_OPTIONS, shouldSkipInvoiceForPaymentMethod } from "@/utils/paymentMethods";
-import { resolveMinFutureDueDate } from "@/utils/israelDate";
+import { resolveMinDueDate } from "@/utils/israelDate";
 import EmployeeAssignField from "./EmployeeAssignField";
 import OrderActionsMenu from "./OrderActionsMenu";
 import OrderCustomerDetails from "./OrderCustomerDetails";
@@ -148,7 +148,7 @@ export default function OrdersTable({
   olderExhausted = false,
 }) {
   const isMobile = useIsMobile();
-  const minDueDate = resolveMinFutureDueDate();
+  const minDueDate = resolveMinDueDate();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageDraft, setPageDraft] = useState("1");

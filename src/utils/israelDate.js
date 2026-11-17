@@ -8,17 +8,23 @@ export function israelDateKey(date) {
   return String(new Intl.DateTimeFormat("en-CA", { timeZone: IL_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(d));
 }
 
-/** היום הראשון שניתן לבחור כתאריך יעד (מחר, לפי שעון ישראל) — לשימוש כ-`min` בשדות תאריך */
-export function resolveMinFutureDueDate() {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return israelDateKey(d);
+/** היום, לפי שעון ישראל — היום המוקדם ביותר שאפשר לבחור כתאריך יעד */
+export function resolveMinDueDate() {
+  return israelDateKey(new Date());
 }
 
-/** האם תאריך יעד עתידי (אחרי היום הנוכחי) לפי שעון ישראל */
-export function isFutureDueDate(value) {
+/** האם תאריך היעד הוא היום לפי שעון ישראל */
+export function isDueDateToday(value) {
   if (!value) return false;
   const key = israelDateKey(value);
   if (!key) return false;
-  return key > israelDateKey(new Date());
+  return key === israelDateKey(new Date());
+}
+
+/** היום או תאריך עתידי. עבר נדחה. */
+export function isDueDateTodayOrFuture(value) {
+  if (!value) return false;
+  const key = israelDateKey(value);
+  if (!key) return false;
+  return key >= israelDateKey(new Date());
 }

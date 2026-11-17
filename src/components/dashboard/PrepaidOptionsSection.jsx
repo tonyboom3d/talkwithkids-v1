@@ -3,14 +3,18 @@ import { motion } from "framer-motion";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { CalendarClock } from "lucide-react";
+import { isDueDateToday } from "@/utils/israelDate";
 
-function CheckOption({ checked, onToggle, label, checkedClass }) {
+function CheckOption({ checked, onToggle, label, checkedClass, disabled }) {
   return (
     <button
       type="button"
-      onClick={onToggle}
+      onClick={disabled ? undefined : onToggle}
+      disabled={disabled}
       className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all w-full ${
-        checked ? checkedClass : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
+        disabled
+          ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+          : checked ? checkedClass : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
       }`}
     >
       {label}
@@ -42,7 +46,8 @@ export default function PrepaidOptionsSection({
   setShipAfterDeposit,
 }) {
   const showOptions = hasProductsSelected && !isCheckingProducts;
-  const prepaidOptionChecked = (hasProgram && unlockProgram) || (hasShipping && shipAfterDeposit);
+  const sameDayDue = isDueDateToday(balanceDueDate);
+  const prepaidOptionChecked = !sameDayDue && ((hasProgram && unlockProgram) || (hasShipping && shipAfterDeposit));
 
   return (
     <motion.div
@@ -73,7 +78,7 @@ export default function PrepaidOptionsSection({
             />
           </div>
           {!balanceDueDate && (
-            <p className="text-xs text-orange-700">שדה חובה — יש לבחור תאריך עתידי בלבד</p>
+            <p className="text-xs text-orange-700">שדה חובה — אפשר לבחור את היום או תאריך עתידי</p>
           )}
         </div>
 
@@ -91,9 +96,16 @@ export default function PrepaidOptionsSection({
           <p className="text-xs text-slate-500">למוצרים שנבחרו אין קורס מחובר או ערכה למשלוח.</p>
         )}
 
+        {showOptions && sameDayDue && (hasProgram || hasShipping) && (
+          <p className="text-xs text-orange-800 bg-orange-100/70 rounded-lg px-3 py-2">
+            בתאריך של היום אי אפשר לסמן שליחת הערכה או פתיחת תוכנית לפני התשלום. הלקוחה תקבל קישור שדורש תשלום.
+          </p>
+        )}
+
         {showOptions && hasProgram && (
           <CheckOption
-            checked={unlockProgram}
+            checked={!sameDayDue && unlockProgram}
+            disabled={sameDayDue}
             onToggle={() => setUnlockProgram(!unlockProgram)}
             label="פתיחת הקורס/תוכנית הדיגיטלית"
             checkedClass="bg-emerald-50 border-emerald-300 text-emerald-700"
@@ -102,7 +114,8 @@ export default function PrepaidOptionsSection({
 
         {showOptions && hasShipping && (
           <CheckOption
-            checked={shipAfterDeposit}
+            checked={!sameDayDue && shipAfterDeposit}
+            disabled={sameDayDue}
             onToggle={() => setShipAfterDeposit(!shipAfterDeposit)}
             label="שליחת הערכה"
             checkedClass="bg-emerald-50 border-emerald-300 text-emerald-700"
