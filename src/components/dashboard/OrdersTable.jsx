@@ -523,6 +523,7 @@ export default function OrdersTable({
   const resolveActualPaidAmount = (order) => {
     if (!isPaidDisplayStatus(order.displayStatus)) return 0;
     if (order.displayStatus === "paid_partial") return Math.max(0, Number(order.partialPaidAmount || 0));
+    if (Number(order.collectedAmount) > 0) return Number(order.collectedAmount);
     if (order.couponDetails?.source === "auto_paid" && Number(order.partialPaidAmount) > 0) {
       return Math.max(0, Number(order.partialPaidAmount || 0));
     }

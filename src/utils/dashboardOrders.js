@@ -200,6 +200,24 @@ export function resolveRemainingBalance(order) {
   return 0;
 }
 
+const FULLY_PAID_STATUSES = ["paid", "paid_pending_details", "paid_completed"];
+
+/** כמה כסף נגבה בפועל. מקדמה ויתרה שנשמרו בנפרד מחוברות, בלי לספור פעמיים סכום שכבר מלא. */
+export function resolveMoneyCollected(order, couponDetails, orderTotal) {
+  const total = Math.max(0, Number(orderTotal) || 0);
+  const deposit = Math.max(0, Number(order?.depositPaidAmount) || 0);
+  const partial = Math.max(0, Number(order?.partialPaidAmount) || 0);
+  const couponPaid = Math.max(0, Number(couponDetails?.actualPaidAmount ?? couponDetails?.paidAmount) || 0);
+  const partsAreSeparate = total > 0
+    && deposit > 0.009
+    && partial > 0.009
+    && deposit < total - 0.009
+    && partial < total - 0.009;
+  if (partsAreSeparate) return Math.min(total, deposit + partial);
+  const known = Math.max(deposit, partial, couponPaid);
+  return total > 0 ? Math.min(total, known) : known;
+}
+
 function resolvePartialPaidAmount(order, couponDetails, subtotal) {
   const directValue = Number(order?.partialPaidAmount);
   if (Number.isFinite(directValue) && directValue > 0) {
@@ -351,6 +369,14 @@ export function normalizeOrder(order, options = {}) {
     normalized.totalAmount = rawSubtotal;
     normalized.remainingPaymentAmount = 0;
   }
+  if (FULLY_PAID_STATUSES.includes(normalized.displayStatus)) {
+    const collected = resolveMoneyCollected(order, couponDetails, rawSubtotal);
+    normalized.collectedAmount = collected;
+    if (collected > normalized.totalAmount + 0.009 && rawSubtotal > 0) {
+      normalized.totalAmount = rawSubtotal;
+    }
+    normalized.remainingPaymentAmount = 0;
+  }
   normalized.orderNumber = rawOrderNumber || (normalized.displayStatus === "paid_pending_details" ? "ממתין להשלמה" : "ממתין לתשלום");
   normalized.statusCfg = STATUS_CONFIG[normalized.displayStatus] || STATUS_CONFIG.sent;
   if (normalized.displayStatus === "awaiting_deposit" && couponDetails?.source === "deposit_prepaid") {
@@ -377,7 +403,7 @@ export function normalizeOrder(order, options = {}) {
 
   const paidForCommission = isPaidDisplayStatus(normalized.displayStatus);
   normalized.profitPercent = paidForCommission ? commissionRate : null;
-  normalized.profitAmount = paidForCommission ? totalAmount * (commissionRate / 100) : null;
+  normalized.profitAmount = paidForCommission ? normalized.totalAmount * (commissionRate / 100) : null;
 
   return normalized;
 }
