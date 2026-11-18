@@ -1312,13 +1312,14 @@
         setText("heroTitle", (order.customerName || "אהובה") + ", ההזמנה שלך כמעט מוכנה!");
         var heroSubtitle = document.querySelector(".hero-subtitle");
         var unpaidStatus = order.status === "sent" || order.status === "opened" || order.status === "unpaid";
+        var paidStatus = order.status === "paid" || order.status === "paid_pending_details";
         var zeroUnpaid = Number(order.payPrice) <= 0.009 && unpaidStatus;
         if (heroSubtitle) {
           heroSubtitle.textContent = order.detailsOnly && order.heroSubtitle
             ? order.heroSubtitle
             : zeroUnpaid
               ? "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התהליך"
-              : unpaidStatus
+              : (unpaidStatus || paidStatus)
                 ? "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את ההזמנה"
                 : "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התשלום";
         }

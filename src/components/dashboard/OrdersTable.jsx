@@ -142,6 +142,7 @@ export default function OrdersTable({
   employees = [],
   onUpdateAssignment,
   onCompletePartialPayment,
+  onApplyPostPaymentChoices,
   onUpdateDeposit,
   onLoadOlderOrders,
   isLoadingOlder = false,
@@ -175,6 +176,11 @@ export default function OrdersTable({
   const [partialPayMethod, setPartialPayMethod] = useState("");
   const [partialPayNotes, setPartialPayNotes] = useState("");
   const [partialPayError, setPartialPayError] = useState("");
+  // אחרי תשלום מלא: שאלות "לשלוח את ההזמנה?" / "לחבר לתוכנית?"
+  const [postPayState, setPostPayState] = useState(null);
+  const [postPayShip, setPostPayShip] = useState(true);
+  const [postPayProgram, setPostPayProgram] = useState(true);
+  const [isSavingPostPay, setIsSavingPostPay] = useState(false);
 
   const normalizedOrders = useMemo(
     () => (orders || []).map((order) => normalizeOrder(order, { commissionRate })),
@@ -320,14 +326,39 @@ export default function OrdersTable({
     setPartialPayError("");
 
     await runRowAction("partialPay", partialPayOrder, async () => {
-      await onCompletePartialPayment(partialPayOrder.rowId, {
+      const result = await onCompletePartialPayment(partialPayOrder.rowId, {
         amountPaid: amount,
         paymentMethod: partialPayMethod,
         notes: partialPayNotes,
         generateInvoice: !shouldSkipInvoiceForPaymentMethod(partialPayMethod),
       });
       setPartialPayOrder(null);
+      const postPayment = result?.postPayment;
+      if (postPayment?.needsChoices && onApplyPostPaymentChoices) {
+        setPostPayShip(true);
+        setPostPayProgram(true);
+        setPostPayState(postPayment);
+      }
     });
+  };
+
+  const handleConfirmPostPay = async () => {
+    if (!postPayState || !onApplyPostPaymentChoices) return;
+    setIsSavingPostPay(true);
+    try {
+      const result = await onApplyPostPaymentChoices(postPayState.recordId, {
+        ship: postPayState.canShip && !postPayState.shipped && postPayShip,
+        connectProgram: postPayState.canConnect && !postPayState.connected && postPayProgram,
+      });
+      if (result?.link === "sent") toast.success("נשלח ללקוח/ה קישור בוואטסאפ");
+      else if (result?.link === "no_phone") toast.error("אין מספר טלפון — הקישור לא נשלח");
+      else toast.success("הבחירות נשמרו");
+      setPostPayState(null);
+    } catch {
+      /* ההודעה כבר הוצגה ב-handler */
+    } finally {
+      setIsSavingPostPay(false);
+    }
   };
 
   const handleConfirmResendWhatsapp = async () => {
@@ -1347,6 +1378,71 @@ export default function OrdersTable({
               disabled={busyAction.type === "partialPay"}
             >
               ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* אחרי תשלום מלא: שליחת הזמנה / חיבור לתוכנית */}
+      <Dialog
+        open={Boolean(postPayState)}
+        onOpenChange={(open) => {
+          if (!open && !isSavingPostPay) setPostPayState(null);
+        }}
+      >
+        <DialogContent dir="rtl" className={`${TOP_DIALOG_CONTENT_CLASSNAME} gap-3 p-4`}>
+          <DialogHeader className="space-y-1 text-right">
+            <DialogTitle className="text-right text-base">ההזמנה שולמה במלואה</DialogTitle>
+            <DialogDescription className="text-right text-xs">
+              הזמנה #{postPayState?.orderNumber || ""} — {postPayState?.customerName || ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          {postPayState?.canShip && (
+            <div className="space-y-1.5 rounded-lg border border-slate-200 p-3">
+              <p className="text-right text-sm font-medium text-slate-900">
+                האם לשלוח את ההזמנה #{postPayState.orderNumber || ""} ללקוח/ה?
+              </p>
+              {postPayState.shipped ? (
+                <p className="text-right text-xs text-emerald-700">ההזמנה כבר נשלחה — לא תישלח שוב.</p>
+              ) : (
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" className="h-8 flex-1" variant={postPayShip ? "default" : "outline"} onClick={() => setPostPayShip(true)} disabled={isSavingPostPay}>כן</Button>
+                  <Button type="button" size="sm" className="h-8 flex-1" variant={!postPayShip ? "default" : "outline"} onClick={() => setPostPayShip(false)} disabled={isSavingPostPay}>לא</Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {postPayState?.canConnect && (
+            <div className="space-y-1.5 rounded-lg border border-slate-200 p-3">
+              <p className="text-right text-sm font-medium text-slate-900">האם לחבר את הלקוח/ה לתוכנית?</p>
+              {postPayState.connected ? (
+                <p className="text-right text-xs text-emerald-700">הלקוח/ה כבר מחובר/ת לתוכנית — לא יחובר/ת שוב.</p>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" className="h-8 flex-1" variant={postPayProgram ? "default" : "outline"} onClick={() => setPostPayProgram(true)} disabled={isSavingPostPay}>כן</Button>
+                    <Button type="button" size="sm" className="h-8 flex-1" variant={!postPayProgram ? "default" : "outline"} onClick={() => setPostPayProgram(false)} disabled={isSavingPostPay}>לא</Button>
+                  </div>
+                  {!postPayState.hasAccount && (
+                    <p className="text-right text-[11px] leading-snug text-amber-800">אין ללקוח/ה חשבון — יופק וישלח אליה קישור הרשמה בוואטסאפ.</p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          <p className="text-right text-[11px] leading-snug text-slate-500">
+            לאחר האישור יישלח ללקוח/ה קישור בוואטסאפ להשלמת פרטים (פעם אחת). השליחה והחיבור יתבצעו אוטומטית כשתשלים/י אותם.
+          </p>
+
+          <DialogFooter className="flex-row gap-2 sm:space-x-0">
+            <Button type="button" className="h-9 flex-1 bg-slate-900 text-white hover:bg-slate-800" onClick={handleConfirmPostPay} disabled={isSavingPostPay}>
+              {isSavingPostPay ? "שומר..." : "אישור"}
+            </Button>
+            <Button type="button" variant="outline" className="h-9 flex-1" onClick={() => setPostPayState(null)} disabled={isSavingPostPay}>
+              לא עכשיו
             </Button>
           </DialogFooter>
         </DialogContent>

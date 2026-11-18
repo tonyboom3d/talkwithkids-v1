@@ -21,6 +21,12 @@ export const STATUS_CONFIG = {
   paid: { label: "שולם", className: "bg-emerald-100 text-emerald-700" },
 };
 
+/** תשלום חלקי + פתיחת תוכנית/משלוח: הסכום שולם, ממתין למילוי פרטים בלבד */
+export const PREPAID_AWAITING_DETAILS_STATUS = {
+  label: "שולמה חלקית – ממתין לפרטים",
+  className: "bg-orange-100 text-orange-700",
+};
+
 export const STATUS_UPDATE_OPTIONS = ["sent", "opened", "awaiting_deposit", "paid_partial", "paid_pending_details", "paid_completed", "paid", "cancelled"];
 
 export const SALES_STATUS_FILTERS = [
@@ -347,6 +353,9 @@ export function normalizeOrder(order, options = {}) {
   }
   normalized.orderNumber = rawOrderNumber || (normalized.displayStatus === "paid_pending_details" ? "ממתין להשלמה" : "ממתין לתשלום");
   normalized.statusCfg = STATUS_CONFIG[normalized.displayStatus] || STATUS_CONFIG.sent;
+  if (normalized.displayStatus === "awaiting_deposit" && couponDetails?.source === "deposit_prepaid") {
+    normalized.statusCfg = PREPAID_AWAITING_DETAILS_STATUS;
+  }
   normalized.couponSummary = getCouponSummary(couponDetails);
   normalized.whatsappDeliveryStatus = resolveWhatsappDeliveryStatus(normalized);
   normalized.balanceDueDate = order.balanceDueDate || null;

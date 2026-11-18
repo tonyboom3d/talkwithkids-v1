@@ -904,11 +904,27 @@ export default function Dashboard() {
       return;
     }
     try {
-      await request("COMPLETE_PARTIAL_PAYMENT", { recordId, ...payload });
+      const result = await request("COMPLETE_PARTIAL_PAYMENT", { recordId, ...payload });
       toast.success("התשלום עודכן בהצלחה");
       loadOrders();
+      return result;
     } catch (err) {
       toast.error(err.message || "שגיאה בעדכון התשלום");
+      throw err;
+    }
+  };
+
+  const handleApplyPostPaymentChoices = async (recordId, choices) => {
+    if (isDemo) {
+      toast.success("(מצב דמו) הבחירות נשמרו");
+      return { success: true };
+    }
+    try {
+      const result = await request("APPLY_POST_PAYMENT_CHOICES", { recordId, ...choices });
+      loadOrders();
+      return result;
+    } catch (err) {
+      toast.error(err.message || "שגיאה בשמירת הבחירות");
       throw err;
     }
   };
@@ -1682,6 +1698,7 @@ export default function Dashboard() {
           employees={employees}
           onUpdateAssignment={handleUpdateAssignment}
           onCompletePartialPayment={handleCompletePartialPayment}
+        onApplyPostPaymentChoices={handleApplyPostPaymentChoices}
           onUpdateDeposit={handleUpdateDeposit}
           onLoadOlderOrders={isDemo ? undefined : loadOlderOrders}
           isLoadingOlder={isLoadingOlder}
