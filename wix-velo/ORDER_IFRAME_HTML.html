@@ -1102,6 +1102,212 @@
       var appShell = document.getElementById("appShell");
       var isRedirecting = false;
 
+      var PAGE_COPY =
+      /*PAGE_COPY_START*/
+{
+  "fallbackName": "אהובה",
+  "heroTitle": "{שם},",
+  "loadingTitle": "אני מכינה את ההזמנה שלך...",
+  "loadingText": "אני טוענת את הפרטים הרלוונטיים עבורך. זה ייקח כמה רגעים.",
+  "redirectTitle": "מיד תועברי להזמנה שלך",
+  "errorTitle": "אופס... לא מצאתי את ההזמנה שלך",
+  "errorText": "נסי לרענן את העמוד ואם עדיין זה לא עזר אפשר ליצור איתנו קשר",
+  "errorSupport": "מעבר לשירות לקוחות",
+  "errorSupportUrl": "http://wa.me/972526111404",
+  "expiredTitle": "הקישור פג תוקף. למידע נוסף פנו לשירות הלקוחות",
+  "checkoutError": "אירעה שגיאה ביצירת קישור התשלום. נסי שוב מאוחר יותר.",
+  "noProducts": "לא נמצאו מוצרים להזמנה זו.",
+  "notAvailable": "לא זמין",
+  "productFallback": "מוצר",
+  "detailsSummary": "פרטי הזמנה",
+  "labelCustomer": "שם לקוח/ה",
+  "labelDate": "מתאריך",
+  "labelPhone": "טלפון",
+  "labelCoupon": "קופון הנחה",
+  "labelStatus": "סטטוס",
+  "productsTitle": "בהזמנה שלך:",
+  "labelQty": "כמות",
+  "labelUnit": "מחיר ליחידה",
+  "labelLine": "סה\"כ לפריט",
+  "beforeDiscount": "לפני הנחה ",
+  "afterDiscount": "אחרי הנחה ",
+  "priceBefore": "מחיר לפני הנחה",
+  "priceAfter": "מחיר אחרי הנחה",
+  "priceToPay": "מחיר לתשלום",
+  "priceFull": "מחיר מלא",
+  "pricePaid": "שולם בפועל",
+  "priceRemaining": "נותר לתשלום",
+  "priceLater": "יתרה להמשך",
+  "statusFallback": "ממתין לתשלום",
+  "scenes": {
+    "unpaid": {
+      "subtitle": "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את ההזמנה",
+      "status": "ממתין לתשלום",
+      "button": "להשלמת ההזמנה  >>",
+      "redirectText": "עוד רגע תועברי לעמוד התשלום המאובטח."
+    },
+    "zero": {
+      "subtitle": "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התהליך",
+      "status": "",
+      "button": "להשלמת הפרטים >>",
+      "redirectText": "עוד רגע תועברי לעמוד התשלום המאובטח."
+    },
+    "autoPaid": {
+      "subtitle": "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התהליך",
+      "status": "ממתין לתשלום",
+      "button": "להשלמת הפרטים >>",
+      "redirectText": ""
+    },
+    "awaitingDeposit": {
+      "subtitle": "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התשלום",
+      "status": "מקדמה בסך {מקדמה} מתוך {סהכ} את התשלום המלא יש להשלים עד {תאריך} בכל דרך שנוחה לך.",
+      "button": "לתשלום המקדמה >>",
+      "redirectText": "עוד רגע תועברי לעמוד התשלום המאובטח."
+    },
+    "depositPrepaid": {
+      "subtitle": "כדי שנוכל להתחיל, נותר לך להשלים את הפרטים",
+      "status": "אין צורך בתשלום כעת",
+      "button": "להשלמת הפרטים >>",
+      "redirectText": "עוד רגע תועברי להשלמת הפרטים."
+    },
+    "depositPaid": {
+      "subtitle": "הגיע מועד תשלום היתרה, בלחיצה על הכפתור תועברי למסך מאובטח להשלמת הפרטים",
+      "status": "ההזמנה שולמה חלקית – המקדמה שולמה. נותר לשלם את היתרה.",
+      "button": "להשלמת תשלום היתרה >>",
+      "redirectText": "עוד רגע תועברי לעמוד התשלום המאובטח."
+    },
+    "depositPrepaidWait": {
+      "subtitle": "{שם_פרטי}, אין צורך להשלים את התשלום עכשיו, אך יש למלא פרטים על מנת לקדם את ההזמנה",
+      "status": "אין צורך בתשלום כעת",
+      "button": "",
+      "redirectText": ""
+    },
+    "depositPrepaidDue": {
+      "subtitle": "הגיע המועד שבו קבענו לסיים את התשלום. כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את ההזמנה",
+      "status": "ההזמנה שולמה חלקית מחוץ למערכת. נותר לשלם את היתרה.",
+      "button": "להשלמת תשלום היתרה >>",
+      "redirectText": "עוד רגע תועברי לעמוד התשלום המאובטח."
+    },
+    "partial": {
+      "subtitle": "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התשלום",
+      "status": "ההזמנה שולמה חלקית. נותר להשלים את יתרת התשלום.",
+      "button": "המשיכי לתשלום יתרה >>",
+      "redirectText": "עוד רגע תועברי לעמוד התשלום המאובטח."
+    },
+    "paidPending": {
+      "subtitle": "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את ההזמנה",
+      "status": "ההזמנה שולמה – נותר רק להשלים את פרטי ההרשמה.",
+      "button": "לחצי להשלמת פרטים >>",
+      "redirectText": "עוד רגע תועברי לעמוד התשלום המאובטח."
+    },
+    "cancelled": {
+      "subtitle": "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התשלום",
+      "status": "ההזמנה בוטלה יש לפנות לשירות לקוחות",
+      "button": "",
+      "redirectText": ""
+    }
+  }
+}
+      /*PAGE_COPY_END*/
+      ;
+
+      function withSpace(value) {
+        var text = String(value || "");
+        if (!text) return "";
+        return /\s$/.test(text) ? text : text + " ";
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function resolveScene(order) {
+        if (order && order.copyScene && PAGE_COPY.scenes[order.copyScene]) return order.copyScene;
+        var status = (order && order.status) || "";
+        if (status === "cancelled" || status === "error") return "cancelled";
+        if (order && order.detailsOnly && status === "deposit_paid") return "depositPrepaidWait";
+        if (order && order.detailsOnly) return "depositPrepaid";
+        if (status === "awaiting_deposit") return "awaitingDeposit";
+        if (status === "deposit_paid") return "depositPaid";
+        if (status === "paid_partial") return "partial";
+        if (status === "paid" || status === "paid_pending_details") return "paidPending";
+        if (order && order.isAlreadyPaid) return "autoPaid";
+        if (Number(order && order.payPrice) <= 0.009) return "zero";
+        return "unpaid";
+      }
+
+      function sceneCopyOf(order) {
+        return PAGE_COPY.scenes[resolveScene(order)] || {};
+      }
+
+      function fillCopy(template, order) {
+        var text = String(template || "");
+        var name = String((order && order.customerName) || "").trim() || PAGE_COPY.fallbackName;
+        var first = name.split(/\s+/)[0] || name;
+        var deposit = Number(order && order.depositAmount) || 0;
+        var total = Number(order && (order.originalPrice != null ? order.originalPrice : order.totalPrice)) || 0;
+        var paid = Number(order && (order.depositPaidAmount || order.actualPaidAmount)) || 0;
+        var due = "";
+        if (order && order.balanceDueDate) {
+          due = formatDate(order.balanceDueDate);
+          if (due === PAGE_COPY.notAvailable) due = "";
+        }
+        if (!(paid > 0)) {
+          text = text.replace(/\s*\(\s*שולם עד כה \{שולם\}[,،]?\s*נותר לתשלום \{נותר\}\s*\)/g, "");
+        }
+        if (!due) text = text.replace(/\s*עד \{תאריך\}/g, "");
+        return text
+          .replace(/\{שם_פרטי\}/g, first)
+          .replace(/\{שם\}/g, name)
+          .replace(/\{מקדמה\}/g, formatPrice(deposit))
+          .replace(/\{סהכ\}/g, formatPrice(total))
+          .replace(/\{שולם\}/g, formatPrice(paid))
+          .replace(/\{נותר\}/g, formatPrice(Math.max(0, deposit - (Number(order && order.depositPaidAmount) || 0))))
+          .replace(/\{תאריך\}/g, due);
+      }
+
+      function applyStaticCopy() {
+        var loaderTitle = document.querySelector(".loader-title");
+        var loaderText = document.querySelector(".loader-text");
+        var redirectTitle = document.querySelector(".redirect-title");
+        var support = document.querySelector(".support-link");
+        var summary = document.querySelector(".order-details-accordion summary");
+        var productTitle = document.querySelector(".products-section .panel-title");
+        var labels = document.querySelectorAll(".detail-list .detail-label");
+        var labelValues = [
+          PAGE_COPY.labelCustomer,
+          PAGE_COPY.labelDate,
+          PAGE_COPY.labelPhone,
+          PAGE_COPY.labelCoupon,
+          PAGE_COPY.labelStatus
+        ];
+        var mini = document.querySelectorAll(".hero-price-mini-label");
+        var three = document.querySelectorAll("#heroPriceThreeWrap .hero-price-three-label");
+        if (loaderTitle) loaderTitle.textContent = PAGE_COPY.loadingTitle;
+        if (loaderText) loaderText.textContent = PAGE_COPY.loadingText;
+        if (redirectTitle) redirectTitle.textContent = PAGE_COPY.redirectTitle;
+        if (errorTitle) errorTitle.textContent = PAGE_COPY.errorTitle;
+        if (errorText) errorText.textContent = PAGE_COPY.errorText;
+        if (support) {
+          support.textContent = PAGE_COPY.errorSupport;
+          if (PAGE_COPY.errorSupportUrl) support.href = PAGE_COPY.errorSupportUrl;
+        }
+        if (summary) summary.textContent = PAGE_COPY.detailsSummary;
+        if (productTitle) productTitle.textContent = PAGE_COPY.productsTitle;
+        labels.forEach(function (el, index) {
+          if (labelValues[index]) el.textContent = labelValues[index];
+        });
+        if (mini[0]) mini[0].textContent = PAGE_COPY.priceBefore;
+        if (mini[1]) mini[1].textContent = PAGE_COPY.priceAfter;
+        if (three[0]) three[0].textContent = PAGE_COPY.priceFull;
+        if (three[1]) three[1].textContent = PAGE_COPY.pricePaid;
+        if (heroPriceSingleLabel) heroPriceSingleLabel.textContent = PAGE_COPY.priceToPay;
+        setRemainingPriceLabel(PAGE_COPY.priceRemaining);
+      }
+
       function showScreen(target) {
         [loadingScreen, orderScreen, errorScreen].forEach(function (node) {
           node.classList.remove("is-visible");
@@ -1119,9 +1325,9 @@
         if (Number.isFinite(full) && full > pay + 0.009) {
           var oldPrice = document.createElement("span");
           oldPrice.className = "product-price-old";
-          oldPrice.textContent = "לפני הנחה " + formatPrice(full);
+          oldPrice.textContent = withSpace(PAGE_COPY.beforeDiscount) + formatPrice(full);
           node.appendChild(oldPrice);
-          node.appendChild(document.createTextNode("אחרי הנחה " + formatPrice(pay)));
+          node.appendChild(document.createTextNode(withSpace(PAGE_COPY.afterDiscount) + formatPrice(pay)));
           return;
         }
         node.appendChild(document.createTextNode(formatPrice(pay)));
@@ -1137,9 +1343,9 @@
       }
 
       function formatDate(dateValue) {
-        if (!dateValue) return "לא זמין";
+        if (!dateValue) return PAGE_COPY.notAvailable;
         var parsed = new Date(dateValue);
-        if (Number.isNaN(parsed.getTime())) return "לא זמין";
+        if (Number.isNaN(parsed.getTime())) return PAGE_COPY.notAvailable;
         return new Intl.DateTimeFormat("he-IL", {
           day: "2-digit",
           month: "2-digit",
@@ -1179,10 +1385,10 @@
           heroPriceThreeOriginal.textContent = formatPrice(fullPrice);
           heroPriceThreePaid.textContent = formatPrice(paidOutside);
           heroPriceThreeRemaining.textContent = formatPrice(laterBalance);
-          setRemainingPriceLabel("יתרה להמשך");
+          setRemainingPriceLabel(PAGE_COPY.priceLater);
           return;
         }
-        setRemainingPriceLabel("נותר לתשלום");
+        setRemainingPriceLabel(PAGE_COPY.priceRemaining);
         var pay = order.payPrice != null ? order.payPrice : order.totalPrice;
         var orig = order.originalPrice != null ? order.originalPrice : order.totalPrice;
         var actualPaid = Number(order.actualPaidAmount) || 0;
@@ -1215,7 +1421,7 @@
           heroPriceCouponWrap.style.display = "none";
           heroPriceSingleWrap.style.display = "flex";
           heroPriceThreeWrap.style.display = "none";
-          heroPriceSingleLabel.textContent = "מחיר לתשלום";
+          heroPriceSingleLabel.textContent = PAGE_COPY.priceToPay;
           heroPriceSingle.textContent = formatPrice(pay);
         }
       }
@@ -1225,7 +1431,7 @@
         productsList.innerHTML = "";
 
         if (!list.length) {
-          productsList.innerHTML = '<div class="detail-item full"><p class="detail-value">לא נמצאו מוצרים להזמנה זו.</p></div>';
+          productsList.innerHTML = '<div class="detail-item full"><p class="detail-value">' + escapeHtml(PAGE_COPY.noProducts) + '</p></div>';
           return;
         }
 
@@ -1240,7 +1446,7 @@
             var image = document.createElement("img");
             image.className = "product-image";
             image.src = product.image;
-            image.alt = product.name || "מוצר";
+            image.alt = product.name || PAGE_COPY.productFallback;
             image.loading = "lazy";
             image.referrerPolicy = "no-referrer";
             imageWrap.appendChild(image);
@@ -1252,22 +1458,22 @@
             '<h4 class="product-name"></h4>' +
             '<div class="product-meta">' +
               '<div class="product-meta-item">' +
-                '<p class="product-meta-label">כמות</p>' +
+                '<p class="product-meta-label">' + escapeHtml(PAGE_COPY.labelQty) + '</p>' +
                 '<p class="product-meta-value"></p>' +
               '</div>' +
               '<div class="product-meta-item">' +
-                '<p class="product-meta-label">מחיר ליחידה</p>' +
+                '<p class="product-meta-label">' + escapeHtml(PAGE_COPY.labelUnit) + '</p>' +
                 '<p class="product-meta-value"></p>' +
               '</div>' +
               '<div class="product-meta-item">' +
-                '<p class="product-meta-label">סה"כ לפריט</p>' +
+                '<p class="product-meta-label">' + escapeHtml(PAGE_COPY.labelLine) + '</p>' +
                 '<p class="product-meta-value"></p>' +
               '</div>' +
             '</div>';
 
           var nameNode = main.querySelector(".product-name");
           var valueNodes = main.querySelectorAll(".product-meta-value");
-          nameNode.textContent = product.name || "מוצר";
+          nameNode.textContent = product.name || PAGE_COPY.productFallback;
           valueNodes[0].textContent = String(product.quantity || 1);
           setStruckPrice(valueNodes[1], product.unitPrice, product.originalUnitPrice);
           setStruckPrice(valueNodes[2], product.lineTotal, product.originalLineTotal);
@@ -1279,13 +1485,15 @@
       }
 
       function showRedirectOverlay() {
-        // עבור הזמנות ששולמו כבר — מסתירים את המשפט "תועברי לעמוד התשלום"
-        if (currentOrder && currentOrder.detailsOnly) {
-          redirectSubtext.textContent = "עוד רגע תועברי להשלמת הפרטים.";
-          redirectSubtext.style.display = "";
+        var scene = currentOrder ? sceneCopyOf(currentOrder) : {};
+        var text = fillCopy(scene.redirectText || "", currentOrder || {});
+        var redirectTitle = document.querySelector(".redirect-title");
+        if (redirectTitle) redirectTitle.textContent = PAGE_COPY.redirectTitle;
+        if (!String(text || "").trim()) {
+          redirectSubtext.style.display = "none";
         } else {
-          redirectSubtext.textContent = "עוד רגע תועברי לעמוד התשלום המאובטח.";
-          redirectSubtext.style.display = (currentOrder && currentOrder.isAlreadyPaid) ? "none" : "";
+          redirectSubtext.textContent = text;
+          redirectSubtext.style.display = "";
         }
         redirectOverlay.classList.add("is-visible");
         redirectOverlay.setAttribute("aria-hidden", "false");
@@ -1308,28 +1516,21 @@
 
       function renderOrder(order) {
         currentOrder = order;
+        applyStaticCopy();
         console.log("[TWK-IFRAME] renderOrder payload:", order);
-        setText("heroTitle", (order.customerName || "אהובה") + ", ההזמנה שלך כמעט מוכנה!");
+        var scene = sceneCopyOf(order);
+        setText("heroTitle", fillCopy(PAGE_COPY.heroTitle, order));
         var heroSubtitle = document.querySelector(".hero-subtitle");
-        var unpaidStatus = order.status === "sent" || order.status === "opened" || order.status === "unpaid";
-        var paidStatus = order.status === "paid" || order.status === "paid_pending_details";
-        var zeroUnpaid = Number(order.payPrice) <= 0.009 && unpaidStatus;
-        if (heroSubtitle) {
-          heroSubtitle.textContent = order.detailsOnly && order.heroSubtitle
-            ? order.heroSubtitle
-            : zeroUnpaid
-              ? "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התהליך"
-              : (unpaidStatus || paidStatus)
-                ? "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את ההזמנה"
-                : "כל שנשאר לך לעשות זה לעבור על הפרטים ולהשלים את התשלום";
-        }
-        setText("customerName", order.customerName || "לא זמין");
+        if (heroSubtitle) heroSubtitle.textContent = fillCopy(scene.subtitle || "", order);
+        setText("customerName", order.customerName || PAGE_COPY.notAvailable);
         setText("createdDate", formatDate(order.createdDate));
-        setText("customerPhone", order.customerPhone || "לא זמין");
-        var visibleStatus = order.detailsOnly ? "אין צורך בתשלום כעת" : (order.statusText || "ממתין לתשלום");
-        setText("statusText", visibleStatus);
+        setText("customerPhone", order.customerPhone || PAGE_COPY.notAvailable);
+        var hasSceneStatus = Object.prototype.hasOwnProperty.call(scene, "status");
+        var visibleStatus = fillCopy(hasSceneStatus ? scene.status : (order.statusText || PAGE_COPY.statusFallback), order).trim();
+        setText("statusText", visibleStatus || "—");
 
         var statusChip = document.getElementById("statusChip");
+        statusChip.style.display = visibleStatus ? "" : "none";
         statusChip.textContent = visibleStatus;
         statusChip.className = "status-chip " + (order.statusTone || "waiting");
 
@@ -1341,8 +1542,9 @@
           couponRow.style.display = "none";
         }
 
-        if (order.canContinue && (order.ctaLabel || zeroUnpaid)) {
-          payButton.textContent = zeroUnpaid ? "להשלמת הפרטים >>" : order.ctaLabel;
+        var buttonLabel = fillCopy(scene.button || "", order).trim();
+        if (buttonLabel) {
+          payButton.textContent = buttonLabel;
           payButton.href = "#";
           payButton.style.display = "inline-flex";
           payButton.style.alignItems = "center";
@@ -1370,16 +1572,22 @@
       }
 
       function renderError(errorState) {
-        var message = (errorState && errorState.message) || "אופס... לא מצאתי את ההזמנה שלך";
+        var code = (errorState && errorState.code) || "";
+        var message = code === "ORDER_LINK_EXPIRED" ? PAGE_COPY.expiredTitle : PAGE_COPY.errorTitle;
         if (errorState && (errorState.code || errorState.debug)) {
           console.error("[TWK-IFRAME] order error details:", {
-            code: errorState.code || "UNKNOWN_ERROR",
-            message: message,
+            code: code || "UNKNOWN_ERROR",
+            message: (errorState && errorState.message) || message,
             debug: errorState.debug || null
           });
         }
         errorTitle.textContent = message;
-        errorText.textContent = "נסי לרענן את העמוד ואם עדיין זה לא עזר אפשר ליצור איתנו קשר";
+        errorText.textContent = PAGE_COPY.errorText;
+        var support = document.querySelector(".support-link");
+        if (support) {
+          support.textContent = PAGE_COPY.errorSupport;
+          if (PAGE_COPY.errorSupportUrl) support.href = PAGE_COPY.errorSupportUrl;
+        }
         showScreen(errorScreen);
       }
 
@@ -1407,14 +1615,14 @@
         }
 
         if (data.action === "ORDER_ERROR") {
-          state.error = data.payload || { message: "אופס... לא מצאתי את ההזמנה שלך" };
+          state.error = data.payload || { message: PAGE_COPY.errorTitle };
           state.order = null;
           maybeRender();
           return;
         }
 
         if (data.action === "CHECKOUT_ERROR") {
-          var errorMsg = (data.payload && data.payload.message) || "אירעה שגיאה ביצירת קישור התשלום. נסי שוב.";
+          var errorMsg = PAGE_COPY.checkoutError || (data.payload && data.payload.message) || "";
           console.error("[TWK-IFRAME] checkout creation error:", data.payload);
           isRedirecting = false;
           redirectOverlay.classList.remove("is-visible");
@@ -1424,6 +1632,8 @@
           alert(errorMsg);
         }
       });
+
+      applyStaticCopy();
 
       window.parent.postMessage({
         type: MESSAGE_TYPE,
@@ -1437,7 +1647,7 @@
 
       window.setTimeout(function () {
         if (!state.order && !state.error) {
-          state.error = { message: "אופס... לא מצאתי את ההזמנה שלך" };
+          state.error = { message: PAGE_COPY.errorTitle };
           maybeRender();
         }
       }, FAILSAFE_MS);
